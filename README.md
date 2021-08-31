@@ -8,7 +8,7 @@ cool prompting for summarization!
     - [Prompting](#prompting)
     - [Summarization](#summarization)
 ## Method
-![Image of first discussion](images/first_discussion_screenshot.jpeg)
+![Image of first discussion](https://github.com/ntunlp/PromptSumm/blob/main/images/first_discussion_screenshot.jpeg)
 ## Related Papers
 ### Prompting
 1. **Pre-train, Prompt, and Predict: A Systematic Survey of Prompting Methods in Natural Language Processing.**  Preprint.
