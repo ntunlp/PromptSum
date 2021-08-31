@@ -25,7 +25,7 @@ cool prompting for summarization!
 ### Summarization
 1. **Pegasus: pre-training with extracted gap-sentences for abstractive summarization.**  ICML 2020.
 
-  *Jingqing Zhang, Yao Zhao, Mohammad Saleh, Peter J. Liu.*  [[pdf](https://arxiv.org/pdf/1912.08777.pdf)] [[project](https://github.com/google-research/pegasus)], 2020.07
+   *Jingqing Zhang, Yao Zhao, Mohammad Saleh, Peter J. Liu.*  [[pdf](https://arxiv.org/pdf/1912.08777.pdf)] [[project](https://github.com/google-research/pegasus)], 2020.07
 2. **CTRLSUM: Towards generic controllable text summarization.**  Preprint.
 
-  *Junxian He, Wojciech Kryściński, Bryan McCann, Nazneen Rajani, Caiming Xiong.*  [[pdf](https://arxiv.org/pdf/2012.04281.pdf)] [[project](https://github.com/salesforce/ctrl-sum)], 2020.12
+   *Junxian He, Wojciech Kryściński, Bryan McCann, Nazneen Rajani, Caiming Xiong.*  [[pdf](https://arxiv.org/pdf/2012.04281.pdf)] [[project](https://github.com/salesforce/ctrl-sum)], 2020.12
