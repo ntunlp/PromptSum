@@ -1,5 +1,6 @@
 # PromptSumm
 cool prompting for summarization!
+
 ## Contents
 
 - [PromptSumm](#PromptSumm)
@@ -7,9 +8,12 @@ cool prompting for summarization!
   - [Related Papers](#related-papers)
     - [Prompting](#prompting)
     - [Summarization](#summarization)
+
 ## Method
 ![Image of first discussion](https://github.com/ntunlp/PromptSumm/blob/main/images/first_discussion_screenshot.jpeg)
+
 ## Related Papers
+
 ### Prompting
 1. **Pre-train, Prompt, and Predict: A Systematic Survey of Prompting Methods in Natural Language Processing.**  Preprint.
 
@@ -17,4 +21,8 @@ cool prompting for summarization!
 2. **The Power of Scale for Parameter-Efﬁcient Prompt Tuning.** Preprint. ![](https://img.shields.io/badge/Continuous-red) ![](https://img.shields.io/badge/Classification-blue)
    
    *Brian Lester, Rami Al-Rfou, Noah Constant*. [[pdf](https://arxiv.org/pdf/2104.08691.pdf)], [[implementation](https://github.com/kipgparker/soft-prompt-tuning)], 2021.4
+   
 ### Summarization
+1. **CTRLSUM: Towards generic controllable text summarization.**  Preprint.
+
+  *Junxian He, Wojciech Kryściński, Bryan McCann, Nazneen Rajani, Caiming Xiong.*  [[pdf](https://arxiv.org/pdf/2012.04281.pdf)] [[project](https://github.com/salesforce/ctrl-sum)], 2020.12
