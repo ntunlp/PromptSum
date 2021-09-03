@@ -23,9 +23,17 @@ cool prompting for summarization!
    *Brian Lester, Rami Al-Rfou, Noah Constant*. [[pdf](https://arxiv.org/pdf/2104.08691.pdf)], [[implementation](https://github.com/kipgparker/soft-prompt-tuning)], 2021.4
    
 ### Summarization
+
+#### Controlled & guided summarization
+1. **CTRLSUM: Towards generic controllable text summarization.**  Preprint.
+
+   *Junxian He, Wojciech Kryściński, Bryan McCann, Nazneen Rajani, Caiming Xiong.*  [[pdf](https://arxiv.org/pdf/2012.04281.pdf)] [[project](https://github.com/salesforce/ctrl-sum)], 2020.12
+
+#### Unsupervised summarization
 1. **Pegasus: pre-training with extracted gap-sentences for abstractive summarization.**  ICML 2020.
 
    *Jingqing Zhang, Yao Zhao, Mohammad Saleh, Peter J. Liu.*  [[pdf](https://arxiv.org/pdf/1912.08777.pdf)] [[project](https://github.com/google-research/pegasus)], 2020.07
-2. **CTRLSUM: Towards generic controllable text summarization.**  Preprint.
+2. **TED: A Pretrained Unsupervised Summarization Model with Theme Modeling and Denoising.**  EMNLP 2020.
 
-   *Junxian He, Wojciech Kryściński, Bryan McCann, Nazneen Rajani, Caiming Xiong.*  [[pdf](https://arxiv.org/pdf/2012.04281.pdf)] [[project](https://github.com/salesforce/ctrl-sum)], 2020.12
+   *Ziyi Yang, Chenguang Zhu, Robert Gmyr, Michael Zeng, Xuedong Huang, Eric Darve.*  [[pdf](https://arxiv.org/pdf/2001.00725.pdf)] [[project]()], 2020.07
+
