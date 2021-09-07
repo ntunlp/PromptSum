@@ -24,68 +24,51 @@ import more_itertools
 import torch
 import torch.nn as nn
 from torch.utils.data import Sampler, Dataset, DataLoader
+from datasets import load_dataset
+import spacy
 
-class T5NERDatasetConll(Dataset):
-    def __init__(self, filename, maxlen, tokenizer,gentasktoken, answertoken):
-        super(T5NERDatasetConll, self).__init__()
-        self.filename = filename
+class T5CNNDataset(Dataset):
+    def __init__(self, dataset_args, maxlen, max_ent_len, tokenizer, split):
+        '''
+        Args:
+            dataset_args: e.g ["cnn_dailymail", '3.0.0']
+            split: choice of ['train', 'validation', 'test']
+        '''
+        super(T5CNNDataset, self).__init__()
+        self.data = load_dataset(*dataset_args, split=split)
         self.maxlen = maxlen
+        self.max_ent_len = max_ent_len
         self.tokenizer = tokenizer
-        self.data = []
-        self.gentasktoken = gentasktoken
-        self.answertoken = answertoken
-        self.data,self.lmdata = self.getalldata(self.filename)
         self.num_entries = len(self.data)
+        self.spacy_nlp = spacy.load("en_core_web_sm")
 
-    def getalldata(self,filename):
-        f = open(filename,'r')
-        alldata = []
-        alllmdata = []
-        while True:
-            oneline = f.readline().strip()
-            if not oneline:
-                break
-            linelist = oneline.split("\t")
-            if len(linelist) != 2:
-                print(oneline)
-                print(linelist)
-            onedata = []
-            onedata.append(linelist[0])
-            onedata.append(linelist[1])
-            alldata.append(onedata)
-            ####lmdata
-            onelmdata = []
-            onelmdata.append(self.gentasktoken)
-            onelmdata.append(linelist[0] + " " + self.answertoken + " " + linelist[1])
-            alllmdata.append(onelmdata)
-        f.close()
-        return alldata,alllmdata
 
     def __getitem__(self, idx):
-        inputdata = self.data[idx][0]
-        targetdata = self.data[idx][1]
+        inputdata = self.data[idx]['article']
+        targetdata = self.data[idx]['highlights']
+        ents = self.spacy_nlp(inputdata).ents
+        input_entities = ','.join([ent.text for ent in ents]) # can decide which delimiter works the best, just pick comma first
+
+
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        input_ents_res = self.tokenizer.batch_encode_plus([input_entities], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
 
-        #######handle lmdata
-        inputlmdata = self.lmdata[idx][0]
-        targetlmdata = self.lmdata[idx][1]
-        inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
         return self.num_entries
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, pad_token_id):
+    def __init__(self, max_length, max_ent_length, pad_token_id):
         self._max_length = max_length
+        self._max_ent_length = max_ent_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
 
-        sequences, targets, lmseq, lmtar = list(zip(*batch))
+        sequences, targets, ents = list(zip(*batch))
 
         input_ids, attention_mask = self.pad_sequence(
             sequences,
@@ -93,12 +76,15 @@ class SmartBatchingCollate:
             pad_token_id=self._pad_token_id
         )
 
+        ents_ids, _ = self.pad_sequence(
+            ents,
+            max_sequence_length=self._max_ent_length,
+            pad_token_id=self._pad_token_id
+        )
+
         target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
 
-        lminput_id, lm_att_mask = self.pad_sequence(lmseq, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
-        lmtar_id, lm_tar_mask = self.pad_target(lmtar, max_sequence_length=self._max_length * 2, pad_token_id=self._pad_token_id)
-
-        output = input_ids, attention_mask, target_ids, target_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -146,9 +132,10 @@ class SmartBatchingCollate:
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences, attention_masks
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
+def get_dataloader(num_workers,dataset, batch_size, max_len, max_ent_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
+        max_ent_len=args.max_ent_len,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
@@ -156,6 +143,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
         batch_size=batch_size,
         sampler=sampler,
         collate_fn=collate_fn,
+        #shuffle=True, #####?????
         drop_last=False,
         num_workers=num_workers,
         pin_memory=True
