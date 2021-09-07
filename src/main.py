@@ -259,8 +259,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
 
     result_dict = {
         'epoch': [],
-        'val_F1': [],
-        'best_val_F1': Best_F1
+        'val_rouge1': [],
+        'best_val_rouge1': Best_F1
     }
     global_step = 0
     model.eval()
