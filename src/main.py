@@ -1,4 +1,5 @@
 import os
+#os.environ['TRANSFORMERS_CACHE'] = '/export/home/cache/'
 import json
 import torch
 import torch.nn as nn
@@ -29,12 +30,15 @@ from torch.utils.data import (
     SequentialSampler, RandomSampler
 )
 from model import *
+from model_finetune import T5Finetune
+from model_mixture import T5MixPrompt
 from dataset import *
 from seqeval.metrics import classification_report,f1_score
 from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
-import pickle
+import pickle5 as pickle
+from datasets import load_metric
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -51,106 +55,36 @@ def seed_everything(args):
     torch.backends.cudnn.benchmark = True
 
 
-def getonebatchresult(sen,target,preds):
-    typedic = {"org": "ORG", "location": "LOC", "person": "PER", "mix": "MISC"}
-    sennum = len(sen)
-    restar = []
-    respred = []
-    for i in range(sennum):
-        thissen, thistar, thispred = sen[i], target[i], preds[i]
+tosavepath = "./t5_ckpt"
 
-        thissenlow = thissen.lower()
-
-        sensplit = thissen.split(' ')
-        sensplitlow = thissenlow.split(' ')
-
-        tarres = ['O' for j in range(len(sensplit))]
-        predres = ['O' for j in range(len(sensplit))]
-
-        if thistar == 'end' and thispred == 'end':
-            restar.append(tarres)
-            respred.append(predres)
-            continue
-
-        if len(thistar) > 0 and thistar[-1] == ';':
-            thistar = thistar[:-1]
-
-        tarsplit1 = thistar.split(';')
-
-        if thistar != 'end':
-            for j in range(len(tarsplit1)):
-                tarsplit2 = tarsplit1[j].split('!')
-                if len(tarsplit2) != 2:
-                    continue
-                entity = tarsplit2[0].strip(' ')
-                entitylow = entity.lower()
-                type = tarsplit2[1].strip(' ')
-                if type not in typedic:
-                    continue
-                if thissenlow.find(entitylow) == -1:
-                    continue
-                trueindex = -100
-                entitysplit = entitylow.split(' ')
-                for k in range(len(sensplit)):
-                    if sensplitlow[k] == entitysplit[0] or entitysplit[0] in sensplitlow[k]:
-                        iftrue = True
-                        for l in range(1, len(entitysplit)):
-                            if sensplitlow[k + l] != entitysplit[l] and (entitysplit[0] not in sensplitlow[k]):
-                                iftrue = False
-                                break
-                        if iftrue:
-                            trueindex = k
-                            break
-                if trueindex == -100:
-                    continue
-                for k in range(trueindex, trueindex + len(entitysplit)):
-                    if k == trueindex:
-                        tarres[k] = 'B-' + typedic[type]
-                    else:
-                        tarres[k] = 'I-' + typedic[type]
-
-        if len(thispred) > 0 and thispred[-1] == ';':
-            thispred = thispred[:-1]
-
-        tarsplit3 = thispred.split(';')
-
-        if thispred != "end":
-            for j in range(len(tarsplit3)):
-                tarsplit4 = tarsplit3[j].split('!')
-                if len(tarsplit4) != 2:
-                    continue
-                entity = tarsplit4[0].strip(' ')
-                entitylow = entity.lower()
-                type = tarsplit4[1].strip(' ')
-                if type not in typedic:
-                    continue
-                if thissenlow.find(entitylow) == -1:
-                    continue
-                trueindex = -100
-                entitysplit = entitylow.split(' ')
-                for k in range(len(sensplit)):
-                    if sensplitlow[k] == entitysplit[0] or entitysplit[0] in sensplitlow[k]:
-                        iftrue = True
-                        for l in range(1, len(entitysplit)):
-                            if sensplitlow[k + l] != entitysplit[l] and (entitysplit[0] not in sensplitlow[k]):
-                                iftrue = False
-                                break
-                        if iftrue:
-                            trueindex = k
-                            break
-                if trueindex == -100:
-                    continue
-                else:
-                    for k in range(trueindex, trueindex + len(entitysplit)):
-                        if k == trueindex:
-                            predres[k] = 'B-' + typedic[type]
-                        else:
-                            predres[k] = 'I-' + typedic[type]
-        restar.append(tarres)
-        respred.append(predres)
-    return restar, respred
-
-tosavepath = "./t5ner_ckpt"
+def save_model(modeltoeval, args, steps):
+    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
+        model = modeltoeval.module
+    else:
+        model = modeltoeval
+    model.eval()
+    if not os.path.exists(tosavepath):
+            os.mkdir(tosavepath)
+    if not os.path.exists(tosavepath + "/" + args.save_dir):
+        os.mkdir(tosavepath + "/" + args.save_dir)
+    model_to_save = model.module if hasattr(model, 'module') else model
+    if args.model == 'T5Prompt':
+        ckpt = {
+            "prompt_length": model_to_save.prompt_length,
+            "prompt_embedding": model_to_save.prompt_embedding
+        }
+    elif args.model == 'T5MixPrompt':
+        ckpt = {
+            "prompt_dict": model_to_save.prompt_dict,
+            "prompt_fix_dict": model_to_save.prompt_fix_dict
+        }
+    elif args.model == 'T5Finetune':
+        ckpt = {
+            't5-base': model_to_save.model.state_dict(),
+        }
+    print("about to save")
+    torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_"+str(steps)))
+    print("ckpt saved")
 
 def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -164,42 +98,58 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
             logger.info(step)
+            
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
-                    tarres, predres = getonebatchresult(sen, target, preds)
+                    tarres, predres = target, preds
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
+                print(f"eval step: {step}")
                 sen, target, preds = model._generative_step(inputs)
-                tarres, predres = getonebatchresult(sen, target, preds)
+                tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    f1score = f1_score(allytrue, allypred)
+    rouge = load_metric('rouge')
+    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
-    logger.info(f1score)
+    logger.info(rouge_score)
 
-    result_dict['val_F1'].append(f1score)
-    if result_dict['val_F1'][-1] > result_dict['best_val_F1']:
-        logger.info("{} epoch, best epoch was updated! valid_F1: {: >4.5f}".format(i,result_dict['val_F1'][-1]))
-        result_dict["best_val_F1"] = result_dict['val_F1'][-1]
+    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
+        logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
+        result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
         if not os.path.exists(tosavepath):
             os.mkdir(tosavepath)
         if not os.path.exists(tosavepath + "/" + args.save_dir):
             os.mkdir(tosavepath + "/" + args.save_dir)
         model_to_save = model.module if hasattr(model, 'module') else model
-        ckpt = {
-            "promptnumber": model_to_save.promptnumber,
-            "promptembedding": model_to_save.promptembedding
-        }
-        torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5ner_best"))
+        if args.model == 'T5Prompt':
+            ckpt = {
+                "prompt_length": model_to_save.prompt_length,
+                "prompt_embedding": model_to_save.prompt_embedding
+            }
+        elif args.model == 'T5MixPrompt':
+            ckpt = {
+                "prompt_dict": model_to_save.prompt_dict,
+                "prompt_fix_dict": model_to_save.prompt_fix_dict
+            }
+        elif args.model == 'T5Finetune':
+            ckpt = {
+                't5-base': model_to_save.model.state_dict(),
+            }
+        print("about to save")
+        torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_best"))
+        print("ckpt saved")
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
+def get_dataloader(num_workers,dataset, batch_size, max_len, max_ent_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
+        max_ent_length=max_ent_len,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
@@ -207,6 +157,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
         batch_size=batch_size,
         sampler=sampler,
         collate_fn=collate_fn,
+        #shuffle=True, #####?????
         drop_last=False,
         num_workers=num_workers,
         pin_memory=True
@@ -214,29 +165,39 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     return dataloader
 
 def test(args, test_dataset):
-
     test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
+    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_ent_len,
                                       test_dataset.tokenizer.pad_token_id,test_sampler)
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/data/qin/cache/")
-    model = T5forNER(args, t5model, tokenizer)
-    allckpt = torch.load("./t5ner_ckpt/" + args.save_dir + "/ckptofT5ner_best")
-    model.promptnumber = allckpt["promptnumber"]
-    model.promptembedding = allckpt["promptembedding"]
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache/")
+    allckpt = torch.load("./t5_ckpt/" + args.save_dir + "/ckptofT5_best")
+    if args.model == 'T5Prompt':
+        model = T5Prompt(args, t5model, tokenizer)
+        model.prompt_length = allckpt["prompt_length"]
+        model.prompt_embedding = allckpt["prompt_embedding"]
+    elif args.model == 'T5MixPrompt':
+        model = T5MixPrompt(args, t5model, tokenizer)
+        model.prompt_dict = allckpt['prompt_dict']
+        model.prompt_fix_dict = allckpt['prompt_fix_dict']
+    elif args.model == 'T5Finetune':
+        model = T5Finetune(args, t5model, tokenizer)
+        model_state_dict = {}
+        for k,v in allckpt['t5-base'].items():
+            model_state_dict['model.'+k] = v
+        model.load_state_dict(model_state_dict)
     logger.info("load finished!")
 
     model.to(args.device)
     model.eval()
     allytrue = []
     allypred = []
-    scaler = ShardedGradScaler()
-    #scaler = None
+    #scaler = ShardedGradScaler()
+    scaler = None
 
     with torch.no_grad():
         for step, batch in enumerate(test_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen,target,preds = model._generative_step(inputs)
@@ -251,51 +212,43 @@ def test(args, test_dataset):
     report = classification_report(allytrue, allypred, digits=4)
     logger.info("\n%s", report)
 
-def train(args, model, train_dataset,valid_dataset,test_dataset):
+
+def train(args, model, train_dataset, valid_dataset, test_dataset):
     # total step
-    step_tot = (len(
-        train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
+    step_tot = int(0.5 + train_dataset.num_entries / float(args.gradient_accumulation_steps) / args.batch_size_per_gpu / args.n_gpu) * args.max_epoch
+
     warmup_steps_total = step_tot * args.warmup_steps
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
         train_dataset)
+
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
+    train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_ent_len,
                                       train_dataset.tokenizer.pad_token_id,train_sampler)
-    valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
+    valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_ent_len,
                                       valid_dataset.tokenizer.pad_token_id,valid_sampler)
 
-    # optimizer
-    # no_decay = ['bias', 'LayerNorm.weight']
-    # optimizer_grouped_parameters = [
-    #     {'params': [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-    #      'weight_decay': args.weight_decay},
-    #     {'params': [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
-    # ]
-    #
-    #
-    # base_optimizer_arguments = {"lr":args.lr, "eps":args.adam_epsilon, "correct_bias":False}
-    # optimizer = AdamW
-    # optimizer = OSS(
-    #     params=optimizer_grouped_parameters,
-    #     optim=optimizer,
-    #     **base_optimizer_arguments)
-    # scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps_total,
-    #                                             num_training_steps=step_tot)
-    # scheduler = None
 
     base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
                                 "weight_decay": args.weight_decay,
                                 "scale_parameter": False, "relative_step": False}
-    optimizer = Adafactor
-    optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
-                    **base_optimizer_arguments)
-    # distributed training
-    model = ShardedDDP(model, optimizer)
+    if args.model == 'T5Finetune':
+        optimizer = AdamW
+        base_optimizer_arguments = {"lr": args.lr, "weight_decay": args.weight_decay}
+    else:
+        optimizer = Adafactor
+    if args.n_gpu > 1: # distributed training
+        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
+                        **base_optimizer_arguments)
+        # distributed training
+        model = ShardedDDP(model, optimizer)
+    else:
+        optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+    #import pdb;pdb.set_trace() #len(optimizer.param_groups[0]['params']) #len(optimizer.param_groups)
     model.train()
-    scaler = ShardedGradScaler()
+    #scaler = ShardedGradScaler()
     scheduler = None
-    #scaler = None
+    scaler = None
 
 
     startepoch = 0
@@ -306,52 +259,43 @@ def train(args, model, train_dataset,valid_dataset,test_dataset):
 
     result_dict = {
         'epoch': [],
-        'val_F1': [],
-        'best_val_F1': Best_F1
+        'val_rouge1': [],
+        'best_val_rouge1': Best_F1
     }
     global_step = 0
-    #lm_lambda = 0.25
-    lm_lambda = args.lm_lambda
+    model.eval()
+    model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
-        if i < 32:
-            thisevalstep = args.eval_step * 10
-        elif i >= 32 and i < 42:
-            thisevalstep = args.eval_step * 4
-        else:
-            thisevalstep = args.eval_step
-        if i > 420:
-            break
-        logger.info(i)
+        # if i < 32:
+        #     adjusted_evalstep = args.eval_step * 10
+        # elif i >= 32:
+        adjusted_evalstep = args.eval_step
+        #if i > 420:
+        #    break
+
         model.train()
         result_dict['epoch'] = i
         allloss = []
-        alllmloss = []
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            inputs_lm = {"input_ids": batch[4].to(args.device), "attention_mask": batch[5].to(args.device),
-                      "target_ids": batch[6].to(args.device), "target_mask": batch[7].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                      "input_ents": batch[4].to(args.device)}
+
             if scaler is not None:
                 with autocast():
                     loss = model(inputs)
-                    lmloss = model(inputs_lm) * lm_lambda
                     if args.gradient_accumulation_steps > 1:
                         loss = loss / args.gradient_accumulation_steps
-                        lmloss = lmloss / args.gradient_accumulation_steps
             else:
                 loss = model(inputs)
-                lmloss = model(inputs_lm) * lm_lambda
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
-                    lmloss = lmloss / args.gradient_accumulation_steps
-            finalloss = loss + lmloss
+            finalloss = loss 
             if scaler is not None:
                 scaler.scale(finalloss).backward()
             else:
                 finalloss.backward()
             allloss.append(loss.item())
-            alllmloss.append(lmloss.item())
-
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
                     #scaler.unscale_(optimizer)
@@ -368,39 +312,29 @@ def train(args, model, train_dataset,valid_dataset,test_dataset):
 
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
                     #logger.info("step: %d, shcedule: %.3f, loss: %.6f" % (global_step, global_step/step_tot, np.average(allloss)))
-                    logger.info("step: %d, shcedule: %.3f, loss: %.6f, lmloss: %.6f" % (
-                    global_step, global_step / step_tot, np.average(allloss),np.average(alllmloss)))
+                    logger.info("step: %d, schedule: %.3f, loss: %.6f, epoch: %d" % (
+                    global_step, global_step / step_tot, np.average(allloss), i))
 
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
+                if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
                     #####eval
-                    #dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+                    #model.eval()
+                    #sen, target, preds = model._generative_step(inputs)
+                    dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
                     #print("only eval every epoch")
-                    print("not eval!!!")
+                    #print("not eval!!!")
                     model.train()
+                    print('back to train')
 
-        logger.info("finish one epoch")
-        if args.local_rank in [0, -1]:
-            if i >= 200:
-                dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
-                ###save after evert epoch for load
-                # if not os.path.exists(tosavepath):
-                #     os.mkdir(tosavepath)
-                # if not os.path.exists(tosavepath + "/" + args.save_dir):
-                #     os.mkdir(tosavepath + "/" + args.save_dir)
-                # model_to_save = model.module if hasattr(model, 'module') else model
-                # ckpt = {
-                #     # 'bert-base': model.module.model.bert.state_dict(),
-                #     #'t5-base-ner': model_to_save.model.state_dict(),
-                #     "promptnumber": model_to_save.promptnumber,
-                #     "promptembedding": model_to_save.promptembedding
-                # }
-                # torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5ner_" + str(i)))
-                model.train()
+                if args.local_rank in [0, -1] and global_step % args.save_step == 0:
+                    save_model(model, args, global_step)
+                    model.train()
 
         if args.train_sample:
             logger.info("sampling...")
             logger.info("sampled")
-
+    print('finish training')
+    if args.local_rank in [0, -1]:
+        save_model(model, args, global_step)
 
 # def getalltokennum(tokenizer):
 #     file = "../c4/en/dataalltouse.json"
@@ -429,15 +363,49 @@ def train(args, model, train_dataset,valid_dataset,test_dataset):
 #             #print(alltokens)
 #         ii += 1
 
-def getpromptembedding(model,tokenizer,promptnumber):
+def get_mix_prompt_embedding(model, tokenizer, task_prompt_length, label_prompt_length):
+    def sample_top_k_tokens(topk, t5_embedding):
+        with open('allnumber.pickle', 'rb') as fr:
+            alltokens = pickle.load(fr)
+        sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
+        top5000 = []
+        for one in sortedalltoken:
+            if one[0] == 2:
+                continue
+            else:
+                if len(top5000) < 5000:
+                    top5000.append(one)
+                else:
+                    break
+        vocab = tokenizer.get_vocab()
+        while True:
+            topk_emb = []
+            touse = random.sample(top5000, topk)
+            for tok in touse:
+                topk_emb.append(t5_embedding.weight[tok[0]].clone().detach().unsqueeze(0))
+            yield torch.cat(topk_emb, 0)
+
+    def get_embs(toks, t5_embedding):
+        encoderes = tokenizer.batch_encode_plus([toks], padding=False, truncation=False, return_tensors="pt")
+        touse = encoderes["input_ids"].squeeze()[:-1]
+        embeddingres = t5_embedding(touse).clone().detach()
+        return embeddingres
     t5_embedding = model.model.get_input_embeddings()
-    promptinitembedding = torch.FloatTensor(promptnumber, t5_embedding.weight.size(1))
+    embeddingres = get_embs("summarize this article:", t5_embedding)
+    embs_dict = {}
+    embs_dict['__task__'] = next(sample_top_k_tokens(task_prompt_length, t5_embedding))
+    embs_dict['__task__'][:embeddingres.size(0)] = embeddingres # set meaningful initial tokens 
+    return embs_dict
+
+def get_prompt_embedding(model,tokenizer,prompt_length):
+    t5_embedding = model.model.get_input_embeddings()
+    promptinitembedding = torch.FloatTensor(prompt_length, t5_embedding.weight.size(1))
     #print(promptinitembedding)
     startindex = 0
     #print(promptinitembedding.shape)
     #print(t5_embedding.weight.shape)
     # print(tokenizer.get_vocab())
-    alllabel = ["name entity recognition", "person", "organization", "location", "mix"]
+    alllabel = ["summarize this article:"]
     for one in alllabel:
         encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
         touse = encoderes["input_ids"].squeeze()[:-1]
@@ -468,23 +436,57 @@ def getpromptembedding(model,tokenizer,promptnumber):
                 break
     #print(len(top5000))
     vocab = tokenizer.get_vocab()
-    randomtokennum = promptnumber - len(alllabel)
+    # print(vocab)
+    # for one in top5000:
+    #    print(one[0],"\t",one[1],"\t",tokenizer.convert_ids_to_tokens(one[0]))
+    randomtokennum = prompt_length - len(alllabel)
     touse = random.sample(top5000, randomtokennum)
-    print(touse)
+    #print(touse)
     for one in touse:
         promptinitembedding[startindex] = t5_embedding.weight[one[0]].clone().detach()
         startindex += 1
+    # print(startindex)
+    # print(promptinitembedding)
+    # print(t5_embedding.weight[2040])
     return promptinitembedding
+
+def load_prompt(args, model):
+    allckpt = torch.load(args.ckpt_path)
+    if args.model == 'T5Prompt':
+        model.prompt_length = allckpt["prompt_length"]
+        model.prompt_embedding = allckpt["prompt_embedding"]
+    elif args.model == 'T5MixPrompt':
+        model.prompt_dict = allckpt['prompt_dict']
+        model.prompt_fix_dict = allckpt['prompt_fix_dict']
+        for k, v in model.prompt_fix_dict.items():
+            model.prompt_fix_dict[k] = v.to(args.device)
+    elif args.model == 'T5Finetune':
+        model.load_state_dict(allckpt['t5-base'])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="4", help="gpu id")
 
+    
+    parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
+                        default='right_concat', help='append prompt to the left or right')
+    parser.add_argument("--order_inv", action="store_true",
+                        help="apply order invariance consistency training")  
+    parser.add_argument("--subset_inv", action="store_true",
+                        help="apply subset invariance consistency training")     
+    parser.add_argument("--subset_drop_prob", dest="subset_drop_prob", type=float, default=0.25,
+                        help="probability to drop a non ground truth label in prompt during training, only effective when args.subset_inv is turned on")
+    parser.add_argument("--continue_learning", action="store_true",
+                        help="whether in continual learning setting (assume multiple train/valid files)")
+
+    
+    
+    parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
+                        default='Adafactor', help='choice of optimizer')
+    
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-5, help='learning rate')
-    parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
-                        default=0.25, help='language model loss lambda')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                         default=16, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -512,19 +514,21 @@ if __name__ == "__main__":
 
 
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5NER", help="{T5NER}")
+                        default="T5Prompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="t5-base", help="{t5-base,google/t5-v1_1-base}")
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
-                        default="data_conll/newtrain.txt", help="train data file path")
-    parser.add_argument("--valid_file_name", dest="valid_file_name", type=str,
-                        default="data_conll/newvalid.txt", help="valid data file path")
-    parser.add_argument("--test_file_name", dest="test_file_name", type=str,
-                        default="data_conll/newtest.txt", help="test data file path")
+                        default="data_conll/", help="train data file path")
+    parser.add_argument("--dataset_name", dest="dataset_name", type=str,
+                        default="cnn_dailymail", help="data name")
+    parser.add_argument("--dataset_version", dest="dataset_version", type=str,
+                        default="3.0.0", help="data version")
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
     parser.add_argument("--max_length", dest="max_length", type=int,
                         default=128, help="max sentence length")
+    parser.add_argument("--max_ent_len", dest="max_ent_len", type=int,
+                        default=40, help="max entity sequence length")
 
     parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                         default=1e-5, help="weight decay")
@@ -539,13 +543,20 @@ if __name__ == "__main__":
                         default=-1, help="local rank")
     parser.add_argument("--load_ckpt", dest="load_ckpt", type=int,
                         default=0, help="whether load ckpt before training")
+    parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
+                        default='', help="The path to prompt ckpt")
+                        
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model")
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                         default="../t5_ckpt_1_0622_bak/t5_ckpt/ckpt_of_step_100000",
                         help="The path of lm_adapted model")
-    parser.add_argument("--prompt_number", dest="prompt_number", type=int,
+    parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                         default=100, help="The number of prompt")
+    parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
+                        default=50, help="The number of prompt")
+    parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
+                        default=20, help="The number of prompt")
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                         default=1, help="If ckpt only contains model. Default: True, only contains model")
     args = parser.parse_args()
@@ -575,48 +586,68 @@ if __name__ == "__main__":
             f.write("----------------------------------------------------------------------------\n")
 
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir="/data/qin/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir="/export/home/cache/")
     #print(t5model.get_input_embeddings().weight[2040])
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir="/data/qin/cache/")
-    print(len(tokenizer))
-    gentasktoken = "__nerco__"
-    answertoken = "__ans__"
-    tokenizer.add_tokens(gentasktoken)
-    print(len(tokenizer))
-    logger.info('gen token = {} , gen token id = {}'.format(gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)))
-    special_tokens = {"ans_token": answertoken}
-    tokenizer.add_tokens(list(special_tokens.values()))
-    special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
-    print(len(tokenizer))
-    print(special_token_ids)
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir="/export/home/cache/")
 
-    tokens_weight = torch.ones([len(tokenizer)], dtype=torch.float)
-    tokens_weight[special_token_ids["ans_token"]] = 5
+    # logger.info(t5model.config.vocab_size)
+    # logger.info(t5model.encoder.embed_tokens.weight.shape)
+    # logger.info(t5model.encoder.embed_tokens.weight[32099])
+    # logger.info(t5model.encoder.embed_tokens.weight[32100])
+    # logger.info(t5model.encoder.embed_tokens.weight[32101])
+    # t5model.resize_token_embeddings(len(tokenizer))    ##########???????
+    # logger.info(t5model.config.vocab_size)
+    # logger.info(t5model.encoder.embed_tokens.weight.shape)
+    # print(tokenizer.all_special_tokens)
+    # print(tokenizer.get_vocab())
+
     #exit -1
-    if args.model == "T5NER":
-        model = T5forNER(args,t5model,tokenizer)
+    if args.model == "T5Prompt":
+        model = T5Prompt(args,t5model,tokenizer)
         #print(model.model.get_input_embeddings().weight[2040])
-        #promptnumber = 100
-        promptnumber = args.prompt_number
-        promptembedding = getpromptembedding(model, tokenizer, promptnumber)
-        #print(promptembedding)
-        model.set_prompt_embedding(promptnumber, promptembedding)
+        #prompt_length = 100
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+        else:
+            prompt_length = args.prompt_length
+            prompt_embedding = get_prompt_embedding(model, tokenizer, prompt_length)
+            #print(promptembedding)
+            model.set_prompt_embedding(prompt_length, prompt_embedding)
         model.to(args.device)
-        train_dataset = T5NERDatasetConll(args.train_file_name, args.max_length, tokenizer, gentasktoken, answertoken)
-        valid_dataset = T5NERDatasetConll(args.valid_file_name, args.max_length, tokenizer, gentasktoken, answertoken)
-        test_dataset = T5NERDatasetConll(args.test_file_name, args.max_length, tokenizer, gentasktoken, answertoken)
+    
+    elif args.model == 'T5MixPrompt':
+        model = T5MixPrompt(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+            model.to(args.device)
+        else:
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length_task, args.prompt_length_label)
+            model.to(args.device)
+            model.set_prompt_embedding(label_name_embs)
+
+    elif args.model == 'T5Finetune':
+        model = T5Finetune(args, t5model, tokenizer)
+        model.to(args.device)
+    
+        
     else:
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
+    
+    dataset_args = [args.dataset_name, args.dataset_version]
+    train_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='train[:10%]')
+    valid_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='validation[:1%]')
+    test_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='test')
+
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:
         torch.distributed.barrier()
 
-    train(args, model, train_dataset,valid_dataset,test_dataset)
+    train(args, model, train_dataset, valid_dataset, test_dataset)
+    
     if args.local_rank in [0, -1]:
         test(args,test_dataset)
     logger.info("Finish training and testing!")
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
-
 
