@@ -4,31 +4,16 @@ import os
 import sys
 
 sys.path.append("..")
-import pdb
-import re
-import pdb
-import math
+import pickle
 import torch
-import numpy as np
-import linecache
-from pathlib import Path
-
-
-from collections import Counter
-from torch.utils import data
-import random
-import numpy as np
-import multiprocessing
-import more_itertools
-
-import torch
-import torch.nn as nn
+import operator
 from torch.utils.data import Sampler, Dataset, DataLoader
 from datasets import load_dataset
 import spacy
+from tqdm import tqdm
 
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, maxlen, max_ent_len, tokenizer, split):
+    def __init__(self, dataset_args, args, tokenizer, split):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
@@ -36,19 +21,44 @@ class T5CNNDataset(Dataset):
         '''
         super(T5CNNDataset, self).__init__()
         self.data = load_dataset(*dataset_args, split=split)
-        self.maxlen = maxlen
-        self.max_ent_len = max_ent_len
+        self.maxlen = args.max_length
+        self.max_ent_len = args.max_ent_len
+        self.min_ent_freq = args.min_ent_freq
         self.tokenizer = tokenizer
         self.num_entries = len(self.data)
         self.spacy_nlp = spacy.load("en_core_web_sm")
+        if split.startswith("train"):
+            print("building entities frequency...")
+            self.ents_freq = self.build_ents_frequency()
+            with open("ents_freq.pkl", "wb") as f:
+                pickle.dump(self.ents_freq, f)
+        else:
+            self.ents_freq = pickle.load(open("ents_freq.pkl", "rb"))
+            print("loaded the entities frequency!")
 
+    def build_ents_frequency(self):
+        ents_freq = {}
+        for idx in tqdm(range(len(self.data))):
+            inputdata = self.data[idx]['article']
+            ents = self.spacy_nlp(inputdata).ents
+            for x in ents:
+                ent = x.text
+                if not(ent in ents_freq.keys()):
+                    ents_freq[ent] = 0
+                ents_freq[ent] += 1
+        ents_freq = dict( sorted(ents_freq.items(), key=operator.itemgetter(1),reverse=True))
+        print("There are {} unique entities".format(len(ents_freq)))
+
+        return ents_freq
 
     def __getitem__(self, idx):
         inputdata = self.data[idx]['article']
         targetdata = self.data[idx]['highlights']
         ents = self.spacy_nlp(inputdata).ents
-        input_entities = ','.join([ent.text for ent in ents]) # can decide which delimiter works the best, just pick comma first
-
+        ents = [ent.text for ent in ents]
+        # filter entities
+        ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.min_ent_freq]
+        input_entities = ','.join(ents) # can decide which delimiter works the best, just pick comma first
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
@@ -110,21 +120,28 @@ class SmartBatchingCollate:
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         ##tokenize sequence_batch
-        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        lens = []
+        for sequence in sequence_batch:
+            if len(sequence.shape) > 0:
+                lens.append(sequence.shape[0])
+            else:
+                lens.append(0)
+        max_batch_len = max(lens)
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
         attend, no_attend = 1, 0
         for sequence in sequence_batch:
             # As discussed above, truncate if exceeds max_len
-            new_sequence = list(sequence[:max_len])
-
-            attention_mask = [attend] * len(new_sequence)
-            pad_length = max_len - len(new_sequence)
-
-            new_sequence.extend([pad_token_id] * pad_length)
-            attention_mask.extend([no_attend] * pad_length)
-
+            if len(sequence.shape) > 0:
+                new_sequence = list(sequence[:max_len])
+                attention_mask = [attend] * len(new_sequence)
+                pad_length = max_len - len(new_sequence)
+                new_sequence.extend([pad_token_id] * pad_length)
+                attention_mask.extend([no_attend] * pad_length)
+            else:
+                new_sequence = [pad_token_id] * max_len
+                attention_mask = [no_attend] * max_len
             padded_sequences.append(new_sequence)
             attention_masks.append(attention_mask)
 

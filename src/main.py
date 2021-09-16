@@ -514,9 +514,11 @@ if __name__ == "__main__":
 
 
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5Prompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
+                        default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="t5-base", help="{t5-base,google/t5-v1_1-base}")
+    parser.add_argument("--cache_dir", dest="cache_dir", type=str,
+                        default="../../hf_models/t5-base", )
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/", help="train data file path")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
@@ -559,6 +561,10 @@ if __name__ == "__main__":
                         default=20, help="The number of prompt")
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                         default=1, help="If ckpt only contains model. Default: True, only contains model")
+
+    parser.add_argument("--min_ent_freq", dest="min_ent_freq", type=int,
+                        default=1, help="Minimum frequency of an entity in the training set")
+
     args = parser.parse_args()
 
     # print args
@@ -571,6 +577,7 @@ if __name__ == "__main__":
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend="nccl")
+    device = torch.device("cpu")
     args.device = device
     args.n_gpu = len(args.cuda.split(","))
     #set_seed(args)
@@ -586,9 +593,9 @@ if __name__ == "__main__":
             f.write("----------------------------------------------------------------------------\n")
 
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir="/export/home/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
     #print(t5model.get_input_embeddings().weight[2040])
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir="/export/home/cache/")
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
 
     # logger.info(t5model.config.vocab_size)
     # logger.info(t5model.encoder.embed_tokens.weight.shape)
@@ -634,9 +641,9 @@ if __name__ == "__main__":
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     
     dataset_args = [args.dataset_name, args.dataset_version]
-    train_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='train[:10%]')
-    valid_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='validation[:1%]')
-    test_dataset = T5CNNDataset(dataset_args, args.max_length, args.max_ent_len, tokenizer, split='test')
+    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train[:10%]')
+    valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation[:1%]')
+    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
 
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:
