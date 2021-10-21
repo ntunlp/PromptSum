@@ -11,6 +11,7 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 from datasets import load_dataset
 import spacy
 from tqdm import tqdm
+from entities import *
 
 class T5CNNDataset(Dataset):
     def __init__(self, dataset_args, args, tokenizer, split):
@@ -27,18 +28,19 @@ class T5CNNDataset(Dataset):
         self.tokenizer = tokenizer
         self.num_entries = len(self.data)
         self.spacy_nlp = spacy.load("en_core_web_sm")
+        spacy_ents_stats(self.data, self.spacy_nlp)
         if split.startswith("train"):
             print("building entities frequency...")
-            self.ents_freq = self.build_ents_frequency()
+            self.ents_freq = spacy_build_ents_frequency(self.data, self.spacy_nlp)
             with open("ents_freq.pkl", "wb") as f:
                 pickle.dump(self.ents_freq, f)
         else:
             self.ents_freq = pickle.load(open("ents_freq.pkl", "rb"))
             print("loaded the entities frequency!")
 
-    def build_ents_frequency(self):
+    def spacy_build_ents_frequency(self):
         ents_freq = {}
-        for idx in tqdm(range(len(self.data))):
+        for idx in tqdm(range(int(len(self.data)/100))):
             inputdata = self.data[idx]['article']
             ents = self.spacy_nlp(inputdata).ents
             for x in ents:
@@ -46,8 +48,12 @@ class T5CNNDataset(Dataset):
                 if not(ent in ents_freq.keys()):
                     ents_freq[ent] = 0
                 ents_freq[ent] += 1
-        ents_freq = dict( sorted(ents_freq.items(), key=operator.itemgetter(1),reverse=True))
+        ents_freq = dict(sorted(ents_freq.items(), key=operator.itemgetter(1),reverse=True))
         print("There are {} unique entities".format(len(ents_freq)))
+        idx = 0
+        for x in list(ents_freq.keys())[:20]:
+            print("Entity ranked {} is {}, frequency: {} / {}".format(idx, x, ents_freq[x], len(ents_freq.keys())))
+            idx += 1
 
         return ents_freq
 
@@ -152,7 +158,7 @@ class SmartBatchingCollate:
 def get_dataloader(num_workers,dataset, batch_size, max_len, max_ent_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
-        max_ent_len=args.max_ent_len,
+        max_ent_len=max_ent_len,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
