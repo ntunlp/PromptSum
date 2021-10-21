@@ -3,11 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="d4f62820-d094-4f53-9b78-05fe3fc6f4ad" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/dataset.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/dataset.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/model_finetune.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/model_finetune.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/model_mixture.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/model_mixture.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ents_freq.pkl" beforeDir="false" afterPath="$PROJECT_DIR$/src/ents_freq.pkl" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
