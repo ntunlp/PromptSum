@@ -35,7 +35,7 @@ class T5CNNDataset(Dataset):
             split: choice of ['train', 'validation', 'test']
         '''
         super(T5CNNDataset, self).__init__()
-        self.data = load_dataset(*dataset_args, split=split)
+        self.data = load_dataset(*dataset_args, split=split, cache_dir="/export/home/cache/")
         self.maxlen = maxlen
         self.max_ent_len = max_ent_len
         self.tokenizer = tokenizer
