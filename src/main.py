@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 #os.environ['TRANSFORMERS_CACHE'] = '/export/home/cache/'
 import json
 import torch
@@ -108,7 +109,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
-                print(f"eval step: {step}")
+                # print(f"eval step: {step}")
                 sen, target, preds = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
@@ -146,10 +147,11 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
         torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_best"))
         print("ckpt saved")
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
         max_guidance_length=max_guidance_len,
+        max_target_length=max_target_length,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
@@ -167,7 +169,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, p
 def test(args, test_dataset):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      test_dataset.tokenizer.pad_token_id,test_sampler)
+                                      args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache/")
     allckpt = torch.load("./t5_ckpt/" + args.save_dir + "/ckptofT5_best")
@@ -224,9 +226,9 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      train_dataset.tokenizer.pad_token_id,train_sampler)
+                                      args.max_target_length, train_dataset.tokenizer.pad_token_id,train_sampler)
     valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      valid_dataset.tokenizer.pad_token_id,valid_sampler)
+                                      args.max_target_length, valid_dataset.tokenizer.pad_token_id,valid_sampler)
 
 
     base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
@@ -466,7 +468,7 @@ def load_prompt(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="4", help="gpu id")
+                        default="1", help="gpu id")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -484,24 +486,32 @@ if __name__ == "__main__":
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-5, help='learning rate')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=16, help="batch size per gpu")
+                        default=4, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                        default=24, help="valid size per gpu")
+                        default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                        default=24, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                         default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers", dest="num_workers", type=int,
                         default=4, help="dataloader num_workers")
+    parser.add_argument("--weight_decay", dest="weight_decay", type=float,
+                        default=1e-5, help="weight decay")
+    parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
+                        default = 1e-8, help="adam epsilon")
+    parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
+                        default=0.1, help="warmup steps")
+    parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
+                        default=1.0, help="max grad norm")
 
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=100000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
-                        default=1, help="how many steps to log")
+                        default=100, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=100, help="how many steps to eval")
+                        default=10000, help="how many steps to eval")
 
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
@@ -509,11 +519,11 @@ if __name__ == "__main__":
                         default=42, help="seed for network")
 
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
+                        default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="t5-base", help="{t5-base,google/t5-v1_1-base}")
+                        default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
     parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                        default="../../hf_models/t5-base", )
+                        default="../../hf_models/t5-base-v1", )
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/", help="train data file path")
 
@@ -527,10 +537,12 @@ if __name__ == "__main__":
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
     parser.add_argument("--max_length", dest="max_length", type=int,
-                        default=128, help="max sentence length")
+                        default=512, help="max source length")
+    parser.add_argument("--max_target_length", dest="max_target_length", type=int,
+                        default=128, help="max summary length")
 
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                        default="sents", help="what kind of guidance. In [ents, sents]")
+                        default="None", help="what kind of guidance. In [ents, sents]")
     parser.add_argument("--max_guidance_len", dest="max_guidance_len", type=int,
                         default=40, help="max guidance sequence length")
     # 1 - entities
@@ -547,15 +559,6 @@ if __name__ == "__main__":
     # 2 - salient sentences
     parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
                         default=2, help="number of salient sentences to use")
-
-    parser.add_argument("--weight_decay", dest="weight_decay", type=float,
-                        default=1e-5, help="weight decay")
-    parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
-                        default = 1e-8, help="adam epsilon")
-    parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
-                        default=0.1, help="warmup steps")
-    parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
-                        default=1.0, help="max grad norm")
 
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
@@ -585,7 +588,7 @@ if __name__ == "__main__":
 
     # print args
     print(args)
-    assert args.guidance_type in ["ents", "sents"]
+
     # set cuda
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     if args.local_rank == -1:
@@ -594,7 +597,6 @@ if __name__ == "__main__":
         torch.cuda.set_device(args.local_rank)
         device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend="nccl")
-    device = torch.device("cpu")
     args.device = device
     args.n_gpu = len(args.cuda.split(","))
     #set_seed(args)
@@ -658,9 +660,9 @@ if __name__ == "__main__":
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     
     dataset_args = [args.dataset_name, args.dataset_version]
-    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train[:1%]')
-    valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation[:1%]')
-    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test[:1%]')
+    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
+    valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
+    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
 
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:
