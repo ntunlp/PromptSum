@@ -50,10 +50,10 @@ def spacy_ents_stats(data, spacy_nlp):
         summary_ents_n_unique.append(len(summary_unique_ents))
         summary_ents_n_in_text.append(len(summary_ents_in_text))
         if len(ents) > 0:
-            n_in_text_ratio.append(len(summary_ents_in_text) / len(ents))
+            n_in_text_ratio.append(100 * len(summary_ents_in_text) / len(ents))
         summary_ents_n_unique_in_text.append(len(summary_unique_ents_in_text))
         if len(summary_unique_ents) > 0:
-            n_unique_in_text_ratio.append(len(summary_unique_ents_in_text) / len(summary_unique_ents))
+            n_unique_in_text_ratio.append(100 * len(summary_unique_ents_in_text) / len(summary_unique_ents))
     print("\n", "STATS:")
     print("# text/summary pairs: {}".format(len(text_ents_n)))
     print("*"*50)
