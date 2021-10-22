@@ -146,10 +146,10 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
         torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_best"))
         print("ckpt saved")
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_ent_len, pad_id, sampler):
+def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
-        max_ent_length=max_ent_len,
+        max_guidance_length=max_guidance_len,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
@@ -166,7 +166,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, max_ent_len, pad_id
 
 def test(args, test_dataset):
     test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_ent_len,
+    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
                                       test_dataset.tokenizer.pad_token_id,test_sampler)
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache/")
@@ -223,9 +223,9 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
 
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_ent_len,
+    train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_len,
                                       train_dataset.tokenizer.pad_token_id,train_sampler)
-    valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_ent_len,
+    valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_len,
                                       valid_dataset.tokenizer.pad_token_id,valid_sampler)
 
 
@@ -468,7 +468,6 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="4", help="gpu id")
 
-    
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
     parser.add_argument("--order_inv", action="store_true",
@@ -480,11 +479,8 @@ if __name__ == "__main__":
     parser.add_argument("--continue_learning", action="store_true",
                         help="whether in continual learning setting (assume multiple train/valid files)")
 
-    
-    
     parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                         default='Adafactor', help='choice of optimizer')
-    
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-5, help='learning rate')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
@@ -512,7 +508,6 @@ if __name__ == "__main__":
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
 
-
     parser.add_argument("--model", dest="model", type=str,
                         default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
     parser.add_argument("--model_name", dest="model_name", type=str,
@@ -521,16 +516,37 @@ if __name__ == "__main__":
                         default="../../hf_models/t5-base", )
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/", help="train data file path")
+
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="cnn_dailymail", help="data name")
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
                         default="3.0.0", help="data version")
+    parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
+                        default="../../hf_datasets/", help="dataset cache folder")
+
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
     parser.add_argument("--max_length", dest="max_length", type=int,
                         default=128, help="max sentence length")
-    parser.add_argument("--max_ent_len", dest="max_ent_len", type=int,
-                        default=40, help="max entity sequence length")
+
+    parser.add_argument("--guidance_type", dest="guidance_type", type=str,
+                        default="sents", help="what kind of guidance. In [ents, sents]")
+    parser.add_argument("--max_guidance_len", dest="max_guidance_len", type=int,
+                        default=40, help="max guidance sequence length")
+    # 1 - entities
+    parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
+                        default=1000, help="max number of lines to go through for entity stats")
+    parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
+                        default=True, help="whether to filter ents based on the frequency")
+    parser.add_argument("--build_ents_freq", dest="build_ents_freq", type=bool,
+                        default=False, help="whether to build the entities frequency dictionary")
+    parser.add_argument("--ents_freq_max_len", dest="ents_freq_max_len", type=int,
+                        default=10000, help="max number of lines to go through for entity frequency")
+    parser.add_argument("--min_ents_freq", dest="min_ents_freq", type=int,
+                        default=10, help="minimum frequency for the entity")
+    # 2 - salient sentences
+    parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
+                        default=2, help="number of salient sentences to use")
 
     parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                         default=1e-5, help="weight decay")
@@ -569,6 +585,7 @@ if __name__ == "__main__":
 
     # print args
     print(args)
+    assert args.guidance_type in ["ents", "sents"]
     # set cuda
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     if args.local_rank == -1:
@@ -641,9 +658,9 @@ if __name__ == "__main__":
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     
     dataset_args = [args.dataset_name, args.dataset_version]
-    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train[:10%]')
+    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train[:1%]')
     valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation[:1%]')
-    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
+    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test[:1%]')
 
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:

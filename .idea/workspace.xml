@@ -5,7 +5,11 @@
       <change beforePath="$PROJECT_DIR$/.idea/PromptSumm.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/PromptSumm.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+<<<<<<< HEAD
       <change beforePath="$PROJECT_DIR$/src/entities.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/entities.py" afterDir="false" />
+=======
+      <change beforePath="$PROJECT_DIR$/src/ents_freq.pkl" beforeDir="false" afterPath="$PROJECT_DIR$/src/ents_freq.pkl" afterDir="false" />
+>>>>>>> 82e18c0c4bfada0e1b903a3bfc80593d6bacfbb6
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
