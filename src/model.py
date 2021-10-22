@@ -45,10 +45,10 @@ class T5Prompt(nn.Module):
         mask_prompt = torch.full((attention_mask.shape[0],self.prompt_length),1).to(self.args.device)
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         if self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
-            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
 
         return self.model(
             inputs_embeds=allembedding,
@@ -89,9 +89,9 @@ class T5Prompt(nn.Module):
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.prompt_length), 1).to(self.args.device)
         #print(mask_prompt.shape)
         if self.mode == 'right_concat':
-            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
-        elif self.mode == 'left_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        elif self.mode == 'left_concat':
+            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
         #print(all_attention_mask.shape)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
@@ -139,7 +139,7 @@ class T5Prompt(nn.Module):
         #print(batch["attention_mask"].shape)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.prompt_length), 1).to(self.args.device)
         #print(mask_prompt.shape)
-        all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         #print(all_attention_mask.shape)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
