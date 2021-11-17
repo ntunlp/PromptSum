@@ -1,4 +1,7 @@
 import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 #os.environ['TRANSFORMERS_CACHE'] = '/export/home/cache/'
 import json
 import torch
@@ -266,6 +269,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     model.eval()
     model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
+        print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
         # if i < 32:
         #     adjusted_evalstep = args.eval_step * 10
         # elif i >= 32:
@@ -328,6 +332,13 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
                     model.train()
+
+        print("\nEnd of epoch evaluation...")
+        dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i)
+        # print("only eval every epoch")
+        # print("not eval!!!")
+        model.train()
+        print('back to train')
 
         if args.train_sample:
             logger.info("sampling...")
@@ -466,7 +477,7 @@ def load_prompt(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="0", help="gpu id")
+                        default="1", help="gpu id")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -507,7 +518,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=100000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
-                        default=100, help="how many steps to log")
+                        default=10, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000, help="how many steps to eval")
 
@@ -521,7 +532,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
     parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                        default="../../hf_models/t5-base-v1", )
+                        default="../../../hf_models/t5-base-v1", )
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/", help="train data file path")
 
@@ -534,7 +545,7 @@ if __name__ == "__main__":
     parser.add_argument("--summary_key", dest="summary_key", type=str,
                         default="tldr", help="name of the data entry containing the summary") # "highlights" or "tldr"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+                        default="../../../hf_datasets/", help="dataset cache folder")
 
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
@@ -592,7 +603,7 @@ if __name__ == "__main__":
     print(args)
 
     # set cuda
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     if torch.cuda.is_available():
         print("using GPU")
         if args.local_rank == -1:
