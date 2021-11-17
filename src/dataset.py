@@ -73,9 +73,10 @@ class T5CNNDataset(Dataset):
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, max_guidance_length, pad_token_id):
+    def __init__(self, max_length, max_guidance_length, max_target_length, pad_token_id):
         self._max_length = max_length
         self._max_guidance_length = max_guidance_length
+        self._max_target_length = max_target_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
@@ -94,7 +95,7 @@ class SmartBatchingCollate:
             pad_token_id=self._pad_token_id
         )
 
-        target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
+        target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_target_length, pad_token_id=self._pad_token_id)
 
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids
         return output
@@ -151,10 +152,11 @@ class SmartBatchingCollate:
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences, attention_masks
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
         max_guidance_length=max_guidance_len,
+        max_target_length=max_target_length,
         pad_token_id=pad_id
     )
     dataloader = DataLoader(
