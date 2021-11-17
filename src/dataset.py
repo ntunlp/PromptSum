@@ -16,7 +16,7 @@ from rouge_score import rouge_scorer
 
 
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, args, tokenizer, split):
+    def __init__(self, dataset_args, args, tokenizer, split="train"):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
@@ -24,7 +24,14 @@ class T5CNNDataset(Dataset):
         '''
         super(T5CNNDataset, self).__init__()
         self.args = args
-        self.data = load_dataset(*dataset_args, split=split, cache_dir=args.dataset_cache_dir)
+        print("loading the dataset...")
+        self.data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+        if type(split) == str:
+            self.data = self.data[split]
+        else:
+            self.data = self.data["train"]
+            self.data = self.data.select(split)
+            print("# Data points in this split: {}".format(len(split)))
         self.maxlen = args.max_length
         self.tokenizer = tokenizer
         self.num_entries = len(self.data)
@@ -44,8 +51,8 @@ class T5CNNDataset(Dataset):
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
 
     def __getitem__(self, idx):
-        inputdata = self.data[idx]['article']
-        targetdata = self.data[idx]['highlights']
+        inputdata = self.data[idx][self.args.text_key]
+        targetdata = self.data[idx][self.args.summary_key]
 
         # guidance
         input_guidance = "None"

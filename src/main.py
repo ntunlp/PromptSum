@@ -1,5 +1,4 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 #os.environ['TRANSFORMERS_CACHE'] = '/export/home/cache/'
 import json
 import torch
@@ -220,8 +219,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     step_tot = int(0.5 + train_dataset.num_entries / float(args.gradient_accumulation_steps) / args.batch_size_per_gpu / args.n_gpu) * args.max_epoch
 
     warmup_steps_total = step_tot * args.warmup_steps
-    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
-        train_dataset)
+    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
 
     valid_sampler = SequentialSampler(valid_dataset)
 
@@ -468,7 +466,7 @@ def load_prompt(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="1", help="gpu id")
+                        default="0", help="gpu id")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -528,9 +526,13 @@ if __name__ == "__main__":
                         default="data_conll/", help="train data file path")
 
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="cnn_dailymail", help="data name")
+                        default="reddit_tifu", help="data name") # "cnn_dailymail" or "reddit_tifu"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="3.0.0", help="data version")
+                        default="long", help="data version") # "3.0.0" or "long"
+    parser.add_argument("--text_key", dest="text_key", type=str,
+                        default="documents", help="name of the data entry containing the source document") # "article" or "documents"
+    parser.add_argument("--summary_key", dest="summary_key", type=str,
+                        default="tldr", help="name of the data entry containing the summary") # "highlights" or "tldr"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
 
@@ -591,12 +593,17 @@ if __name__ == "__main__":
 
     # set cuda
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-    if args.local_rank == -1:
-        device = torch.device("cuda")
+    if torch.cuda.is_available():
+        print("using GPU")
+        if args.local_rank == -1:
+            device = torch.device("cuda")
+        else:
+            torch.cuda.set_device(args.local_rank)
+            device = torch.device("cuda", args.local_rank)
+            torch.distributed.init_process_group(backend="nccl")
     else:
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
-        torch.distributed.init_process_group(backend="nccl")
+        print("using GPU")
+        device = torch.device("cpu")
     args.device = device
     args.n_gpu = len(args.cuda.split(","))
     #set_seed(args)
@@ -654,15 +661,28 @@ if __name__ == "__main__":
     elif args.model == 'T5Finetune':
         model = T5Finetune(args, t5model, tokenizer)
         model.to(args.device)
-    
         
     else:
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     
     dataset_args = [args.dataset_name, args.dataset_version]
-    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
-    valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
-    test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
+    if args.dataset_name.startswith("cnn"):
+        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
+        valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
+        test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
+    else:
+        # build a train:valid:test split
+        num_entries = 42139
+        print("Total # of data points: {}".format(num_entries))
+        idx = np.random.permutation(num_entries)
+        thresh = int(0.1 * num_entries)
+        # call splits based on their indices
+        train_split = list(idx[0:(8 * thresh)])
+        valid_split = list(idx[(8 * thresh):(9 * thresh)])
+        test_split = list(idx[(9 * thresh):])
+        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=train_split)
+        valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=valid_split)
+        test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=test_split)
 
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:
