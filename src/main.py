@@ -507,7 +507,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=100000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
-                        default=100, help="how many steps to log")
+                        default=1, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000, help="how many steps to eval")
 
