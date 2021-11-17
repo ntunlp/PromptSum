@@ -4,7 +4,11 @@
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
+<<<<<<< HEAD
+          <list size="96">
+=======
           <list size="97">
+>>>>>>> mathieu
             <item index="0" class="java.lang.String" itemvalue="gensim" />
             <item index="1" class="java.lang.String" itemvalue="umap" />
             <item index="2" class="java.lang.String" itemvalue="graphviz" />
@@ -101,7 +105,10 @@
             <item index="93" class="java.lang.String" itemvalue="olefile" />
             <item index="94" class="java.lang.String" itemvalue="webencodings" />
             <item index="95" class="java.lang.String" itemvalue="google-auth" />
+<<<<<<< HEAD
+=======
             <item index="96" class="java.lang.String" itemvalue="PyYAML" />
+>>>>>>> mathieu
           </list>
         </value>
       </option>
