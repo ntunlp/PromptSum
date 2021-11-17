@@ -1,4 +1,7 @@
 import os
+
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 #os.environ['TRANSFORMERS_CACHE'] = '/export/home/cache/'
 import json
 import torch
@@ -55,18 +58,16 @@ def seed_everything(args):
     torch.backends.cudnn.benchmark = True
 
 
-tosavepath = "./t5_ckpt"
-
 def save_model(modeltoeval, args, steps):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
         model = modeltoeval
     model.eval()
-    if not os.path.exists(tosavepath):
-            os.mkdir(tosavepath)
-    if not os.path.exists(tosavepath + "/" + args.save_dir):
-        os.mkdir(tosavepath + "/" + args.save_dir)
+    if not os.path.exists(args.save_path):
+            os.mkdir(args.save_path)
+    if not os.path.exists(args.save_path + "/" + args.save_dir):
+        os.mkdir(args.save_path + "/" + args.save_dir)
     model_to_save = model.module if hasattr(model, 'module') else model
     if args.model == 'T5Prompt':
         ckpt = {
@@ -83,7 +84,7 @@ def save_model(modeltoeval, args, steps):
             't5-base': model_to_save.model.state_dict(),
         }
     print("about to save")
-    torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_"+str(steps)))
+    torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_"+str(steps)))
     print("ckpt saved")
 
 def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
@@ -97,7 +98,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
-            logger.info(step)
+            #logger.info(step)
             
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
@@ -123,10 +124,10 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
         logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
         result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
-        if not os.path.exists(tosavepath):
-            os.mkdir(tosavepath)
-        if not os.path.exists(tosavepath + "/" + args.save_dir):
-            os.mkdir(tosavepath + "/" + args.save_dir)
+        if not os.path.exists(args.save_path):
+            os.mkdir(args.save_path)
+        if not os.path.exists(args.save_path + "/" + args.save_dir):
+            os.mkdir(args.save_path + "/" + args.save_dir)
         model_to_save = model.module if hasattr(model, 'module') else model
         if args.model == 'T5Prompt':
             ckpt = {
@@ -143,7 +144,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
                 't5-base': model_to_save.model.state_dict(),
             }
         print("about to save")
-        torch.save(ckpt, os.path.join(tosavepath + "/" + args.save_dir, "ckptofT5_best"))
+        torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_best"))
         print("ckpt saved")
 
 def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
@@ -250,7 +251,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     scheduler = None
     scaler = None
 
-
     startepoch = 0
     Best_F1 = 0.0
 
@@ -266,6 +266,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     model.eval()
     model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
+        print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
         # if i < 32:
         #     adjusted_evalstep = args.eval_step * 10
         # elif i >= 32:
@@ -328,6 +329,13 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
                     model.train()
+
+        print("\nEnd of epoch evaluation...")
+        dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i)
+        # print("only eval every epoch")
+        # print("not eval!!!")
+        model.train()
+        print('back to train')
 
         if args.train_sample:
             logger.info("sampling...")
@@ -466,7 +474,7 @@ def load_prompt(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="0", help="gpu id")
+                        default="1", help="gpu id")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -507,7 +515,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=100000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
-                        default=1, help="how many steps to log")
+                        default=100, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000, help="how many steps to eval")
 
@@ -568,7 +576,10 @@ if __name__ == "__main__":
                         default=0, help="whether load ckpt before training")
     parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
                         default='', help="The path to prompt ckpt")
-                        
+    
+    parser.add_argument('--save_path', dest="save_path", type=str,
+                        default="./reddit_t5_ft_ckpt", help="path to save the model")
+
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model")
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -592,7 +603,7 @@ if __name__ == "__main__":
     print(args)
 
     # set cuda
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     if torch.cuda.is_available():
         print("using GPU")
         if args.local_rank == -1:
@@ -622,17 +633,6 @@ if __name__ == "__main__":
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
     #print(t5model.get_input_embeddings().weight[2040])
     tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
-
-    # logger.info(t5model.config.vocab_size)
-    # logger.info(t5model.encoder.embed_tokens.weight.shape)
-    # logger.info(t5model.encoder.embed_tokens.weight[32099])
-    # logger.info(t5model.encoder.embed_tokens.weight[32100])
-    # logger.info(t5model.encoder.embed_tokens.weight[32101])
-    # t5model.resize_token_embeddings(len(tokenizer))    ##########???????
-    # logger.info(t5model.config.vocab_size)
-    # logger.info(t5model.encoder.embed_tokens.weight.shape)
-    # print(tokenizer.all_special_tokens)
-    # print(tokenizer.get_vocab())
 
     #exit -1
     if args.model == "T5Prompt":
@@ -680,6 +680,9 @@ if __name__ == "__main__":
         train_split = list(idx[0:(8 * thresh)])
         valid_split = list(idx[(8 * thresh):(9 * thresh)])
         test_split = list(idx[(9 * thresh):])
+        #train_split = train_split[:50]
+        #valid_split = valid_split[:100]
+        #test_split = test_split[:100]
         train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=train_split)
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=valid_split)
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=test_split)
