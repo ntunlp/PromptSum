@@ -2,22 +2,25 @@ learnrate=(5e-1)
 for onerate in ${learnrate[@]}
 do
   echo "------------------------------"
-  python -m torch.distributed.launch --nproc_per_node 2 --master_port 29510 main.py \
+  python -m torch.distributed.launch --nproc_per_node 2 --master_port 29512 main.py \
           --cuda 0,1 \
           --lr $onerate \
           --optimizer Adafactor \
           --weight_decay 1e-5 \
           --max_grad_norm 1.0 \
           --batch_size_per_gpu 4 \
-          --valid_size_per_gpu 16 \
-          --test_size_per_gpu 16 \
+          --valid_size_per_gpu 32 \
+          --test_size_per_gpu 32 \
           --gradient_accumulation_steps 4 \
           --max_epoch 5 \
-          --num_workers 4 \
+          --num_workers 0 \
           --log_step 10 \
+          --eval_step 100000000\
+          --eval_start_epoch 0\
+          --eval_epoch 1\
           --concat_mode 'right_concat'  \
-          --save_dir t5summ_right_ckpt_v011  \
-          --guidance_mode oracle \
+          --save_dir t5summ_right_ckpt_v016  \
+          --guidance_mode normal \
           --seed 42 \
           --model T5MixPrompt \
           --model_name google/t5-v1_1-base \
@@ -28,9 +31,13 @@ do
           --prompt_length 100 \
           --prompt_length_task 100\
           --ifckpt_onlymodel 1\
-          # --dataset_name cnn_dailymail \
-          # --dataset_version 3.0.0 \
-          # --summary_key highlights \
+          --guidance_type ents \
+          --max_target_length 128 \
+          --max_guidance_len 100 \
+          --dataset_name cnn_dailymail \
+          --dataset_version 3.0.0 \
+          --summary_key highlights \
+          --text_key article \
           # --dataset_cache_dir /export/home/cache/ \
           # --load_ckpt 0 \
           # --ckpt_path t5ner_ckpt/t5nerlarge_full_right_ckpt_v038/ckptofT5ner_21114\

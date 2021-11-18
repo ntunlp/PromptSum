@@ -100,7 +100,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
             logger.info(step)
             
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
@@ -198,7 +198,7 @@ def test(args, test_dataset):
     with torch.no_grad():
         for step, batch in enumerate(test_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
@@ -283,7 +283,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "input_ents": batch[4].to(args.device)}
+                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
 
             if scaler is not None:
                 with autocast():
@@ -317,7 +317,18 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
                     #logger.info("step: %d, shcedule: %.3f, loss: %.6f" % (global_step, global_step/step_tot, np.average(allloss)))
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, epoch: %d" % (
-                    global_step, global_step / step_tot, np.average(allloss), i))
+                    global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
+
+                if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
+                    #####eval
+                    #model.eval()
+                    #sen, target, preds = model._generative_step(inputs)
+                    dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+                    #print("only eval every epoch")
+                    #print("not eval!!!")
+                    model.train()
+                    print('back to train')
+
 
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
