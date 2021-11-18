@@ -1,40 +1,11 @@
 import os
-import json
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.utils as utils
-import sys
-import argparse
-import matplotlib
-import pdb
 import numpy as np
-import time
 import random
-import time
-import logging
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from tqdm import trange
-from sklearn import metrics
-from torch.utils import data
-from collections import Counter
-from transformers import AdamW, get_linear_schedule_with_warmup
-from transformers.optimization import Adafactor
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
-from torch.cuda.amp import autocast as autocast
-from torch.cuda.amp import GradScaler as GradScaler
 from torch.utils.data import (
     Dataset, DataLoader,
     SequentialSampler, RandomSampler
 )
-from seqeval.metrics import classification_report,f1_score
-from fairscale.optim.oss import OSS
-from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
-from fairscale.optim.grad_scaler import ShardedGradScaler
-import pickle5 as pickle
-from datasets import load_metric
-
 
 
 
