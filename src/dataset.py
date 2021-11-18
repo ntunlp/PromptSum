@@ -39,7 +39,7 @@ class T5CNNDataset(Dataset):
         if args.guidance_type == "ents":
             self.spacy_nlp = spacy.load("en_core_web_sm")
             # spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len)
-            if split.startswith("train") and args.build_ents_freq:
+            if args.build_ents_freq and split.startswith("train"):
                 print("building entities frequency...")
                 self.ents_freq = spacy_build_ents_frequency(self.data, self.spacy_nlp, args.ents_freq_max_len)
                 with open("ents_freq.pkl", "wb") as f:
@@ -58,11 +58,20 @@ class T5CNNDataset(Dataset):
         input_guidance = "None"
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
-            ents = self.spacy_nlp(inputdata).ents
-            ents = [ent.text for ent in ents]
-            if self.args.filter_ents_freq:
-                ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
-            input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
+            if self.args.guidance_mode == 'oracle':
+                ents_x = self.spacy_nlp(inputdata).ents
+                ents_x = [ent.text for ent in ents_x]
+                ents_y = self.spacy_nlp(targetdata).ents
+                ents_y = [ent.text for ent in ents_y]
+                ents_intersection = [ent for ent in ents_x if ent in ents_y]
+                ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
+                input_guidance = ','.join(ents_intersection)
+            else:
+                ents = self.spacy_nlp(inputdata).ents
+                ents = [ent.text for ent in ents]
+                if self.args.filter_ents_freq:
+                    ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
+                input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
             salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
@@ -72,7 +81,7 @@ class T5CNNDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-
+        #print(f'input_ents_res, {input_ents_res}')
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -96,15 +105,14 @@ class SmartBatchingCollate:
             pad_token_id=self._pad_token_id
         )
 
-        ents_ids, _ = self.pad_sequence(
+        ents_ids, ents_mask = self.pad_sequence(
             ents,
             max_sequence_length=self._max_guidance_length,
             pad_token_id=self._pad_token_id
         )
-
         target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_target_length, pad_token_id=self._pad_token_id)
 
-        output = input_ids, attention_mask, target_ids, target_mask, ents_ids
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):

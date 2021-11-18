@@ -100,7 +100,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
             logger.info(step)
             
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
@@ -170,7 +170,7 @@ def test(args, test_dataset):
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
                                       args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
     allckpt = torch.load("./t5_ckpt/" + args.save_dir + "/ckptofT5_best")
     if args.model == 'T5Prompt':
         model = T5Prompt(args, t5model, tokenizer)
@@ -198,20 +198,24 @@ def test(args, test_dataset):
     with torch.no_grad():
         for step, batch in enumerate(test_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
-                    sen,target,preds = model._generative_step(inputs)
-                    tarres, predres = getonebatchresult(sen,target,preds)
+                    sen, target, preds = model._generative_step(inputs)
+                    tarres, predres = target, preds
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
+                # print(f"eval step: {step}")
                 sen, target, preds = model._generative_step(inputs)
-                tarres, predres = getonebatchresult(sen, target, preds)
+                tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    report = classification_report(allytrue, allypred, digits=4)
-    logger.info("\n%s", report)
+    rouge = load_metric('rouge')
+    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    logger.info('----Test Results Summary----')
+    logger.info(len(allypred))
+    logger.info(rouge_score)
 
 
 def train(args, model, train_dataset, valid_dataset, test_dataset):
@@ -279,7 +283,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "input_ents": batch[4].to(args.device)}
+                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
 
             if scaler is not None:
                 with autocast():
@@ -313,7 +317,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
                     #logger.info("step: %d, shcedule: %.3f, loss: %.6f" % (global_step, global_step/step_tot, np.average(allloss)))
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, epoch: %d" % (
-                    global_step, global_step / step_tot, np.average(allloss), i))
+                    global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
 
                 if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
                     #####eval
@@ -325,9 +329,20 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                     model.train()
                     print('back to train')
 
+
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
                     model.train()
+        
+        if args.local_rank in [0, -1] and (i >= args.eval_start_epoch and i % args.eval_epoch == 0):
+            #####eval
+            #model.eval()
+            #sen, target, preds = model._generative_step(inputs)
+            dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+            #print("only eval every epoch")
+            #print("not eval!!!")
+            model.train()
+            print('back to train')
 
         if args.train_sample:
             logger.info("sampling...")
@@ -466,7 +481,7 @@ def load_prompt(args, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="0", help="gpu id")
+                        default="1", help="gpu id")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -511,6 +526,11 @@ if __name__ == "__main__":
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000, help="how many steps to eval")
 
+    parser.add_argument("--eval_start_epoch", dest="eval_start_epoch", type=int,
+                        default=0, help="after how many epochs to start evaluating")
+    parser.add_argument("--eval_epoch", dest="eval_epoch", type=int,
+                        default=1, help="how many epochs to eval once")
+
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
     parser.add_argument("--seed", dest="seed", type=int,
@@ -545,6 +565,8 @@ if __name__ == "__main__":
 
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                         default="None", help="what kind of guidance. In [ents, sents]")
+    parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+                        default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')                    
     parser.add_argument("--max_guidance_len", dest="max_guidance_len", type=int,
                         default=40, help="max guidance sequence length")
     # 1 - entities
@@ -590,24 +612,20 @@ if __name__ == "__main__":
 
     # print args
     print(args)
-
+    print ("ckpt path", args.ckpt_path)
     # set cuda
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-    if torch.cuda.is_available():
-        print("using GPU")
-        if args.local_rank == -1:
-            device = torch.device("cuda")
-        else:
-            torch.cuda.set_device(args.local_rank)
-            device = torch.device("cuda", args.local_rank)
-            torch.distributed.init_process_group(backend="nccl")
+    if args.local_rank == -1:
+        device = torch.device("cuda")
     else:
-        print("using GPU")
-        device = torch.device("cpu")
+        torch.cuda.set_device(args.local_rank)
+        device = torch.device("cuda", args.local_rank)
+        torch.distributed.init_process_group(backend="nccl")
     args.device = device
     args.n_gpu = len(args.cuda.split(","))
     #set_seed(args)
     seed_everything(args)
+    print(device, os.environ["CUDA_VISIBLE_DEVICES"])
 
     # log train
     if args.local_rank in [0, -1]:

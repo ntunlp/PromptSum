@@ -56,15 +56,18 @@ class T5MixPrompt(nn.Module):
         return torch.cat(prompt_emb, 0)
 
     def _step(
-            self, input_ids, ent_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, labels_set=None
+            self, input_ids, ent_ids, attention_mask=None, ent_attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, labels_set=None
     ):
         ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         
-        #prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=input_ids)
         prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
         prompt_length = prompt_embedding.size(1)
-        mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
+        if ent_attention_mask is None:
+            mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
+        else:
+            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length_task),1).to(self.args.device), ent_attention_mask], 1)
+
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
             all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
@@ -89,6 +92,7 @@ class T5MixPrompt(nn.Module):
         outputs = self._step(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
+            ent_attention_mask=batch["ents_mask"],
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask'],
             ent_ids=batch['input_ents'],
@@ -110,7 +114,10 @@ class T5MixPrompt(nn.Module):
         #print(allembedding.shape)
         #print(batch["attention_mask"].shape)
         prompt_length = prompt_embedding.size(1)
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
+        if 'ents_mask' not in batch:
+            mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
+        else:
+            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length_task),1).to(self.args.device), batch['ents_mask']], 1)
         #print(mask_prompt.shape)
         if self.mode == 'right_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
