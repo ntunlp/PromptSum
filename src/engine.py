@@ -15,7 +15,7 @@ from utils import *
 
 
 
-def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
+def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -75,7 +75,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
         torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_best"))
         print("ckpt saved")
 
-def test(args, test_dataset):
+def test(args, test_dataset, logger, tokenizer):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
                                       args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
@@ -128,7 +128,7 @@ def test(args, test_dataset):
     logger.info(rouge_score)
 
 
-def train(args, model, train_dataset, valid_dataset, test_dataset):
+def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     # total step
     step_tot = int(0.5 + train_dataset.num_entries / float(args.gradient_accumulation_steps) / args.batch_size_per_gpu / args.n_gpu) * args.max_epoch
 
@@ -238,14 +238,14 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
             #####eval
             #model.eval()
             #sen, target, preds = model._generative_step(inputs)
-            dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+            dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
             #print("only eval every epoch")
             #print("not eval!!!")
             model.train()
             print('back to train')
 
         print("\nEnd of epoch evaluation...")
-        dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i)
+        dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
         save_model(model, args, global_step)
         model.train()
         print('back to train')

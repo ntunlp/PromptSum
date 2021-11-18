@@ -321,10 +321,10 @@ if __name__ == "__main__":
     if args.local_rank != -1:
         torch.distributed.barrier()
 
-    train(args, model, train_dataset, valid_dataset, test_dataset)
-    
+    train(args, model, train_dataset, valid_dataset, test_dataset, logger)
+
     if args.local_rank in [0, -1]:
-        test(args,test_dataset)
+        test(args, test_dataset, logger, tokenizer)
     logger.info("Finish training and testing!")
 
     if args.local_rank != -1:
