@@ -58,11 +58,19 @@ class T5CNNDataset(Dataset):
         input_guidance = "None"
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
-            ents = self.spacy_nlp(inputdata).ents
-            ents = [ent.text for ent in ents]
-            if self.args.filter_ents_freq:
-                ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
-            input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
+            if self.args.guidance_mode == 'oracle':
+                ents_x = self.spacy_nlp(inputdata).ents
+                ents_x = [ent.text for ent in ents_x]
+                ents_y = self.spacy_nlp(targetdata).ents
+                ents_y = [ent.text for ent in ents_y]
+                ents_intersection = [ent for ent in ents_x if ent in ents_y]
+                input_guidance = ','.join(ents_intersection)
+            else:
+                ents = self.spacy_nlp(inputdata).ents
+                ents = [ent.text for ent in ents]
+                if self.args.filter_ents_freq:
+                    ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
+                input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
             salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)

@@ -61,7 +61,7 @@ class T5MixPrompt(nn.Module):
         ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         
-        prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=input_ids)
+        prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
 
         prompt_length = prompt_embedding.size(1)
         mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
