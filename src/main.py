@@ -523,15 +523,17 @@ if __name__ == "__main__":
                         default="data_conll/", help="train data file path")
 
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="reddit_tifu", help="data name") # "cnn_dailymail" or "reddit_tifu"
+                        default="reddit_tifu", help="data name") # "cnn_dailymail" / "reddit_tifu"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="long", help="data version") # "3.0.0" or "long"
+                        default="long", help="data version") # "3.0.0" / "long"
     parser.add_argument("--text_key", dest="text_key", type=str,
-                        default="documents", help="name of the data entry containing the source document") # "article" or "documents"
+                        default="documents", help="name of the data entry containing the source document") # "article" / "documents"
     parser.add_argument("--summary_key", dest="summary_key", type=str,
-                        default="tldr", help="name of the data entry containing the summary") # "highlights" or "tldr"
+                        default="tldr", help="name of the data entry containing the summary") # "highlights" / "tldr"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
+    parser.add_argument("--num_entries", dest="num_entries", type=int,
+                    default=42139, help="size of the dataset")
 
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
@@ -656,7 +658,7 @@ if __name__ == "__main__":
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
     else:
         # build a train:valid:test split
-        num_entries = 42139
+        num_entries = args.num_entries
         print("Total # of data points: {}".format(num_entries))
         idx = np.random.permutation(num_entries)
         thresh = int(0.1 * num_entries)
