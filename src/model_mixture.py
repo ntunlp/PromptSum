@@ -51,7 +51,8 @@ class T5MixPrompt(nn.Module):
         # append task soft prompt 
         prompt_emb.append(self.prompt_dict['__task__'])
         # append ent fixed prompt
-        prompt_emb += [self.model.encoder.embed_tokens(ent_ids)]
+        if ent_ids.nelement() > 0: # possibly encounter empty entity guidance
+            prompt_emb += [self.model.encoder.embed_tokens(ent_ids)]
         
         return torch.cat(prompt_emb, 0)
 
@@ -118,7 +119,7 @@ class T5MixPrompt(nn.Module):
         if 'ents_mask' not in batch:
             mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
         else:
-            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length_task),1).to(self.args.device), batch['ents_mask']], 1)
+            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.args.prompt_length_task),1).to(self.args.device), batch['ents_mask']], 1)
         #print(mask_prompt.shape)
         if self.mode == 'right_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)

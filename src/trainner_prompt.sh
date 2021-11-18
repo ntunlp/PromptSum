@@ -2,8 +2,8 @@ learnrate=(5e-1)
 for onerate in ${learnrate[@]}
 do
   echo "------------------------------"
-  python -m torch.distributed.launch --nproc_per_node 2 --master_port 29512 main.py \
-          --cuda 0,1 \
+  python -m torch.distributed.launch --nproc_per_node 1 --master_port 29514 main.py \
+          --cuda 0 \
           --lr $onerate \
           --optimizer Adafactor \
           --weight_decay 1e-5 \
@@ -15,11 +15,11 @@ do
           --max_epoch 5 \
           --num_workers 0 \
           --log_step 10 \
-          --eval_step 100000000\
+          --eval_step 10\
           --eval_start_epoch 0\
           --eval_epoch 1\
           --concat_mode 'right_concat'  \
-          --save_dir t5summ_right_ckpt_v016  \
+          --save_dir t5summ_right_ckpt_v017  \
           --guidance_mode normal \
           --seed 42 \
           --model T5MixPrompt \
@@ -34,10 +34,10 @@ do
           --guidance_type ents \
           --max_target_length 128 \
           --max_guidance_len 100 \
-          --dataset_name cnn_dailymail \
-          --dataset_version 3.0.0 \
-          --summary_key highlights \
-          --text_key article \
+          # --dataset_name cnn_dailymail \
+          # --dataset_version 3.0.0 \
+          # --summary_key highlights \
+          # --text_key article \
           # --dataset_cache_dir /export/home/cache/ \
           # --load_ckpt 0 \
           # --ckpt_path t5ner_ckpt/t5nerlarge_full_right_ckpt_v038/ckptofT5ner_21114\
