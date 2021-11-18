@@ -20,12 +20,12 @@ class T5CNNDataset(Dataset):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
-            split: choice of ['train', 'validation', 'test']
+            split: choice of ['train', 'validation', 'test'] or indices marking each split 
         '''
         super(T5CNNDataset, self).__init__()
         self.args = args
         print("loading the dataset...")
-        self.data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+        self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
         if type(split) == str:
             self.data = self.data[split]
         else:

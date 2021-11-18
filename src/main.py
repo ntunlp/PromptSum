@@ -166,14 +166,17 @@ if __name__ == "__main__":
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/", help="train data file path")
 
+    # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="reddit_tifu", help="data name") # "cnn_dailymail" / "reddit_tifu"
+                        default="wikihow", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="long", help="data version") # "3.0.0" / "long"
+                        default="all", help="data version") # "3.0.0" / "long" / "all"
     parser.add_argument("--text_key", dest="text_key", type=str,
-                        default="documents", help="name of the data entry containing the source document") # "article" / "documents"
+                        default="text", help="name of the data entry containing the source document") # "article" / "documents" / "text"
     parser.add_argument("--summary_key", dest="summary_key", type=str,
-                        default="tldr", help="name of the data entry containing the summary") # "highlights" / "tldr"
+                        default="headline", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
+    parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
+                        default="/data/mathieu/DATASETS/WikiHow/", help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--num_entries", dest="num_entries", type=int,
@@ -296,7 +299,7 @@ if __name__ == "__main__":
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     
     dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name.startswith("cnn"):
+    if args.dataset_name in ["cnn_dailymail", "wikihow"]:
         train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
