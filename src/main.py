@@ -171,8 +171,8 @@ def test(args, test_dataset):
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
                                       args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache/")
-    allckpt = torch.load("./t5_ckpt/" + args.save_dir + "/ckptofT5_best")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
+    allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")
     if args.model == 'T5Prompt':
         model = T5Prompt(args, t5model, tokenizer)
         model.prompt_length = allckpt["prompt_length"]
@@ -202,17 +202,20 @@ def test(args, test_dataset):
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device)}
             if scaler is not None:
                 with autocast():
-                    sen,target,preds = model._generative_step(inputs)
-                    tarres, predres = getonebatchresult(sen,target,preds)
+                    sen, target, preds = model._generative_step(inputs)
+                    tarres, predres = target, preds
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
                 sen, target, preds = model._generative_step(inputs)
-                tarres, predres = getonebatchresult(sen, target, preds)
+                tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    report = classification_report(allytrue, allypred, digits=4)
-    logger.info("\n%s", report)
+    rouge = load_metric('rouge')
+    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    logger.info('-----Test Results Summary-----')
+    logger.info(len(allypred))
+    logger.info(rouge_score)
 
 
 def train(args, model, train_dataset, valid_dataset, test_dataset):
@@ -267,12 +270,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
     model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
         print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
-        # if i < 32:
-        #     adjusted_evalstep = args.eval_step * 10
-        # elif i >= 32:
         adjusted_evalstep = args.eval_step
-        #if i > 420:
-        #    break
 
         model.train()
         result_dict['epoch'] = i
@@ -317,12 +315,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
                     global_step, global_step / step_tot, np.average(allloss), i))
 
                 if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
-                    #####eval
-                    #model.eval()
-                    #sen, target, preds = model._generative_step(inputs)
                     dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
-                    #print("only eval every epoch")
-                    #print("not eval!!!")
                     model.train()
                     print('back to train')
 
@@ -332,8 +325,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset):
 
         print("\nEnd of epoch evaluation...")
         dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i)
-        # print("only eval every epoch")
-        # print("not eval!!!")
+        save_model(model, args, global_step)
         model.train()
         print('back to train')
 
@@ -408,31 +400,19 @@ def get_mix_prompt_embedding(model, tokenizer, task_prompt_length, label_prompt_
 def get_prompt_embedding(model,tokenizer,prompt_length):
     t5_embedding = model.model.get_input_embeddings()
     promptinitembedding = torch.FloatTensor(prompt_length, t5_embedding.weight.size(1))
-    #print(promptinitembedding)
     startindex = 0
-    #print(promptinitembedding.shape)
-    #print(t5_embedding.weight.shape)
-    # print(tokenizer.get_vocab())
     alllabel = ["summarize this article:"]
     for one in alllabel:
         encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
         touse = encoderes["input_ids"].squeeze()[:-1]
-        # print(touse)
-        # print(touse.shape)
         embeddingres = t5_embedding(touse).clone().detach()
         if embeddingres.shape[0] > 1:
             embeddingres = torch.mean(embeddingres, 0, keepdim=True)
         promptinitembedding[startindex] = embeddingres
         startindex += 1
-        # print(embeddingres.shape)
-    #print(promptinitembedding)
-    # alltokens = {}
     fr = open('allnumber.pickle', 'rb')
     alltokens = pickle.load(fr)
-    #print(len(alltokens))
-    # print(alltokens)
     sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
-    # print(sortedalltoken)
     top5000 = []
     for one in sortedalltoken:
         if one[0] == 2:
@@ -442,20 +422,12 @@ def get_prompt_embedding(model,tokenizer,prompt_length):
                 top5000.append(one)
             else:
                 break
-    #print(len(top5000))
     vocab = tokenizer.get_vocab()
-    # print(vocab)
-    # for one in top5000:
-    #    print(one[0],"\t",one[1],"\t",tokenizer.convert_ids_to_tokens(one[0]))
     randomtokennum = prompt_length - len(alllabel)
     touse = random.sample(top5000, randomtokennum)
-    #print(touse)
     for one in touse:
         promptinitembedding[startindex] = t5_embedding.weight[one[0]].clone().detach()
         startindex += 1
-    # print(startindex)
-    # print(promptinitembedding)
-    # print(t5_embedding.weight[2040])
     return promptinitembedding
 
 def load_prompt(args, model):
@@ -517,7 +489,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=100, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=10000, help="how many steps to eval")
+                        default=10000000, help="how many steps to eval")
 
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
@@ -578,12 +550,12 @@ if __name__ == "__main__":
                         default='', help="The path to prompt ckpt")
     
     parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./reddit_t5_ft_ckpt", help="path to save the model")
+                        default="./reddit_t5_ft_adapted", help="path to save the model")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                        default=0, help="whether to use lm_adapted model")
+                        default=1, help="whether to use lm_adapted model")
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                        default="../t5_ckpt_1_0622_bak/t5_ckpt/ckpt_of_step_100000",
+                        default="../../lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                         default=100, help="The number of prompt")
@@ -603,7 +575,7 @@ if __name__ == "__main__":
     print(args)
 
     # set cuda
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     if torch.cuda.is_available():
         print("using GPU")
         if args.local_rank == -1:
@@ -637,14 +609,11 @@ if __name__ == "__main__":
     #exit -1
     if args.model == "T5Prompt":
         model = T5Prompt(args,t5model,tokenizer)
-        #print(model.model.get_input_embeddings().weight[2040])
-        #prompt_length = 100
         if args.ckpt_path and args.load_ckpt:
             load_prompt(args, model)
         else:
             prompt_length = args.prompt_length
             prompt_embedding = get_prompt_embedding(model, tokenizer, prompt_length)
-            #print(promptembedding)
             model.set_prompt_embedding(prompt_length, prompt_embedding)
         model.to(args.device)
     
@@ -681,8 +650,8 @@ if __name__ == "__main__":
         valid_split = list(idx[(8 * thresh):(9 * thresh)])
         test_split = list(idx[(9 * thresh):])
         #train_split = train_split[:50]
-        #valid_split = valid_split[:100]
-        #test_split = test_split[:100]
+        #valid_split = valid_split[:10]
+        #test_split = test_split[:10]
         train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=train_split)
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=valid_split)
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=test_split)
