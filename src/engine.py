@@ -1,3 +1,6 @@
+import numpy as np 
+import spacy
+
 from torch.utils import data
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers.optimization import Adafactor
@@ -13,6 +16,33 @@ from dataset import *
 from utils import *
 
 
+
+def entity_eval(ytrue, ypred):
+    spacy_nlp = spacy.load("en_core_web_sm")
+    all_p = []
+    all_r = []
+    all_f1 = []
+    for i in tqdm(range(len(ytrue))):
+        ents_true = spacy_nlp(ytrue[i]).ents
+        ents_true = [ent.text for ent in ents_true]
+        ents_pred = spacy_nlp(ypred[i]).ents
+        ents_pred = [ent.text for ent in ents_pred]
+        p = 0
+        r = 0
+        f1 = 0
+        if len(ents_pred) > 0:
+            p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
+        if len(ents_true) > 0:
+            r = 100 * len([x for x in ents_true if x in ents_pred]) / len(ents_true)
+        if (p + r) > 0:
+            f1 = (2 * p * r) / (p + r)
+        all_p.append(p)
+        all_r.append(r)
+        all_f1.append(f1)
+    p = np.mean(all_p)
+    r = np.mean(all_r)
+    f1 = np.mean(all_f1)
+    print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
 
 
 def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
@@ -47,6 +77,7 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
+    entity_eval(allytrue, allypred)
 
     result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
