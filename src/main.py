@@ -103,6 +103,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="1", help="gpu id")
+    parser.add_argument("--seed", dest="seed", type=int,
+                        default=42, help="seed for network")
 
     parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                         default='right_concat', help='append prompt to the left or right')
@@ -115,6 +117,8 @@ if __name__ == "__main__":
     parser.add_argument("--continue_learning", action="store_true",
                         help="whether in continual learning setting (assume multiple train/valid files)")
 
+    parser.add_argument("--train", dest="train", type=bool,
+                        default=True, help="whether to train or not")
     parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                         default='Adafactor', help='choice of optimizer')
     parser.add_argument("--lr", dest="lr", type=float,
@@ -142,20 +146,19 @@ if __name__ == "__main__":
 
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=10000000, help="step to save")
+    parser.add_argument("--save_dir", dest="save_dir", type=str,
+                        default="t5_ckpt", help="ckpt dir to save")
+    parser.add_argument('--save_path', dest="save_path", type=str,
+                        default="./temp", help="path to save the model")
+
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=200, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000000, help="how many steps to eval")
-
     parser.add_argument("--eval_start_epoch", dest="eval_start_epoch", type=int,
                         default=0, help="after how many epochs to start evaluating")
     parser.add_argument("--eval_epoch", dest="eval_epoch", type=int,
                         default=1, help="how many epochs to eval once")
-
-    parser.add_argument("--save_dir", dest="save_dir", type=str,
-                        default="t5_ckpt", help="ckpt dir to save")
-    parser.add_argument("--seed", dest="seed", type=int,
-                        default=42, help="seed for network")
 
     parser.add_argument("--model", dest="model", type=str,
                         default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
@@ -168,19 +171,19 @@ if __name__ == "__main__":
 
     # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="reddit_tifu", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
+                        default="wikihow", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="long", help="data version") # "3.0.0" / "long" / "all"
+                        default="all", help="data version") # "3.0.0" / "long" / "all"
     parser.add_argument("--text_key", dest="text_key", type=str,
-                        default="documents", help="name of the data entry containing the source document") # "article" / "documents" / "text"
+                        default="text", help="name of the data entry containing the source document") # "article" / "documents" / "text"
     parser.add_argument("--summary_key", dest="summary_key", type=str,
-                        default="tldr", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
+                        default="headline", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
     parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
-                        default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
+                        default="/data/mathieu/DATASETS/WikiHow/", help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--num_entries", dest="num_entries", type=int,
-                    default=42139, help="size of the dataset")
+                        default=42139, help="size of the dataset")
 
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
@@ -213,12 +216,9 @@ if __name__ == "__main__":
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--load_ckpt", dest="load_ckpt", type=int,
-                        default=0, help="whether load ckpt before training")
+                        default=1, help="whether load ckpt before training")
     parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
-                        default='', help="The path to prompt ckpt")
-    
-    parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./temp", help="path to save the model")
+                        default='wikihow_t5_ft_adapted/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model")
@@ -293,6 +293,8 @@ if __name__ == "__main__":
 
     elif args.model == 'T5Finetune':
         model = T5Finetune(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
         model.to(args.device)
         
     else:
@@ -324,7 +326,8 @@ if __name__ == "__main__":
     if args.local_rank != -1:
         torch.distributed.barrier()
 
-    train(args, model, train_dataset, valid_dataset, test_dataset, logger)
+    if args.train:
+        train(args, model, train_dataset, valid_dataset, test_dataset, logger)
 
     if args.local_rank in [0, -1]:
         test(args, test_dataset, logger, tokenizer)

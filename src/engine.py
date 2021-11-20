@@ -158,11 +158,17 @@ def test(args, test_dataset, logger, tokenizer):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+
+            if step == 10:
+                print("stop test...")
+                break
+
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     logger.info('-----Test Results Summary-----')
     logger.info(len(allypred))
     logger.info(rouge_score)
+    entity_eval(allytrue, allypred)
 
 
 def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
