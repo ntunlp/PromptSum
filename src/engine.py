@@ -229,26 +229,16 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     model.train()
                     print('back to train')
 
-
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
                     model.train()
         
-        if args.local_rank in [0, -1] and (i >= args.eval_start_epoch and i % args.eval_epoch == 0):
-            #####eval
-            #model.eval()
-            #sen, target, preds = model._generative_step(inputs)
+        if args.local_rank in [0, -1]:
+            print("\nEnd of epoch evaluation...")
             dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
-            #print("only eval every epoch")
-            #print("not eval!!!")
+            save_model(model, args, global_step)
             model.train()
             print('back to train')
-
-        print("\nEnd of epoch evaluation...")
-        dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
-        save_model(model, args, global_step)
-        model.train()
-        print('back to train')
 
         if args.train_sample:
             logger.info("sampling...")

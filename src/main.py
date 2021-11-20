@@ -120,13 +120,13 @@ if __name__ == "__main__":
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-5, help='learning rate')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=4, help="batch size per gpu")
+                        default=8, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers", dest="num_workers", type=int,
@@ -141,9 +141,9 @@ if __name__ == "__main__":
                         default=1.0, help="max grad norm")
 
     parser.add_argument("--save_step", dest="save_step", type=int,
-                        default=100000, help="step to save")
+                        default=10000000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
-                        default=100, help="how many steps to log")
+                        default=200, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=10000000, help="how many steps to eval")
 
@@ -168,15 +168,15 @@ if __name__ == "__main__":
 
     # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="wikihow", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
+                        default="cnn_dailymail", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="all", help="data version") # "3.0.0" / "long" / "all"
+                        default="3.0.0", help="data version") # "3.0.0" / "long" / "all"
     parser.add_argument("--text_key", dest="text_key", type=str,
-                        default="text", help="name of the data entry containing the source document") # "article" / "documents" / "text"
+                        default="article", help="name of the data entry containing the source document") # "article" / "documents" / "text"
     parser.add_argument("--summary_key", dest="summary_key", type=str,
-                        default="headline", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
+                        default="highlights", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
     parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
-                        default="/data/mathieu/DATASETS/WikiHow/", help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
+                        default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--num_entries", dest="num_entries", type=int,
@@ -218,7 +218,7 @@ if __name__ == "__main__":
                         default='', help="The path to prompt ckpt")
     
     parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./reddit_t5_ft_adapted", help="path to save the model")
+                        default="./cnndm_t5_ft_adapted_effective_bs_64", help="path to save the model")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model")

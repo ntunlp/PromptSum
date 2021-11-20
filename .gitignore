@@ -2,3 +2,5 @@ src/__pycache__
 src/log
 src/t5_ckpt
 src/reddit_t5*
+src/wikihow*
+src/cnndm*
