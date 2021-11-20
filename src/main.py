@@ -97,7 +97,7 @@ def load_prompt(args, model):
         for k, v in model.prompt_fix_dict.items():
             model.prompt_fix_dict[k] = v.to(args.device)
     elif args.model == 'T5Finetune':
-        model.load_state_dict(allckpt['t5-base'])
+        model.model.load_state_dict(allckpt['t5-base'])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
@@ -118,17 +118,17 @@ if __name__ == "__main__":
                         help="whether in continual learning setting (assume multiple train/valid files)")
 
     parser.add_argument("--train", dest="train", type=bool,
-                        default=True, help="whether to train or not")
+                        default=False, help="whether to train or not")
     parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                         default='Adafactor', help='choice of optimizer')
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=4, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                        default=4, help="valid size per gpu")
+                        default=2, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                        default=4, help="test size per gpu")
+                        default=2, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                         default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
     parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./temp", help="path to save the model")
+                        default="./wikihow_t5_ft_adapted", help="path to save the model")
 
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=200, help="how many steps to log")
