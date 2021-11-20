@@ -126,7 +126,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                        default=16, help="gradient accumulation steps")
+                        default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers", dest="num_workers", type=int,
