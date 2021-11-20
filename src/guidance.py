@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 
-def spacy_ents_stats(data, spacy_nlp, max_len):
+def spacy_ents_stats(data, spacy_nlp, max_len, args):
     print("running stats en space entities...")
     text_words_n = []
     text_ents_n = []
@@ -20,7 +20,7 @@ def spacy_ents_stats(data, spacy_nlp, max_len):
     n_unique_in_text_ratio = []
     for idx in tqdm(range(min(max_len, len(data)))):
         # text
-        text_data = data[idx]['article']
+        text_data = data[idx][args.text_key]
         n_words = len(word_tokenize(text_data))
         text_words_n.append(n_words)
         ents = spacy_nlp(text_data).ents
@@ -32,7 +32,7 @@ def spacy_ents_stats(data, spacy_nlp, max_len):
         text_ents_n.append(len(ents))
         text_ents_n_unique.append(len(text_unique_ents))
         # summary
-        summary_data = data[idx]['highlights']
+        summary_data = data[idx][args.summary_key]
         n_words = len(word_tokenize(summary_data))
         summary_words_n.append(n_words)
         ents = spacy_nlp(summary_data).ents

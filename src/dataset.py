@@ -38,7 +38,7 @@ class T5CNNDataset(Dataset):
 
         if args.guidance_type == "ents":
             self.spacy_nlp = spacy.load("en_core_web_sm")
-            # spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len)
+            spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len, args)
             if args.build_ents_freq and split.startswith("train"):
                 print("building entities frequency...")
                 self.ents_freq = spacy_build_ents_frequency(self.data, self.spacy_nlp, args.ents_freq_max_len)
