@@ -103,7 +103,8 @@ class T5Finetune(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        return input,target,preds
+        ents = self.ids_to_clean_text(batch["input_ents"])
+        return input, target, preds, ents
 
 
     def ids_to_clean_text(self, generated_ids):
