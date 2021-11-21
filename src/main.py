@@ -88,6 +88,7 @@ def get_prompt_embedding(model,tokenizer,prompt_length):
 
 def load_prompt(args, model):
     allckpt = torch.load(args.ckpt_path)
+    print(allckpt.keys())
     if args.model == 'T5Prompt':
         model.prompt_length = allckpt["prompt_length"]
         model.prompt_embedding = allckpt["prompt_embedding"]
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
     parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./wikihow_t5_ft_adapted", help="path to save the model")
+                        default="./wikihow_t5_ft_adapted_effective_bs_64", help="path to save the model")
 
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=200, help="how many steps to log")
@@ -218,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("--load_ckpt", dest="load_ckpt", type=int,
                         default=1, help="whether load ckpt before training")
     parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
-                        default='wikihow_t5_ft_adapted/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
+                        default='wikihow_t5_ft_adapted_effective_bs_64/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model")

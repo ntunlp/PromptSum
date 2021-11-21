@@ -119,6 +119,7 @@ def test(args, test_dataset, logger, tokenizer):
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
     allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")
+    print(allckpt.keys())
     if args.model == 'T5Prompt':
         model = T5Prompt(args, t5model, tokenizer)
         model.prompt_length = allckpt["prompt_length"]
@@ -129,10 +130,11 @@ def test(args, test_dataset, logger, tokenizer):
         model.prompt_fix_dict = allckpt['prompt_fix_dict']
     elif args.model == 'T5Finetune':
         model = T5Finetune(args, t5model, tokenizer)
-        model_state_dict = {}
-        for k,v in allckpt['t5-base'].items():
-            model_state_dict['model.'+k] = v
-        model.load_state_dict(model_state_dict)
+        #model_state_dict = {}
+        #for k,v in allckpt['t5-base'].items():
+        #    model_state_dict['model.'+k] = v
+        #model.load_state_dict(model_state_dict)
+        model.model.load_state_dict(allckpt["t5-base"])
     logger.info("load finished!")
 
     model.to(args.device)
