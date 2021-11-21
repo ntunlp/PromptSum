@@ -175,7 +175,7 @@ def test(args, test_dataset, logger, tokenizer):
                 allytrue.extend(tarres)
                 allypred.extend(predres)
 
-            if step < 2:
+            if step < 5:
                 display_preds(source, target, preds, ents)
 
     rouge = load_metric('rouge')
