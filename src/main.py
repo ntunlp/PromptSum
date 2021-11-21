@@ -194,14 +194,14 @@ if __name__ == "__main__":
                         default=128, help="max summary length")
 
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                        default=None, help="what kind of guidance. In [ents, sents]")
+                        default="ents", help="what kind of guidance. In [ents, sents]")
     parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                         default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')                    
     parser.add_argument("--max_guidance_len", dest="max_guidance_len", type=int,
                         default=40, help="max guidance sequence length")
     # 1 - entities
     parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
-                        default=1000, help="max number of lines to go through for entity stats")
+                        default=100, help="max number of lines to go through for entity stats")
     parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                         default=True, help="whether to filter ents based on the frequency")
     parser.add_argument("--build_ents_freq", dest="build_ents_freq", type=bool,

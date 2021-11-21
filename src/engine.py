@@ -175,10 +175,6 @@ def test(args, test_dataset, logger, tokenizer):
                 allytrue.extend(tarres)
                 allypred.extend(predres)
 
-            #if step == 10:
-            #    print("stop test...")
-            #    break
-
             if step < 2:
                 display_preds(source, target, preds, ents)
 
