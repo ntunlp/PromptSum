@@ -18,6 +18,19 @@ from utils import *
 
 
 
+def display_preds(source, target, preds, ents):
+    print("\nDisplaying a new batch of results:")
+    for i in range(len(source)):
+        print("Source:")
+        print(source[i])
+        print("Entities:")
+        print(ents[i])
+        print("Reference:")
+        print(target[i])
+        print("Predicted summary:")
+        print(preds[i])
+
+
 def entity_eval(ytrue, ypred):
     spacy_nlp = spacy.load("en_core_web_sm")
     all_p = []
@@ -151,13 +164,13 @@ def test(args, test_dataset, logger, tokenizer):
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
-                    sen, target, preds = model._generative_step(inputs)
+                    source, target, preds, ents = model._generative_step(inputs)
                     tarres, predres = target, preds
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
                 # print(f"eval step: {step}")
-                sen, target, preds = model._generative_step(inputs)
+                source, target, preds, ents = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
@@ -165,6 +178,9 @@ def test(args, test_dataset, logger, tokenizer):
             #if step == 10:
             #    print("stop test...")
             #    break
+
+            if step < 2:
+                display_preds(source, target, preds, ents)
 
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
