@@ -125,11 +125,11 @@ if __name__ == "__main__":
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=2, help="batch size per gpu")
+                        default=8, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                        default=2, help="valid size per gpu")
+                        default=8, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                        default=2, help="test size per gpu")
+                        default=8, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                         default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
     parser.add_argument('--save_path', dest="save_path", type=str,
-                        default="./wikihow_t5_ft_adapted_effective_bs_64", help="path to save the model")
+                        default="./saved_models/cnndm_t5_pt_adapted_mix_freq_thresh", help="path to save the model")
 
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=200, help="how many steps to log")
@@ -162,7 +162,7 @@ if __name__ == "__main__":
                         default=1, help="how many epochs to eval once")
 
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
+                        default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
     parser.add_argument("--cache_dir", dest="cache_dir", type=str,
@@ -172,15 +172,15 @@ if __name__ == "__main__":
 
     # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="wikihow", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
+                        default="cnn_dailymail", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
     parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                        default="all", help="data version") # "3.0.0" / "long" / "all"
+                        default="3.0.0", help="data version") # "3.0.0" / "long" / "all"
     parser.add_argument("--text_key", dest="text_key", type=str,
-                        default="text", help="name of the data entry containing the source document") # "article" / "documents" / "text"
+                        default="article", help="name of the data entry containing the source document") # "article" / "documents" / "text"
     parser.add_argument("--summary_key", dest="summary_key", type=str,
-                        default="headline", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
+                        default="highlights", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
     parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
-                        default="/data/mathieu/DATASETS/WikiHow/", help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
+                        default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--num_entries", dest="num_entries", type=int,
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     parser.add_argument("--load_ckpt", dest="load_ckpt", type=int,
                         default=1, help="whether load ckpt before training")
     parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
-                        default='wikihow_t5_ft_adapted_effective_bs_64/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
+                        default='saved_models/cnndm_t5_pt_adapted_mix_freq_thresh/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model")
@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                         default=100, help="The number of prompt")
     parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
-                        default=50, help="The number of prompt")
+                        default=100, help="The number of prompt")
     parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
                         default=20, help="The number of prompt")
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,

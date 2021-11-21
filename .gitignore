@@ -1,7 +1,5 @@
 src/__pycache__
 src/log
 src/t5_ckpt
-src/reddit*
-src/wikihow*
-src/cnndm*
-src/temp*
+src/saved_models/*
+src/temp/*

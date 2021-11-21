@@ -1,6 +1,7 @@
 import numpy as np 
 import spacy
 
+from tqdm import tqdm 
 from torch.utils import data
 from transformers import AdamW, get_linear_schedule_with_warmup
 from transformers.optimization import Adafactor
@@ -61,7 +62,7 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
     allypred = []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
-        for step, batch in enumerate(valid_dataloader):
+        for step, batch in tqdm(enumerate(valid_dataloader)):
             #logger.info(step)
             
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
@@ -145,7 +146,7 @@ def test(args, test_dataset, logger, tokenizer):
     scaler = None
 
     with torch.no_grad():
-        for step, batch in enumerate(test_dataloader):
+        for step, batch in tqdm(enumerate(test_dataloader)):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
