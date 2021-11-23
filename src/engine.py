@@ -10,180 +10,12 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from datasets import load_metric
 
+from utils import *
+from dataset import *
 from model import *
 from model_finetune import T5Finetune
 from model_mixture import T5MixPrompt
-from dataset import *
-from utils import *
 
-
-
-def display_preds(source, target, preds, ents):
-    print("\nDisplaying a new batch of results:")
-    for i in range(len(source)):
-        print("Source:")
-        print(source[i])
-        print("Entities:")
-        print(ents[i])
-        print("Reference:")
-        print(target[i])
-        print("Predicted summary:")
-        print(preds[i])
-
-
-def entity_eval(ytrue, ypred):
-    spacy_nlp = spacy.load("en_core_web_sm")
-    all_p = []
-    all_r = []
-    all_f1 = []
-    for i in tqdm(range(len(ytrue))):
-        ents_true = spacy_nlp(ytrue[i]).ents
-        ents_true = [ent.text for ent in ents_true]
-        ents_pred = spacy_nlp(ypred[i]).ents
-        ents_pred = [ent.text for ent in ents_pred]
-        p = 0
-        r = 0
-        f1 = 0
-        if len(ents_pred) > 0:
-            p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
-        else:
-            if len(ents_true) == 0:
-                p = 100
-        if len(ents_true) > 0:
-            r = 100 * len([x for x in ents_true if x in ents_pred]) / len(ents_true)
-        else:
-            if len(ents_pred) == 0:
-                r = 100
-        if (p + r) > 0:
-            f1 = (2 * p * r) / (p + r)
-        all_p.append(p)
-        all_r.append(r)
-        all_f1.append(f1)
-    p = np.mean(all_p)
-    r = np.mean(all_r)
-    f1 = np.mean(all_f1)
-    print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
-
-
-def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
-    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
-        model = modeltoeval.module
-    else:
-        model = modeltoeval
-    model.eval()
-    allytrue = []
-    allypred = []
-    with torch.no_grad():
-        logger.info(len(valid_dataloader))
-        for step, batch in tqdm(enumerate(valid_dataloader)):
-            #logger.info(step)
-            
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
-            if scaler is not None:
-                with autocast():
-                    sen, target, preds = model._generative_step(inputs)
-                    tarres, predres = target, preds
-                    allytrue.extend(tarres)
-                    allypred.extend(predres)
-            else:
-                # print(f"eval step: {step}")
-                sen, target, preds = model._generative_step(inputs)
-                tarres, predres = target, preds
-                allytrue.extend(tarres)
-                allypred.extend(predres)
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
-    logger.info('----Validation Results Summary----')
-    logger.info(len(allypred))
-    logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
-
-    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
-    if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
-        logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
-        result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
-        if not os.path.exists(args.save_path):
-            os.mkdir(args.save_path)
-        if not os.path.exists(args.save_path + "/" + args.save_dir):
-            os.mkdir(args.save_path + "/" + args.save_dir)
-        model_to_save = model.module if hasattr(model, 'module') else model
-        if args.model == 'T5Prompt':
-            ckpt = {
-                "prompt_length": model_to_save.prompt_length,
-                "prompt_embedding": model_to_save.prompt_embedding
-            }
-        elif args.model == 'T5MixPrompt':
-            ckpt = {
-                "prompt_dict": model_to_save.prompt_dict,
-                "prompt_fix_dict": model_to_save.prompt_fix_dict
-            }
-        elif args.model == 'T5Finetune':
-            ckpt = {
-                't5-base': model_to_save.model.state_dict(),
-            }
-        print("about to save")
-        torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_best"))
-        print("ckpt saved")
-
-def test(args, test_dataset, logger, tokenizer):
-    test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
-
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
-    allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")
-    print(allckpt.keys())
-    if args.model == 'T5Prompt':
-        model = T5Prompt(args, t5model, tokenizer)
-        model.prompt_length = allckpt["prompt_length"]
-        model.prompt_embedding = allckpt["prompt_embedding"]
-    elif args.model == 'T5MixPrompt':
-        model = T5MixPrompt(args, t5model, tokenizer)
-        model.prompt_dict = allckpt['prompt_dict']
-        model.prompt_fix_dict = allckpt['prompt_fix_dict']
-    elif args.model == 'T5Finetune':
-        model = T5Finetune(args, t5model, tokenizer)
-        #model_state_dict = {}
-        #for k,v in allckpt['t5-base'].items():
-        #    model_state_dict['model.'+k] = v
-        #model.load_state_dict(model_state_dict)
-        model.model.load_state_dict(allckpt["t5-base"])
-    logger.info("load finished!")
-
-    model.to(args.device)
-    model.eval()
-    allytrue = []
-    allypred = []
-    #scaler = ShardedGradScaler()
-    scaler = None
-
-    with torch.no_grad():
-        for step, batch in tqdm(enumerate(test_dataloader)):
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
-            if scaler is not None:
-                with autocast():
-                    source, target, preds, ents = model._generative_step(inputs)
-                    tarres, predres = target, preds
-                    allytrue.extend(tarres)
-                    allypred.extend(predres)
-            else:
-                # print(f"eval step: {step}")
-                source, target, preds, ents = model._generative_step(inputs)
-                tarres, predres = target, preds
-                allytrue.extend(tarres)
-                allypred.extend(predres)
-
-            if step < 5:
-                display_preds(source, target, preds, ents)
-
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
-    logger.info('-----Test Results Summary-----')
-    logger.info(len(allypred))
-    logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
 
 
 def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
@@ -302,4 +134,170 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         save_model(model, args, global_step)
 
 
+def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
+    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
+        model = modeltoeval.module
+    else:
+        model = modeltoeval
+    model.eval()
+    allytrue = []
+    allypred = []
+    with torch.no_grad():
+        logger.info(len(valid_dataloader))
+        for step, batch in tqdm(enumerate(valid_dataloader)):
+            #logger.info(step)
+            
+            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+            if scaler is not None:
+                with autocast():
+                    sen, target, preds = model._generative_step(inputs)
+                    tarres, predres = target, preds
+                    allytrue.extend(tarres)
+                    allypred.extend(predres)
+            else:
+                # print(f"eval step: {step}")
+                sen, target, preds = model._generative_step(inputs)
+                tarres, predres = target, preds
+                allytrue.extend(tarres)
+                allypred.extend(predres)
+    rouge = load_metric('rouge')
+    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    logger.info('----Validation Results Summary----')
+    logger.info(len(allypred))
+    logger.info(rouge_score)
+    entity_eval(allytrue, allypred)
 
+    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
+        logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
+        result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
+        if not os.path.exists(args.save_path):
+            os.mkdir(args.save_path)
+        if not os.path.exists(args.save_path + "/" + args.save_dir):
+            os.mkdir(args.save_path + "/" + args.save_dir)
+        model_to_save = model.module if hasattr(model, 'module') else model
+        if args.model == 'T5Prompt':
+            ckpt = {
+                "prompt_length": model_to_save.prompt_length,
+                "prompt_embedding": model_to_save.prompt_embedding
+            }
+        elif args.model == 'T5MixPrompt':
+            ckpt = {
+                "prompt_dict": model_to_save.prompt_dict,
+                "prompt_fix_dict": model_to_save.prompt_fix_dict
+            }
+        elif args.model == 'T5Finetune':
+            ckpt = {
+                't5-base': model_to_save.model.state_dict(),
+            }
+        print("about to save")
+        torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_best"))
+        print("ckpt saved")
+
+
+def test(args, test_dataset, logger, tokenizer):
+    test_sampler = SequentialSampler(test_dataset)
+    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
+                                      args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
+
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
+    allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")
+    print(allckpt.keys())
+    if args.model == 'T5Prompt':
+        model = T5Prompt(args, t5model, tokenizer)
+        model.prompt_length = allckpt["prompt_length"]
+        model.prompt_embedding = allckpt["prompt_embedding"]
+    elif args.model == 'T5MixPrompt':
+        model = T5MixPrompt(args, t5model, tokenizer)
+        model.prompt_dict = allckpt['prompt_dict']
+        model.prompt_fix_dict = allckpt['prompt_fix_dict']
+    elif args.model == 'T5Finetune':
+        model = T5Finetune(args, t5model, tokenizer)
+        #model_state_dict = {}
+        #for k,v in allckpt['t5-base'].items():
+        #    model_state_dict['model.'+k] = v
+        #model.load_state_dict(model_state_dict)
+        model.model.load_state_dict(allckpt["t5-base"])
+    logger.info("load finished!")
+
+    model.to(args.device)
+    model.eval()
+    allytrue = []
+    allypred = []
+    #scaler = ShardedGradScaler()
+    scaler = None
+
+    with torch.no_grad():
+        for step, batch in tqdm(enumerate(test_dataloader)):
+            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+            if scaler is not None:
+                with autocast():
+                    source, target, preds, ents = model._generative_step(inputs)
+                    tarres, predres = target, preds
+                    allytrue.extend(tarres)
+                    allypred.extend(predres)
+            else:
+                # print(f"eval step: {step}")
+                source, target, preds, ents = model._generative_step(inputs)
+                tarres, predres = target, preds
+                allytrue.extend(tarres)
+                allypred.extend(predres)
+
+            if step < 5:
+                display_preds(source, target, preds, ents)
+
+    rouge = load_metric('rouge')
+    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    logger.info('-----Test Results Summary-----')
+    logger.info(len(allypred))
+    logger.info(rouge_score)
+    entity_eval(allytrue, allypred)
+
+
+def display_preds(source, target, preds, ents):
+    print("\nDisplaying a new batch of results:")
+    for i in range(len(source)):
+        print("Source:")
+        print(source[i])
+        print("Entities:")
+        print(ents[i])
+        print("Reference:")
+        print(target[i])
+        print("Predicted summary:")
+        print(preds[i])
+
+
+def entity_eval(ytrue, ypred):
+    spacy_nlp = spacy.load("en_core_web_sm")
+    all_p = []
+    all_r = []
+    all_f1 = []
+    for i in tqdm(range(len(ytrue))):
+        ents_true = spacy_nlp(ytrue[i]).ents
+        ents_true = [ent.text for ent in ents_true]
+        ents_pred = spacy_nlp(ypred[i]).ents
+        ents_pred = [ent.text for ent in ents_pred]
+        p = 0
+        r = 0
+        f1 = 0
+        if len(ents_pred) > 0:
+            p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
+        else:
+            if len(ents_true) == 0:
+                p = 100
+        if len(ents_true) > 0:
+            r = 100 * len([x for x in ents_true if x in ents_pred]) / len(ents_true)
+        else:
+            if len(ents_pred) == 0:
+                r = 100
+        if (p + r) > 0:
+            f1 = (2 * p * r) / (p + r)
+        all_p.append(p)
+        all_r.append(r)
+        all_f1.append(f1)
+    p = np.mean(all_p)
+    r = np.mean(all_r)
+    f1 = np.mean(all_f1)
+    print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))

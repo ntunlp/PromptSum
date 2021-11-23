@@ -7,6 +7,7 @@ import torch.nn as nn
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 
 
+
 class T5Finetune(nn.Module):
     def __init__(self, args, model, tokenizer):
         super(T5Finetune, self).__init__()
@@ -41,10 +42,7 @@ class T5Finetune(nn.Module):
         
     def forward(self, batch):
         lm_labels = batch["target_ids"]
-        #print(self.tokenizer.pad_token_id)
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
-        #print(self.model.config.decoder_start_token_id)
-        #print(self.model.config.bos_token_id)
         outputs = self._step(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
@@ -53,7 +51,6 @@ class T5Finetune(nn.Module):
         )
 
         loss = outputs[0]
-
         return loss
 
     def _generative_step(self, batch):

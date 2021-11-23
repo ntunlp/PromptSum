@@ -4,8 +4,10 @@ import os
 import pdb
 import torch
 import torch.nn as nn
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 import random
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+
+
 
 class T5MixPrompt(nn.Module):
     def __init__(self, args, model, tokenizer):
@@ -22,7 +24,6 @@ class T5MixPrompt(nn.Module):
                 self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
             ### if prompt tuning, set requires_grad false
             for name, param in self.model.named_parameters():
-                #print(name)
                 param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
@@ -50,7 +51,6 @@ class T5MixPrompt(nn.Module):
         # append ent fixed prompt
         if ent_ids.nelement() > 0: # possibly encounter empty entity guidance
             prompt_emb += [self.model.encoder.embed_tokens(ent_ids)]
-        
         return torch.cat(prompt_emb, 0)
 
     def _step(
@@ -72,7 +72,6 @@ class T5MixPrompt(nn.Module):
         if self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
-
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -83,10 +82,7 @@ class T5MixPrompt(nn.Module):
 
     def forward(self, batch, labels_set=None):
         lm_labels = batch["target_ids"]
-        #print(self.tokenizer.pad_token_id)
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
-        #print(self.model.config.decoder_start_token_id)
-        #print(self.model.config.bos_token_id)
         outputs = self._step(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
@@ -96,32 +92,25 @@ class T5MixPrompt(nn.Module):
             ent_ids=batch['input_ents'],
             labels_set=labels_set,
         )
-
         loss = outputs[0]
-
         return loss
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        #print(input_embed_part.shape)
         prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=batch['input_ents'])
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
         elif self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
-        #print(allembedding.shape)
-        #print(batch["attention_mask"].shape)
         prompt_length = prompt_embedding.size(1)
         if 'ents_mask' not in batch:
             mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
         else:
             mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.args.prompt_length_task),1).to(self.args.device), batch['ents_mask']], 1)
-        #print(mask_prompt.shape)
         if self.mode == 'right_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         elif self.mode == 'left_concat':
             all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
-        #print(all_attention_mask.shape)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -137,22 +126,6 @@ class T5MixPrompt(nn.Module):
             length_penalty=1.0,
             early_stopping=True
         )
-
-        # generated_ids = self.model.generate(
-        #     inputs_embeds=allembedding,
-        #     decoder_input_ids=decoder_input_ids,
-        #     attention_mask=all_attention_mask,
-        #     use_cache=True,
-        #     # decoder_attention_mask=batch['target_mask'],
-        #     max_length=self.args.max_length,
-        #     do_sample=True,
-        #     repetition_penalty=2.5,
-        #     length_penalty=1.0,
-        #     early_stopping=True,
-        #     top_k = 64,
-        #     num_return_sequences=4
-        # )
-
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])

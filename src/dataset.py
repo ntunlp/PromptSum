@@ -2,17 +2,18 @@ import json
 import random
 import os
 import sys
-
 sys.path.append("..")
 import pickle
 import torch
 import operator
+import spacy
 from torch.utils.data import Sampler, Dataset, DataLoader
 from datasets import load_dataset
-import spacy
 from tqdm import tqdm
-from guidance import *
 from rouge_score import rouge_scorer
+
+from guidance import *
+
 
 
 class T5CNNDataset(Dataset):
@@ -81,7 +82,6 @@ class T5CNNDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        #print(f'input_ents_res, {input_ents_res}')
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -135,7 +135,6 @@ class SmartBatchingCollate:
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences,attention_masks
 
-
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         ##tokenize sequence_batch
         lens = []
@@ -166,22 +165,3 @@ class SmartBatchingCollate:
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences, attention_masks
-
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
-    collate_fn = SmartBatchingCollate(
-        max_length=max_len,
-        max_guidance_length=max_guidance_len,
-        max_target_length=max_target_length,
-        pad_token_id=pad_id
-    )
-    dataloader = DataLoader(
-        dataset=dataset,
-        batch_size=batch_size,
-        sampler=sampler,
-        collate_fn=collate_fn,
-        #shuffle=True, #####?????
-        drop_last=False,
-        num_workers=num_workers,
-        pin_memory=True
-    )
-    return dataloader

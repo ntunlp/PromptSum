@@ -6,7 +6,6 @@ from torch.utils.data import (
     Dataset, DataLoader,
     SequentialSampler, RandomSampler
 )
-
 from dataset import SmartBatchingCollate
 
 
@@ -19,6 +18,7 @@ def seed_everything(args):
     torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
+
 
 def save_model(modeltoeval, args, steps):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -48,6 +48,7 @@ def save_model(modeltoeval, args, steps):
     print("about to save")
     torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_"+str(steps)))
     print("ckpt saved")
+
 
 def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
