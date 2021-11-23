@@ -101,7 +101,7 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate')
+                    default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=8, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -121,7 +121,7 @@ parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
 
 ##### evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,
-                    default=2, help="how many steps to log")
+                    default=10, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=10000000, help="how many steps to eval")
 parser.add_argument("--eval_start_epoch", dest="eval_start_epoch", type=int,
