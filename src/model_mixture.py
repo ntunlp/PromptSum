@@ -29,9 +29,6 @@ class T5MixPrompt(nn.Module):
         self.prompt_dict = nn.ParameterDict() # {label_name: [label_name_emb, label_soft_tokens]}, specially, self.prompt_dict['__task__']: task_soft_tokens
         self.prompt_fix_dict = {}
         self.mode = args.concat_mode
-        self.order_inv = args.order_inv
-        self.subset_inv = args.subset_inv
-        self.subset_drop_prob = args.subset_drop_prob
         self.seen_labels_cl = set() # seen labels so far, under continual learning
 
     def add_seen_labels(self, labels):

@@ -190,7 +190,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     # total step
     step_tot = int(0.5 + train_dataset.num_entries / float(args.gradient_accumulation_steps) / args.batch_size_per_gpu / args.n_gpu) * args.max_epoch
 
-    warmup_steps_total = step_tot * args.warmup_steps
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
 
     valid_sampler = SequentialSampler(valid_dataset)
@@ -298,9 +297,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
             model.train()
             print('back to train')
 
-        if args.train_sample:
-            logger.info("sampling...")
-            logger.info("sampled")
     print('finish training')
     if args.local_rank in [0, -1]:
         save_model(model, args, global_step)
