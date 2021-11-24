@@ -14,10 +14,10 @@ class T5Finetune(nn.Module):
         self.args = args
         self.model = model
         ### load ckpt
-        if args.use_lm_adapted == 1:
+        if args.use_lm_adapted == True:
             print("use lm adapted model!")
             t5ckpt = torch.load(args.lm_adapted_path)
-            if args.ifckpt_onlymodel == 1:
+            if args.if_ckpt_only_model == True:
                 self.model.load_state_dict(t5ckpt)
             else:
                 self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
@@ -64,10 +64,10 @@ class T5Finetune(nn.Module):
             attention_mask=batch["attention_mask"],
             use_cache=True,
             #decoder_attention_mask=batch['target_mask'],
-            max_length=self.args.max_length,
-            num_beams=4,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
+            max_length=self.args.max_summary_length,
+            num_beams=self.args.num_beams,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
             early_stopping=True
         )
 
@@ -87,9 +87,9 @@ class T5Finetune(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=batch["attention_mask"],
             use_cache=True,
-            max_length=self.args.max_length,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
+            max_length=self.args.max_summary_length,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
             early_stopping=True,
             do_sample=True,
             top_k = 64,

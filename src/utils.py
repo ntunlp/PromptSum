@@ -6,7 +6,6 @@ from torch.utils.data import (
     Dataset, DataLoader,
     SequentialSampler, RandomSampler
 )
-from dataset import SmartBatchingCollate
 
 
 
@@ -49,25 +48,6 @@ def save_model(modeltoeval, args, steps):
     torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_"+str(steps)))
     print("ckpt saved")
 
-
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, max_target_length, pad_id, sampler):
-    collate_fn = SmartBatchingCollate(
-        max_length=max_len,
-        max_guidance_length=max_guidance_len,
-        max_target_length=max_target_length,
-        pad_token_id=pad_id
-    )
-    dataloader = DataLoader(
-        dataset=dataset,
-        batch_size=batch_size,
-        sampler=sampler,
-        collate_fn=collate_fn,
-        #shuffle=True, #####?????
-        drop_last=False,
-        num_workers=num_workers,
-        pin_memory=True
-    )
-    return dataloader
 
 
 

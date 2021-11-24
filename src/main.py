@@ -47,13 +47,13 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
 parser.add_argument("--model", dest="model", type=str,
                     default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                    default="../../hf_models/t5-base-v1", )
-parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                    default=0, help="whether to use lm_adapted model")
+                    default="../../hf_models/t5-v1-blarge", )
+parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
+                    default=True, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="../../lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                     default=100, help="The number of prompt")
@@ -61,22 +61,22 @@ parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
                     default=100, help="The number of prompt")
 parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
                     default=20, help="The number of prompt")
-parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
-                    default=1, help="If ckpt only contains model. Default: True, only contains model")
+parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool,
+                    default=True, help="If ckpt only contains model. Default: True, only contains model")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
 parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
-parser.add_argument("--max_target_length", dest="max_target_length", type=int,
-                    default=128, help="max summary length")
 # guidance signal
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default=None, help="What kind of guidance as discrete entities. In [None, ents, sents]")
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
-parser.add_argument("--max_guidance_len", dest="max_guidance_len", type=int,
-                    default=40, help="max guidance sequence length")
+parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
+                    default=100, help="max guidance sequence length")
 # 1 - entities
+parser.add_argument("--check_ents_stats", dest="check_ents_stats", type=bool,
+                    default=False, help="whether to get statistics on the entities")
 parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
                     default=100, help="max number of lines to go through for entity stats")
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
@@ -92,8 +92,8 @@ parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
                     default=2, help="number of salient sentences to use")
 
 ##### load checkpoint
-parser.add_argument("--load_ckpt", dest="load_ckpt", type=int,
-                    default=0, help="whether load ckpt before training")
+parser.add_argument("--load_ckpt", dest="load_ckpt", type=bool,
+                    default=False, help="whether load ckpt before training")
 parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
                     default='saved_models/cnndm_t5_pt_adapted_mix_freq_thresh/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
 
@@ -118,6 +118,16 @@ parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                     default=1e-5, help="weight decay")
 parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
                     default=1.0, help="max grad norm")
+
+##### generation
+parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
+                    default=128, help="max summary length")
+parser.add_argument("--num_beams", dest="num_beams", type=int,
+                    default=4, help="number of beams in beam search")
+parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
+                    default=2.5, help="repetition penalty")
+parser.add_argument("--length_penalty", dest="length_penalty", type=float,
+                    default=1.0, help="length penalty")
 
 ##### evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,

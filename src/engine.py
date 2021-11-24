@@ -26,11 +26,14 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
 
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      args.max_target_length, train_dataset.tokenizer.pad_token_id,train_sampler)
-    valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      args.max_target_length, valid_dataset.tokenizer.pad_token_id,valid_sampler)
-
+    train_dataloader = get_dataloader(
+        args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        train_dataset.tokenizer.pad_token_id,train_sampler
+    )
+    valid_dataloader = get_dataloader(
+        args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        valid_dataset.tokenizer.pad_token_id,valid_sampler
+    )
 
     base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
                                 "weight_decay": args.weight_decay,
@@ -198,8 +201,10 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
 
 def test(args, test_dataset, logger, tokenizer):
     test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_len,
-                                      args.max_target_length, test_dataset.tokenizer.pad_token_id,test_sampler)
+    test_dataloader = get_dataloader(
+        args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        test_dataset.tokenizer.pad_token_id, test_sampler
+    )
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
     allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")

@@ -39,7 +39,8 @@ class T5CNNDataset(Dataset):
 
         if args.guidance_type == "ents":
             self.spacy_nlp = spacy.load("en_core_web_sm")
-            spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len, args)
+            if args.check_ents_stats:
+                spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len, args)
             if args.build_ents_freq and split.startswith("train"):
                 print("building entities frequency...")
                 self.ents_freq = spacy_build_ents_frequency(self.data, self.spacy_nlp, args.ents_freq_max_len)
@@ -89,51 +90,31 @@ class T5CNNDataset(Dataset):
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, max_guidance_length, max_target_length, pad_token_id):
+    def __init__(self, max_length, max_guidance_length, max_summary_length, pad_token_id):
         self._max_length = max_length
         self._max_guidance_length = max_guidance_length
-        self._max_target_length = max_target_length
+        self._max_summary_length = max_summary_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-
         sequences, targets, ents = list(zip(*batch))
-
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
-
         ents_ids, ents_mask = self.pad_sequence(
             ents,
             max_sequence_length=self._max_guidance_length,
             pad_token_id=self._pad_token_id
         )
-        target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_target_length, pad_token_id=self._pad_token_id)
-
+        target_ids, target_mask = self.pad_target(
+            targets, 
+            max_sequence_length=self._max_summary_length, 
+            pad_token_id=self._pad_token_id
+        )
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
         return output
-
-    def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
-        ##tokenize sequence_batch
-        max_batch_len = max(len(sequence) for sequence in sequence_batch)
-        max_len = min(max_batch_len, max_sequence_length)    ####whether because max_length is not 512?
-        padded_sequences = []
-        attention_masks = []
-        attend, no_attend = 1, 0
-        for sequence in sequence_batch:
-            # As discussed above, truncate if exceeds max_len
-            new_sequence = list(sequence[:max_len])
-            attention_mask = [attend] * len(new_sequence)
-            pad_length = max_len - len(new_sequence)
-            new_sequence.extend([pad_token_id] * pad_length)
-            attention_mask.extend([no_attend] * pad_length)
-            padded_sequences.append(new_sequence)
-            attention_masks.append(attention_mask)
-        padded_sequences = torch.tensor(padded_sequences)
-        attention_masks = torch.tensor(attention_masks)
-        return padded_sequences,attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         ##tokenize sequence_batch
@@ -165,3 +146,43 @@ class SmartBatchingCollate:
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences, attention_masks
+
+    def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
+        ##tokenize sequence_batch
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_len = min(max_batch_len, max_sequence_length)    ####whether because max_length is not 512?
+        padded_sequences = []
+        attention_masks = []
+        attend, no_attend = 1, 0
+        for sequence in sequence_batch:
+            # As discussed above, truncate if exceeds max_len
+            new_sequence = list(sequence[:max_len])
+            attention_mask = [attend] * len(new_sequence)
+            pad_length = max_len - len(new_sequence)
+            new_sequence.extend([pad_token_id] * pad_length)
+            attention_mask.extend([no_attend] * pad_length)
+            padded_sequences.append(new_sequence)
+            attention_masks.append(attention_mask)
+        padded_sequences = torch.tensor(padded_sequences)
+        attention_masks = torch.tensor(attention_masks)
+        return padded_sequences,attention_masks
+
+
+def get_dataloader(num_workers,dataset, batch_size, max_length, max_guidance_length, max_summary_length, pad_id, sampler):
+    collate_fn = SmartBatchingCollate(
+        max_length=max_length,
+        max_guidance_length=max_guidance_length,
+        max_summary_length=max_summary_length,
+        pad_token_id=pad_id
+    )
+    dataloader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        sampler=sampler,
+        collate_fn=collate_fn,
+        #shuffle=True, #####?????
+        drop_last=False,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    return dataloader
