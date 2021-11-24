@@ -103,13 +103,13 @@ parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafacto
 parser.add_argument("--lr", dest="lr", type=float,
                     default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=8, help="batch size per gpu")
+                    default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=8, help="valid size per gpu")
+                    default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                    default=8, help="test size per gpu")
+                    default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=1, help="gradient accumulation steps")
+                    default=32, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                     default=5, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
@@ -131,7 +131,7 @@ parser.add_argument("--length_penalty", dest="length_penalty", type=float,
 
 ##### evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,
-                    default=10, help="how many steps to log")
+                    default=100, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=10000000, help="how many steps to eval")
 parser.add_argument("--eval_start_epoch", dest="eval_start_epoch", type=int,
