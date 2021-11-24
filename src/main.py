@@ -49,7 +49,7 @@ parser.add_argument("--model", dest="model", type=str,
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                    default="../../hf_models/t5-v1-blarge", )
+                    default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=True, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -143,7 +143,7 @@ parser.add_argument("--save_step", dest="save_step", type=int,
 parser.add_argument("--save_dir", dest="save_dir", type=str,
                     default="t5_ckpt", help="ckpt dir to save")
 parser.add_argument('--save_path', dest="save_path", type=str,
-                    default="./saved_models/cnndm_t5_pt_adapted_mix_freq_thresh", help="path to save the model")
+                    default="./saved_models/cnndm_t5_large_adapted_ft", help="path to save the model")
 
 args = parser.parse_args()
 
