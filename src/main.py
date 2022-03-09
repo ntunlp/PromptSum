@@ -28,19 +28,19 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 ##### data
 # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="cnn_dailymail", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
+                    default="xsum", help="data name") # "cnn_dailymail" / "xsum" / "reddit_tifu" / "wikihow"
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                    default="3.0.0", help="data version") # "3.0.0" / "long" / "all"
+                    default="default", help="data version") # "3.0.0" / "default" / long" / "all"
 parser.add_argument("--text_key", dest="text_key", type=str,
-                    default="article", help="name of the data entry containing the source document") # "article" / "documents" / "text"
+                    default="document", help="name of the data entry containing the source document") # "article" / "document" / "documents" / "text"
 parser.add_argument("--summary_key", dest="summary_key", type=str,
-                    default="highlights", help="name of the data entry containing the summary") # "highlights" / "tldr" / "headline"
+                    default="summary", help="name of the data entry containing the summary") # "highlights" / "summary" / "tldr" / "headline"
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 parser.add_argument("--num_entries", dest="num_entries", type=int,
-                    default=42139, help="size of the dataset")
+                    default=42139, help="size of the dataset") # only for "reddit_tifu"
 
 ##### model
 # base model
@@ -76,7 +76,7 @@ parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=in
                     default=100, help="max guidance sequence length")
 # 1 - entities
 parser.add_argument("--check_ents_stats", dest="check_ents_stats", type=bool,
-                    default=False, help="whether to get statistics on the entities")
+                    default=True, help="whether to get statistics on the entities")
 parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
                     default=100, help="max number of lines to go through for entity stats")
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
@@ -220,7 +220,7 @@ def main(args):
 
     # data
     dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name in ["cnn_dailymail", "wikihow"]:
+    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow"]:
         train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
