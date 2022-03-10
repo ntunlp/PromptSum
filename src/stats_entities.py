@@ -21,7 +21,7 @@ parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 
 ##### data
-# 3 datasets: CNN-DM / Reddit TIFU / WikiHow
+# For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="samsum", help="data name",
                     choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
