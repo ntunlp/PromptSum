@@ -75,10 +75,6 @@ parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
                     default=100, help="max guidance sequence length")
 # 1 - entities
-parser.add_argument("--check_ents_stats", dest="check_ents_stats", type=bool,
-                    default=True, help="whether to get statistics on the entities")
-parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
-                    default=100, help="max number of lines to go through for entity stats")
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                     default=True, help="whether to filter ents based on the frequency")
 parser.add_argument("--build_ents_freq", dest="build_ents_freq", type=bool,
@@ -237,9 +233,9 @@ def main(args):
         train_split = train_split[:50]
         valid_split = valid_split[:10]
         test_split = test_split[:10]
-        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=train_split)
-        valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=valid_split)
-        test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=test_split)
+        train_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=train_split)
+        valid_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=valid_split)
+        test_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=test_split)
 
     # Barrier to make sure all process train the model simultaneously.
     if args.local_rank != -1:
