@@ -34,6 +34,15 @@ parser.add_argument("--text_key", dest="text_key", type=str,
 parser.add_argument("--summary_key", dest="summary_key", type=str,
                     default="summary", help="name of the data entry containing the summary",
                     choices = ["highlights", "summary", "tldr", "headline", "summary"])  
+parser.add_argument("--validation_key", dest="validation_key", type=str,
+                    default="validation", help="name of the dataset field for validation split",
+                    choices = ["validation", "validation", "", "validation", "test"])  
+parser.add_argument("--test_key", dest="test_key", type=str,
+                    default="test", help="name of the dataset field for test split",
+                    choices = ["test", "test", "", "test", "test"])  
+parser.add_argument("--summary_key", dest="summary_key", type=str,
+                    default="summary", help="name of the data entry containing the summary",
+                    choices = ["highlights", "summary", "tldr", "headline", "summary"])  
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -108,9 +117,9 @@ def main(args):
     # data
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow", "billsum"]:
-        train_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='train')
-        valid_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='validation')
-        test_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='test')
+        train_dataset = T5CNNDataset(dataset_args, "train", tokenizer, args)
+        valid_dataset = T5CNNDataset(dataset_args, args.validation_key, tokenizer, args)
+        test_dataset = T5CNNDataset(dataset_args, args.test_key, tokenizer, args)
     else:
         # build a train:valid:test split
         num_entries = args.num_entries
@@ -124,18 +133,18 @@ def main(args):
         train_split = train_split[:50]
         valid_split = valid_split[:10]
         test_split = test_split[:10]
-        train_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=train_split)
-        valid_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=valid_split)
-        test_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=test_split)
+        train_dataset = T5CNNDataset(dataset_args, train_split, tokenizer, args)
+        valid_dataset = T5CNNDataset(dataset_args, valid_split, tokenizer, args)
+        test_dataset = T5CNNDataset(dataset_args, test_split, tokenizer, args)
 
 
     spacy_nlp = spacy.load("en_core_web_sm")
     # train
-    spacy_ents_stats(train_dataset.data, spacy_nlp, args)
+    spacy_ents_stats(train_dataset.data, "training", spacy_nlp, args)
     # val
-    spacy_ents_stats(valid_dataset.data, spacy_nlp, args)
+    spacy_ents_stats(valid_dataset.data, "validation", spacy_nlp, args)
     # test    
-    spacy_ents_stats(test_dataset.data, spacy_nlp, args)
+    spacy_ents_stats(test_dataset.data, "test", spacy_nlp, args)
 
 
 

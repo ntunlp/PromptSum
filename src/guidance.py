@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 
 
-def spacy_ents_stats(data, spacy_nlp, args):
-    print("running stats en space entities...")
+def spacy_ents_stats(data, split_name, spacy_nlp, args):
+    print("\nRunning stats en spacy entities...")
     text_words_n = []
     text_ents_n = []
     text_ents_n_unique = []
@@ -55,7 +55,7 @@ def spacy_ents_stats(data, spacy_nlp, args):
         summary_ents_n_unique_in_text.append(len(summary_unique_ents_in_text))
         if len(summary_unique_ents) > 0:
             n_unique_in_text_ratio.append(100 * len(summary_unique_ents_in_text) / len(summary_unique_ents))
-    print("\n", "STATS:")
+    print("\n", "STATS: {}".format(split_name))
     print("# text/summary pairs: {}".format(len(text_ents_n)))
     print("*"*50)
     print("Avg # words / text: {:.3f}".format(np.mean(text_words_n)))
