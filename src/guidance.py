@@ -58,15 +58,15 @@ def spacy_ents_stats(data, split_name, spacy_nlp, args):
     print("\n", "STATS: {}".format(split_name))
     print("# text/summary pairs: {}".format(len(text_ents_n)))
     print("*"*50)
-    print("Avg # words / text: {:.3f}".format(np.mean(text_words_n)))
-    print("Avg # entities / text: {:.3f}".format(np.mean(text_ents_n)))
-    print("Avg # unique entities / text: {:.3f}".format(np.mean(text_ents_n_unique)))
+    print("Avg # words / text: {:.2f}".format(np.mean(text_words_n)))
+    print("Avg # entities / text: {:.2f}".format(np.mean(text_ents_n)))
+    print("Avg # unique entities / text: {:.2f}".format(np.mean(text_ents_n_unique)))
     print("*"*50)
-    print("Avg # words / summary: {:.3f}".format(np.mean(summary_words_n)))
-    print("Avg # entities / summary: {:.3f}".format(np.mean(summary_ents_n)))
-    print("Avg # unique entities / summary: {:.3f}".format(np.mean(summary_ents_n_unique)))
-    print("Avg # entities in summary which are in text: {:.3f}, as %: {:.3f}".format(np.mean(summary_ents_n_in_text), np.mean(n_in_text_ratio)))
-    print("Avg # unique entities in summary which are in text: {:.3f}, as %: {:.3f}".format(np.mean(summary_ents_n_unique_in_text), np.mean(n_unique_in_text_ratio)))
+    print("Avg # words / summary: {:.2f}".format(np.mean(summary_words_n)))
+    print("Avg # entities / summary: {:.2f}".format(np.mean(summary_ents_n)))
+    print("Avg # unique entities / summary: {:.2f}".format(np.mean(summary_ents_n_unique)))
+    print("Avg # entities in summary which are in text: {:.2f}, as %: {:.2f}".format(np.mean(summary_ents_n_in_text), np.mean(n_in_text_ratio)))
+    print("Avg # unique entities in summary which are in text: {:.2f}, as %: {:.2f}".format(np.mean(summary_ents_n_unique_in_text), np.mean(n_unique_in_text_ratio)))
 
 
 def spacy_build_ents_frequency(data, spacy_nlp, max_len):

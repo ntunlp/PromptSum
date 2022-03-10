@@ -35,14 +35,11 @@ parser.add_argument("--summary_key", dest="summary_key", type=str,
                     default="summary", help="name of the data entry containing the summary",
                     choices = ["highlights", "summary", "tldr", "headline", "summary"])  
 parser.add_argument("--validation_key", dest="validation_key", type=str,
-                    default="validation", help="name of the dataset field for validation split",
+                    default="test", help="name of the dataset field for validation split",
                     choices = ["validation", "validation", "", "validation", "test"])  
 parser.add_argument("--test_key", dest="test_key", type=str,
                     default="test", help="name of the dataset field for test split",
                     choices = ["test", "test", "", "test", "test"])  
-parser.add_argument("--summary_key", dest="summary_key", type=str,
-                    default="summary", help="name of the data entry containing the summary",
-                    choices = ["highlights", "summary", "tldr", "headline", "summary"])  
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,

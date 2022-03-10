@@ -32,7 +32,7 @@ class T5CNNDataset(Dataset):
         else:
             self.data = self.data["train"]
             self.data = self.data.select(split)
-            print("# Data points in this split: {}".format(len(split)))
+        print("# Data points in this split: {}".format(len(self.data)))
         
         self.tokenizer = tokenizer
         self.args = args
