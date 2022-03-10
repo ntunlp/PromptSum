@@ -11,7 +11,6 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 from datasets import load_dataset
 from tqdm import tqdm
 from rouge_score import rouge_scorer
-
 from guidance import *
 
 
@@ -26,6 +25,7 @@ class T5CNNDataset(Dataset):
         super(T5CNNDataset, self).__init__()
         self.args = args
         print("loading the dataset...")
+        # self.dataset = load_dataset('ccdv/cnn_dailymail', '3.0.0')
         self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
         if type(split) == str:
             self.data = self.data[split]

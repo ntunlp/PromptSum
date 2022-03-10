@@ -28,7 +28,7 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 ##### data
 # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="cnn_dailymail", help="data name") # "cnn_dailymail" / "reddit_tifu" / "wikihow"
+                    default="ccdv/cnn_dailymail", help="data name") # "ccdv/cnn_dailymail" / "reddit_tifu" / "wikihow"
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
                     default="3.0.0", help="data version") # "3.0.0" / "long" / "all"
 parser.add_argument("--text_key", dest="text_key", type=str,
@@ -51,7 +51,7 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
-                    default=True, help="whether to use lm_adapted model")
+                    default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
