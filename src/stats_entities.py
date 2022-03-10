@@ -23,20 +23,23 @@ parser.add_argument("--seed", dest="seed", type=int,
 ##### data
 # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="xsum", help="data name",
-                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow"]) # "cnn_dailymail" / "xsum" / "reddit_tifu" / "wikihow"
+                    default="billsum", help="data name",
+                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum"]) 
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                    default="default", help="data version") # "3.0.0" / "default" / long" / "all"
+                    default="default", help="data version",
+                    choices = ["3.0.0", "default", "long", "all", "default"]) 
 parser.add_argument("--text_key", dest="text_key", type=str,
-                    default="document", help="name of the data entry containing the source document") # "article" / "document" / "documents" / "text"
+                    default="text", help="name of the data entry containing the source document",
+                    choices = ["article", "document", "documents", "text", "text"]) 
 parser.add_argument("--summary_key", dest="summary_key", type=str,
-                    default="summary", help="name of the data entry containing the summary") # "highlights" / "summary" / "tldr" / "headline"
+                    default="summary", help="name of the data entry containing the summary",
+                    choices = ["highlights", "summary", "tldr", "headline", "summary"])  
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
-                    default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
+                    default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 parser.add_argument("--num_entries", dest="num_entries", type=int,
-                    default=42139, help="size of the dataset") # only for "reddit_tifu"
+                    default=42139, help="size of the dataset for Reddit TIFU")
 
 ##### model
 # input 
