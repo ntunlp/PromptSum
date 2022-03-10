@@ -23,23 +23,23 @@ parser.add_argument("--seed", dest="seed", type=int,
 ##### data
 # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="billsum", help="data name",
-                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum"]) 
+                    default="samsum", help="data name",
+                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                    default="default", help="data version",
-                    choices = ["3.0.0", "default", "long", "all", "default"]) 
+                    default="samsum", help="data version",
+                    choices = ["3.0.0", "default", "long", "all", "default", "samsum"]) 
 parser.add_argument("--text_key", dest="text_key", type=str,
-                    default="text", help="name of the data entry containing the source document",
-                    choices = ["article", "document", "documents", "text", "text"]) 
+                    default="dialogue", help="name of the data entry containing the source document",
+                    choices = ["article", "document", "documents", "text", "text", "dialogue"]) 
 parser.add_argument("--summary_key", dest="summary_key", type=str,
                     default="summary", help="name of the data entry containing the summary",
-                    choices = ["highlights", "summary", "tldr", "headline", "summary"])  
+                    choices = ["highlights", "summary", "tldr", "headline", "summary", "summary"])  
 parser.add_argument("--validation_key", dest="validation_key", type=str,
-                    default="test", help="name of the dataset field for validation split",
-                    choices = ["validation", "validation", "", "validation", "test"])  
+                    default="validation", help="name of the dataset field for validation split",
+                    choices = ["validation", "validation", "", "validation", "test", "validation"])  
 parser.add_argument("--test_key", dest="test_key", type=str,
                     default="test", help="name of the dataset field for test split",
-                    choices = ["test", "test", "", "test", "test"])  
+                    choices = ["test", "test", "", "test", "test", "test"])  
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -94,7 +94,7 @@ parser.add_argument("--min_ents_freq", dest="min_ents_freq", type=int,
 parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
                     default=2, help="number of salient sentences to use")
 
-parser.add_argument("--ents_stats_max_len", type=int, default=100)
+parser.add_argument("--ents_stats_max_len", type=int, default=1000)
 
 args = parser.parse_args()
 
@@ -113,7 +113,7 @@ def main(args):
 
     # data
     dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow", "billsum"]:
+    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow", "billsum", "samsum"]:
         train_dataset = T5CNNDataset(dataset_args, "train", tokenizer, args)
         valid_dataset = T5CNNDataset(dataset_args, args.validation_key, tokenizer, args)
         test_dataset = T5CNNDataset(dataset_args, args.test_key, tokenizer, args)
