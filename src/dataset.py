@@ -17,14 +17,14 @@ from guidance import *
 
 
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, args, tokenizer, split="train"):
+    def __init__(self, dataset_args, tokenizer, args, split="train"):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
             split: choice of ['train', 'validation', 'test'] or indices marking each split 
         '''
         super(T5CNNDataset, self).__init__()
-        self.args = args
+        
         print("loading the dataset...")
         self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
         if type(split) == str:
@@ -33,14 +33,15 @@ class T5CNNDataset(Dataset):
             self.data = self.data["train"]
             self.data = self.data.select(split)
             print("# Data points in this split: {}".format(len(split)))
-        self.maxlen = args.max_length
+        
         self.tokenizer = tokenizer
+        self.args = args
+
+        self.maxlen = args.max_length
         self.num_entries = len(self.data)
 
         if args.guidance_type == "ents":
             self.spacy_nlp = spacy.load("en_core_web_sm")
-            if args.check_ents_stats:
-                spacy_ents_stats(self.data, self.spacy_nlp, args.ents_stats_max_len, args)
             if args.build_ents_freq and split.startswith("train"):
                 print("building entities frequency...")
                 self.ents_freq = spacy_build_ents_frequency(self.data, self.spacy_nlp, args.ents_freq_max_len)
