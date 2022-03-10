@@ -38,7 +38,7 @@ parser.add_argument("--summary_key", dest="summary_key", type=str,
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") # None / None / "/data/mathieu/DATASETS/WikiHow/"
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                    default="../../hf_datasets/", help="dataset cache folder")
+                    default="../../hf_datasets/xsum/", help="dataset cache folder")
 parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset") # only for "reddit_tifu"
 
@@ -69,7 +69,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # guidance signal
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                    default=None, help="What kind of guidance as discrete entities. In [None, ents, sents]")
+                    default="ents", help="What kind of guidance as discrete entities. In [None, ents, sents]")
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -78,7 +78,7 @@ parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=in
 parser.add_argument("--check_ents_stats", dest="check_ents_stats", type=bool,
                     default=True, help="whether to get statistics on the entities")
 parser.add_argument("--ents_stats_max_len", dest="ents_stats_max_len", type=int,
-                    default=100, help="max number of lines to go through for entity stats")
+                    default=100000, help="max number of lines to go through for entity stats")
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                     default=True, help="whether to filter ents based on the frequency")
 parser.add_argument("--build_ents_freq", dest="build_ents_freq", type=bool,
