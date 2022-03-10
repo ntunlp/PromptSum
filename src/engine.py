@@ -154,13 +154,13 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
-                    sen, target, preds = model._generative_step(inputs)
+                    sen, target, preds, _ = model._generative_step(inputs)
                     tarres, predres = target, preds
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
                 # print(f"eval step: {step}")
-                sen, target, preds = model._generative_step(inputs)
+                sen, target, preds, _ = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)

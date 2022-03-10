@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import argparse
 import time
 import logging
@@ -18,7 +20,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 
 ##### general stuff
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="1", help="gpu id")
+                    default="2", help="gpu id")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--train", dest="train", type=bool,
@@ -28,24 +30,10 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ##### data
 # For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
+
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="samsum", help="data name",
-                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
-parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                    default="samsum", help="data version",
-                    choices = ["3.0.0", "default", "long", "all", "default", "samsum"]) 
-parser.add_argument("--text_key", dest="text_key", type=str,
-                    default="dialogue", help="name of the data entry containing the source document",
-                    choices = ["article", "document", "documents", "text", "text", "dialogue"]) 
-parser.add_argument("--summary_key", dest="summary_key", type=str,
-                    default="summary", help="name of the data entry containing the summary",
-                    choices = ["highlights", "summary", "tldr", "headline", "summary", "summary"])  
-parser.add_argument("--validation_key", dest="validation_key", type=str,
-                    default="validation", help="name of the dataset field for validation split",
-                    choices = ["validation", "validation", "", "validation", "test", "validation"])  
-parser.add_argument("--test_key", dest="test_key", type=str,
-                    default="test", help="name of the dataset field for test split",
-                    choices = ["test", "test", "", "test", "test", "test"])  
+                    default="ccdv/cnn_dailymail", help="data name",
+                    choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -61,11 +49,11 @@ parser.add_argument("--max_length", dest="max_length", type=int,
 parser.add_argument("--model", dest="model", type=str,
                     default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="t5-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
-                    default=True, help="whether to use lm_adapted model")
+                    default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
@@ -73,7 +61,7 @@ parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool
                     default=True, help="If ckpt only contains model. Default: True, only contains model")
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
-                    default=100, help="The number of prompt")
+                    default=200, help="The number of prompt")
 parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
                     default=100, help="The number of prompt")
 parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
@@ -112,7 +100,7 @@ parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafacto
 parser.add_argument("--lr", dest="lr", type=float,
                     default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=2, help="batch size per gpu")
+                    default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                     default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
@@ -120,7 +108,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=32, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=5, help="max epoch number")
+                    default=1, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
@@ -152,9 +140,25 @@ parser.add_argument("--save_step", dest="save_step", type=int,
 parser.add_argument("--save_dir", dest="save_dir", type=str,
                     default="t5_ckpt", help="ckpt dir to save")
 parser.add_argument('--save_path', dest="save_path", type=str,
-                    default="./saved_models/cnndm_t5_large_adapted_ft", help="path to save the model")
+                    default="../../saved_models/cnndm_t5_base_adapted_ft", help="path to save the model")
 
 args = parser.parse_args()
+
+#Set dataset related documents according to args.dataset_name
+dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
+dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
+text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
+summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
+validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
+test_keys = ["test", "test", "", "test", "test", "test"]
+
+idx = dataset_names.index(args.dataset_name)
+
+args.dataset_version = dataset_versions[idx]
+args.text_key = text_keys[idx]
+args.summary_key = summary_keys[idx]
+args.validation_key = validation_keys[idx]
+args.test_key = test_keys[idx]
 
 # print args
 print(args)
@@ -173,7 +177,6 @@ def main(args):
 
     # set cuda
     if torch.cuda.is_available():
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
         if args.local_rank == -1:
             device = torch.device("cuda")
         else:
@@ -196,7 +199,7 @@ def main(args):
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
 
-    # base model & tokenizer
+    # base model & tokenizer (use T5)
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
     tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
 
