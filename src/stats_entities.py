@@ -38,6 +38,9 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset") # only for "reddit_tifu"
 
 ##### model
+# input 
+parser.add_argument("--max_length", dest="max_length", type=int,
+                    default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
                     default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
@@ -45,9 +48,25 @@ parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
+parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
+                    default=True, help="whether to use lm_adapted model")
+parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
+                    default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    help="The path of lm_adapted model")
+parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool,
+                    default=True, help="If ckpt only contains model. Default: True, only contains model")
+# prompt 
+parser.add_argument("--prompt_length", dest="prompt_length", type=int,
+                    default=100, help="The number of prompt")
+parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
+                    default=100, help="The number of prompt")
+parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
+                    default=20, help="The number of prompt")
+parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
+                    default='right_concat', help='append prompt to the left or right')
 # guidance signal
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                    default=None, help="What kind of guidance as discrete entities. In [None, ents, sents]")
+                    default="ents", help="What kind of guidance as discrete entities. In [None, ents, sents]")
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
