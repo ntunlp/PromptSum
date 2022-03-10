@@ -28,8 +28,10 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ##### data
 # For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
+
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="ccdv/cnn_dailymail", help="data name") # "ccdv/cnn_dailymail" / "reddit_tifu" / "wikihow"
+                    default="ccdv/cnn_dailymail", help="data name",
+                    choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
                     default="samsum", help="data version",
                     choices = ["3.0.0", "default", "long", "all", "default", "samsum"]) 
