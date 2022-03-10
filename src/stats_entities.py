@@ -84,6 +84,8 @@ parser.add_argument("--min_ents_freq", dest="min_ents_freq", type=int,
 parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
                     default=2, help="number of salient sentences to use")
 
+parser.add_argument("--ents_stats_max_len", type=int, default=100)
+
 args = parser.parse_args()
 
 # print args
@@ -127,7 +129,7 @@ def main(args):
     # train
     spacy_ents_stats(train_dataset.data, spacy_nlp, args)
     # val
-    spacy_ents_stats(val_dataset.data, spacy_nlp, args)
+    spacy_ents_stats(valid_dataset.data, spacy_nlp, args)
     # test    
     spacy_ents_stats(test_dataset.data, spacy_nlp, args)
 
