@@ -29,8 +29,7 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 ##### data
 # For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="samsum", help="data name",
-                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
+                    default="ccdv/cnn_dailymail", help="data name") # "ccdv/cnn_dailymail" / "reddit_tifu" / "wikihow"
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
                     default="samsum", help="data version",
                     choices = ["3.0.0", "default", "long", "all", "default", "samsum"]) 
@@ -65,7 +64,7 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
-                    default=True, help="whether to use lm_adapted model")
+                    default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
