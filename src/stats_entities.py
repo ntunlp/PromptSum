@@ -107,7 +107,7 @@ def main(args):
 
     # data
     dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow"]:
+    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow", "billsum"]:
         train_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='train')
         valid_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='validation')
         test_dataset = T5CNNDataset(dataset_args, tokenizer, args, split='test')

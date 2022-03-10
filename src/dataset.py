@@ -26,7 +26,7 @@ class T5CNNDataset(Dataset):
         super(T5CNNDataset, self).__init__()
         
         print("loading the dataset...")
-        self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
+        self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir, download_mode = "force_redownload")
         if type(split) == str:
             self.data = self.data[split]
         else:
