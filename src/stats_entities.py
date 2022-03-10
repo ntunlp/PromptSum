@@ -23,7 +23,8 @@ parser.add_argument("--seed", dest="seed", type=int,
 ##### data
 # 3 datasets: CNN-DM / Reddit TIFU / WikiHow
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="xsum", help="data name") # "cnn_dailymail" / "xsum" / "reddit_tifu" / "wikihow"
+                    default="xsum", help="data name",
+                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow"]) # "cnn_dailymail" / "xsum" / "reddit_tifu" / "wikihow"
 parser.add_argument("--dataset_version", dest="dataset_version", type=str,
                     default="default", help="data version") # "3.0.0" / "default" / long" / "all"
 parser.add_argument("--text_key", dest="text_key", type=str,
