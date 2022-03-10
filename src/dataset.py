@@ -16,7 +16,7 @@ from guidance import *
 
 
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, split, tokenizer, args):
+    def __init__(self, dataset_args, tokenizer, args, split):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
