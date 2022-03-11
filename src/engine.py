@@ -15,8 +15,42 @@ from dataset import *
 from model import *
 from model_finetune import T5Finetune
 from model_mixture import T5MixPrompt
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from prompting import *
 
+def load_model(args):
 
+    # base model & tokenizer (use T5)
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+
+    # model
+    if args.model == "T5Prompt":
+        model = T5Prompt(args,t5model,tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+        else:
+            prompt_length = args.prompt_length
+            prompt_embedding = get_prompt_embedding(model, tokenizer, prompt_length)
+            model.set_prompt_embedding(prompt_length, prompt_embedding)
+        model.to(args.device)
+    elif args.model == 'T5MixPrompt':
+        model = T5MixPrompt(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+            model.to(args.device)
+        else:
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length_task, args.prompt_length_label)
+            model.to(args.device)
+            model.set_prompt_embedding(label_name_embs)
+    elif args.model == 'T5Finetune':
+        model = T5Finetune(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+        model.to(args.device)
+    else:
+        raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
+    return model, tokenizer
 
 def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     # total step
@@ -250,15 +284,25 @@ def test(args, test_dataset, logger, tokenizer):
                 allytrue.extend(tarres)
                 allypred.extend(predres)
 
-            if step < 5:
-                display_preds(source, target, preds, ents)
+            if args.display_preds:
+                if step < 5:
+                    display_preds(source, target, preds, ents)
 
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     logger.info('-----Test Results Summary-----')
     logger.info(len(allypred))
     logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
+    p, r, f1 = entity_eval(allytrue, allypred)
+    result_dict = {}
+    result_dict['test_rouge1'] = rouge_score["rouge1"].mid.fmeasure
+    result_dict['test_rouge2'] = rouge_score["rouge2"].mid.fmeasure
+    result_dict['test_rougeL'] = rouge_score["rougeL"].mid.fmeasure
+    result_dict['p'] = p
+    result_dict['r'] = r
+    result_dict['f1'] = f1
+    return result_dict
+
 
 
 def display_preds(source, target, preds, ents):
@@ -306,3 +350,4 @@ def entity_eval(ytrue, ypred):
     r = np.mean(all_r)
     f1 = np.mean(all_f1)
     print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
+    return p, r, f1
