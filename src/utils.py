@@ -7,8 +7,6 @@ from torch.utils.data import (
     SequentialSampler, RandomSampler
 )
 
-
-
 def seed_everything(args):
     random.seed(args.seed)
     os.environ['PYTHONASSEED'] = str(args.seed)
@@ -47,7 +45,5 @@ def save_model(modeltoeval, args, steps):
     print("about to save")
     torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_"+str(steps)))
     print("ckpt saved")
-
-
 
 
