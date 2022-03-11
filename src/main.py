@@ -165,9 +165,10 @@ args.summary_key = summary_keys[idx]
 args.validation_key = validation_keys[idx]
 args.test_key = test_keys[idx]
 args.save_path = f"../../saved_models/{save_name}/t5_base_{args.model}/"
-args.few_shot_save_dir = args.few_shot_save_dir + f'{save_name}/'
 os.makedirs(args.save_path, exist_ok=True)
-os.makedirs(args.few_shot_save_dir, exist_ok=True)
+if args.few_shot:
+    args.few_shot_save_dir = args.few_shot_save_dir + f'{save_name}/{args.few_shot}/'
+    os.makedirs(args.few_shot_save_dir, exist_ok=True)
 
 # print args
 print(args)
