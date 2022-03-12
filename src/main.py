@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import argparse
 import time
 import logging
@@ -49,13 +49,13 @@ parser.add_argument("--max_length", dest="max_length", type=int,
 parser.add_argument("--model", dest="model", type=str,
                     default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="t5-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool,
                     default=True, help="If ckpt only contains model. Default: True, only contains model")

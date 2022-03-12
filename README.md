@@ -1,6 +1,10 @@
 # PromptSumm
 cool prompting for summarization!
 
+# Running command
+To train with LM adapted: python main.py --use_lm_adapted=True --model=T5Prompt
+To train on dataset cnndm with few shot 100 (as an example): python main.py --dataset_name='ccdv/cnn_dailymail' --few_shot=100
+
 ## Contents
 
 - [PromptSumm](#PromptSumm)
