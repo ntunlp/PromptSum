@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 
 ##### general stuff
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="2", help="gpu id")
+                    default="0", help="gpu id")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--train", dest="train", type=bool,
@@ -39,7 +39,7 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
-                    default='/data/ruochen/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
+                    default='/data/mathieu/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 
 ##### model
 # input 
