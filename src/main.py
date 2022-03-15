@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '6'
 import argparse
 import time
 import logging
@@ -39,7 +39,9 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
-                    default='/data/ruochen/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
+                    default='/data/ruochen/DATASETS/PromptSumm/', help="path to save the subsampled datasets")
+parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
+                    default=True, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
 
 ##### model
 # input 
@@ -100,7 +102,7 @@ parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafacto
 parser.add_argument("--lr", dest="lr", type=float,
                     default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=1, help="batch size per gpu")
+                    default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                     default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
@@ -213,8 +215,12 @@ def main(args):
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.few_shot != False:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
-        few_shot_seeds = [0, 1, 2, 3, 4]
-        training_seeds = [10, 11]
+        if args.run_one_to_debug:
+            few_shot_seeds = [0]
+            training_seeds = [10]
+        else:
+            few_shot_seeds = [0, 1, 2, 3, 4]
+            training_seeds = [10, 11]
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
         if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
             print('subsampling..')

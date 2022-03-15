@@ -2,8 +2,12 @@
 cool prompting for summarization!
 
 # Running command
-To train with LM adapted: python main.py --use_lm_adapted=True --model=T5Prompt
-To train on dataset cnndm with few shot 100 (as an example): python main.py --dataset_name='ccdv/cnn_dailymail' --few_shot=100
+To train with LM adapted: 
+   python main.py --use_lm_adapted=True --model=T5MixPrompt --lr=5e-1 --max_epoch=30 --batch_size_per_gpu=1 --few_shot=64
+To train with fine-tuned dataset:
+   python main.py --model=T5Finetune --max_epoch=30 --few_shot=64
+To train on dataset cnndm with few shot 100 (as an example): 
+   python main.py --dataset_name='ccdv/cnn_dailymail' --few_shot=100
 
 ## Contents
 
