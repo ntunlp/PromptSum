@@ -171,6 +171,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     print('finish training')
     if args.local_rank in [0, -1]:
         save_model(model, args, global_step)
+    
+    return result_dict
 
 
 def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
@@ -208,7 +210,7 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
+    p, r, f1 = entity_eval(allytrue, allypred)
 
     # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
     # change accordingly
@@ -216,6 +218,14 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
         logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
         result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
+        # also append other rouge scores
+        result_dict['val_rouge2'] = rouge_score["rouge2"]
+        result_dict['val_rougeL'] = rouge_score["rougeL"]
+        
+        result_dict['precision'] = p
+        result_dict['recall'] = r
+        result_dict['f1'] = f1
+
         if not os.path.exists(args.save_path):
             os.mkdir(args.save_path)
         if not os.path.exists(args.save_path + "/" + args.save_dir):
@@ -305,8 +315,8 @@ def test(args, test_dataset, logger, tokenizer):
     result_dict['test_rouge1'] = rouge_score["rouge1"].mid.fmeasure
     result_dict['test_rouge2'] = rouge_score["rouge2"].mid.fmeasure
     result_dict['test_rougeL'] = rouge_score["rougeL"].mid.fmeasure
-    result_dict['p'] = p
-    result_dict['r'] = r
+    result_dict['precision'] = p
+    result_dict['recall'] = r
     result_dict['f1'] = f1
     return result_dict
 

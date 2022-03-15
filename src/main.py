@@ -41,7 +41,9 @@ parser.add_argument("--few_shot", dest="few_shot", type=int,
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
                     default='/data/ruochen/DATASETS/PromptSumm/', help="path to save the subsampled datasets")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
-                    default=True, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
+                    default=False, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
+parser.add_argument("--kaggle", dest="kaggle", type=bool,
+                    default=True, help="whether to report average validation performance instead of test")
 
 ##### model
 # input 
@@ -227,7 +229,10 @@ def main(args):
             subsample(dataset_args, args, tokenizer, few_shot_seeds, args.few_shot_save_dir)
         # read in saved few-shot datasets
         datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-        metrics = ['test_rouge1', 'test_rouge2', 'test_rougeL', 'p', 'r', 'f1']
+        if args.kaggle:
+            metrics = ['best_val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        else:
+            metrics = ['test_rouge1', 'test_rouge2', 'test_rougeL', 'precision', 'recall', 'f1']
         result_dict = {}
         for m in metrics:
             result_dict[m] = []
@@ -247,13 +252,17 @@ def main(args):
                     torch.distributed.barrier()
 
                 if args.train:
-                    train(args, model, train_dataset, valid_dataset, test_dataset, logger)
+                    rd = train(args, model, train_dataset, valid_dataset, test_dataset, logger)
 
                 if args.local_rank in [0, -1]:
-                    rd = test(args, test_dataset, logger, tokenizer)
+                    if not args.kaggle:
+                        # to test on full dataset
+                        rd = test(args, test_dataset, logger, tokenizer)
+                    # else Kaggle way: to report main performance on validation set
 
                 for m in metrics:
                     result_dict[m].append(rd[m])
+                    
                 logger.info("Finish training and testing!")
 
                 if args.local_rank != -1:
