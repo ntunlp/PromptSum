@@ -100,8 +100,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
 
     result_dict = {
         'epoch': [],
+        'val_mean_rouge': [],
+        'best_val_mean_rouge': 0.0,
         'val_rouge1': [],
-        'best_val_rouge1': Best_F1
+        'val_rouge2': [],
+        'val_rougeL': []
     }
     global_step = 0
     model.eval()
@@ -198,7 +201,7 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     # only print the mid fmeasure to make the results more readable
     for k in rouge_score.keys():
-        rouge_score[k] = rouge_score[k].mid.fmeasure
+        rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)

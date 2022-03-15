@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+#os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import argparse
 import time
 import logging
@@ -51,7 +51,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
+                    default="T5Prompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
@@ -98,7 +98,7 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate')
+                    default=5e-1, help='learning rate') # 5e-5 for FT, 5e-1 for PT
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -235,10 +235,10 @@ def main(args):
         # for each subsampled dataset
         count = 0
         for (train_dataset, valid_dataset) in datasets:
-            logger.info("Dataset {} / {}".format(count + 1, len(datasets)))
+            logger.info(">"*50 + " Dataset {} / {}".format(count + 1, len(datasets)))
             # for each training seed
             for t_seed in training_seeds:
-                logger.info(f'Training few shot model with training_seed {t_seed}')
+                logger.info(">"*20 + f' Training few shot model with training_seed {t_seed}')
                 args.seed = t_seed
                 seed_everything(args)
                 
