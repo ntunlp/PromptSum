@@ -15,8 +15,42 @@ from dataset import *
 from model import *
 from model_finetune import T5Finetune
 from model_mixture import T5MixPrompt
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from prompting import *
 
+def load_model(args):
 
+    # base model & tokenizer (use T5)
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+
+    # model
+    if args.model == "T5Prompt":
+        model = T5Prompt(args,t5model,tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+        else:
+            prompt_length = args.prompt_length
+            prompt_embedding = get_prompt_embedding(model, tokenizer, prompt_length)
+            model.set_prompt_embedding(prompt_length, prompt_embedding)
+        model.to(args.device)
+    elif args.model == 'T5MixPrompt':
+        model = T5MixPrompt(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+            model.to(args.device)
+        else:
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length_task, args.prompt_length_label)
+            model.to(args.device)
+            model.set_prompt_embedding(label_name_embs)
+    elif args.model == 'T5Finetune':
+        model = T5Finetune(args, t5model, tokenizer)
+        if args.ckpt_path and args.load_ckpt:
+            load_prompt(args, model)
+        model.to(args.device)
+    else:
+        raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
+    return model, tokenizer
 
 def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     # total step
@@ -70,6 +104,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     global_step = 0
     model.eval()
     model.train()
+    alllosses=[]
     for i in range(startepoch, startepoch + args.max_epoch):
         print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
         adjusted_evalstep = args.eval_step
@@ -126,7 +161,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     model.train()
         
         if args.local_rank in [0, -1]:
-            print("\nEnd of epoch evaluation...")
+            alllosses.append(np.mean(allloss))
+            print("\nEnd of epoch evaluation... loss: {}".format(alllosses))
             dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
             save_model(model, args, global_step)
             model.train()
@@ -135,6 +171,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     print('finish training')
     if args.local_rank in [0, -1]:
         save_model(model, args, global_step)
+    
+    return result_dict
 
 
 def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
@@ -166,15 +204,28 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
                 allypred.extend(predres)
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    # only print the mid fmeasure to make the results more readable
+    for k in rouge_score.keys():
+        rouge_score[k] = rouge_score[k].mid.fmeasure
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
+    p, r, f1 = entity_eval(allytrue, allypred)
 
-    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    # change accordingly
+    result_dict['val_rouge1'].append(rouge_score["rouge1"])
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
         logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
         result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
+        # also append other rouge scores
+        result_dict['val_rouge2'] = rouge_score["rouge2"]
+        result_dict['val_rougeL'] = rouge_score["rougeL"]
+        
+        result_dict['precision'] = p
+        result_dict['recall'] = r
+        result_dict['f1'] = f1
+
         if not os.path.exists(args.save_path):
             os.mkdir(args.save_path)
         if not os.path.exists(args.save_path + "/" + args.save_dir):
@@ -250,15 +301,25 @@ def test(args, test_dataset, logger, tokenizer):
                 allytrue.extend(tarres)
                 allypred.extend(predres)
 
-            if step < 5:
-                display_preds(source, target, preds, ents)
+            if args.display_preds:
+                if step < 5:
+                    display_preds(source, target, preds, ents)
 
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     logger.info('-----Test Results Summary-----')
     logger.info(len(allypred))
     logger.info(rouge_score)
-    entity_eval(allytrue, allypred)
+    p, r, f1 = entity_eval(allytrue, allypred)
+    result_dict = {}
+    result_dict['test_rouge1'] = rouge_score["rouge1"].mid.fmeasure
+    result_dict['test_rouge2'] = rouge_score["rouge2"].mid.fmeasure
+    result_dict['test_rougeL'] = rouge_score["rougeL"].mid.fmeasure
+    result_dict['precision'] = p
+    result_dict['recall'] = r
+    result_dict['f1'] = f1
+    return result_dict
+
 
 
 def display_preds(source, target, preds, ents):
@@ -306,3 +367,4 @@ def entity_eval(ytrue, ypred):
     r = np.mean(all_r)
     f1 = np.mean(all_f1)
     print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
+    return p, r, f1

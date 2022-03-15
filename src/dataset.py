@@ -14,24 +14,26 @@ from rouge_score import rouge_scorer
 from guidance import *
 
 
-
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, tokenizer, args, split):
+    def __init__(self, dataset_args, args, tokenizer, split, data = None, subsample = False):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
             split: choice of ['train', 'validation', 'test'] or indices marking each split 
+            data: subsampled data, used for loading few-shot datasets
         '''
         super(T5CNNDataset, self).__init__()
         
         print("loading the dataset...")
-        # self.dataset = load_dataset('ccdv/cnn_dailymail', '3.0.0')
-        self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
-        if type(split) == str:
-            self.data = self.data[split]
+        if subsample:
+            self.data = data
         else:
-            self.data = self.data["train"]
-            self.data = self.data.select(split)
+            self.data = load_dataset(*dataset_args, data_dir = args.dataset_data_dir, cache_dir=args.dataset_cache_dir)
+            if type(split) == str:
+                self.data = self.data[split]
+            else:
+                self.data = self.data["train"]
+                self.data = self.data.select(split)
         print("# Data points in this split: {}".format(len(self.data)))
         
         self.tokenizer = tokenizer
@@ -187,3 +189,49 @@ def get_dataloader(num_workers,dataset, batch_size, max_length, max_guidance_len
         pin_memory=True
     )
     return dataloader
+
+def subsample(dataset_args, args, tokenizer, few_shot_seeds, save_path):
+    '''
+    Function that subsamples a dataset and saves the results for few-shot exps
+    args:
+        few_shot_seeds: list of random seeds to produce the subsamples repeatively
+    '''
+    train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
+    valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
+    len_train = len(train_dataset.data)
+    len_valid = len(valid_dataset.data)
+    for seed in few_shot_seeds:
+        # re-set random seed
+        np.random.seed(seed)
+        indices = np.random.choice(range(len_train), args.few_shot)
+        train_data_new = train_dataset.data.select(indices)
+        indices = np.random.choice(range(len_valid), args.few_shot)
+        valid_data_new = valid_dataset.data.select(indices)
+        # save
+        handler_train = open(f'{save_path}{args.few_shot}_few_shot_train_seed_{seed}',"wb")
+        handler_valid = open(f'{save_path}{args.few_shot}_few_shot_valid_seed_{seed}',"wb")
+        pickle.dump(train_data_new, handler_train)
+        pickle.dump(valid_data_new, handler_valid)
+        handler_train.close()
+        handler_valid.close()
+    # convert to original seed
+    np.random.seed(args.seed)
+
+def read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, save_path):
+    '''
+    This function reads in the few-shot datasets saved at save_path
+    returns:
+        list of tuples (train_dataset, valid_dataset)
+    '''
+    datasets = []
+    for seed in few_shot_seeds:
+        handler_train = open(f'{save_path}{args.few_shot}_few_shot_train_seed_{seed}',"rb")
+        handler_valid = open(f'{save_path}{args.few_shot}_few_shot_valid_seed_{seed}',"rb")
+        train_data = pickle.load(handler_train)
+        valid_data = pickle.load(handler_valid)
+        handler_train.close()
+        handler_valid.close()
+        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'train', data = train_data, subsample = True)
+        valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'valid', data = valid_data, subsample = True)
+        datasets.append((train_dataset, valid_dataset))
+    return datasets

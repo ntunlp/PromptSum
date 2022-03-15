@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '6'
 import argparse
 import time
 import logging
@@ -9,9 +9,6 @@ from datasets import load_metric
 from utils import *
 from dataset import *
 from model import *
-from prompting import *
-from model_finetune import T5Finetune
-from model_mixture import T5MixPrompt
 from engine import * 
 
 
@@ -30,7 +27,6 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ##### data
 # For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
-
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail", help="data name",
                     choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
@@ -40,6 +36,14 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset for Reddit TIFU")
+parser.add_argument("--few_shot", dest="few_shot", type=int,
+                    default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
+parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
+                    default='/data/ruochen/DATASETS/PromptSumm/', help="path to save the subsampled datasets")
+parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
+                    default=False, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
+parser.add_argument("--kaggle", dest="kaggle", type=bool,
+                    default=True, help="whether to report average validation performance instead of test")
 
 ##### model
 # input 
@@ -47,15 +51,15 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
+                    default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="t5-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="../../lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool,
                     default=True, help="If ckpt only contains model. Default: True, only contains model")
@@ -100,7 +104,7 @@ parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafacto
 parser.add_argument("--lr", dest="lr", type=float,
                     default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=1, help="batch size per gpu")
+                    default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                     default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
@@ -108,7 +112,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=32, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=1, help="max epoch number")
+                    default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
@@ -139,8 +143,8 @@ parser.add_argument("--save_step", dest="save_step", type=int,
                     default=10000000, help="step to save")
 parser.add_argument("--save_dir", dest="save_dir", type=str,
                     default="t5_ckpt", help="ckpt dir to save")
-parser.add_argument('--save_path', dest="save_path", type=str,
-                    default="../../saved_models/cnndm_t5_base_adapted_ft", help="path to save the model")
+parser.add_argument("--display_preds", dest="display_preds", type=bool,
+                    default=False, help="whether to display predictions during training")
 
 args = parser.parse_args()
 
@@ -153,12 +157,22 @@ validation_keys = ["validation", "validation", "", "validation", "test", "valida
 test_keys = ["test", "test", "", "test", "test", "test"]
 
 idx = dataset_names.index(args.dataset_name)
+if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
+    idx = 0
+    save_name = 'cnndm'
+else:
+    save_name = args.dataset_name
 
 args.dataset_version = dataset_versions[idx]
 args.text_key = text_keys[idx]
 args.summary_key = summary_keys[idx]
 args.validation_key = validation_keys[idx]
 args.test_key = test_keys[idx]
+args.save_path = f"../../saved_models/{save_name}/t5_base_{args.model}/"
+os.makedirs(args.save_path, exist_ok=True)
+if args.few_shot:
+    args.few_shot_save_dir = args.few_shot_save_dir + f'{save_name}/{args.few_shot}/'
+    os.makedirs(args.few_shot_save_dir, exist_ok=True)
 
 # print args
 print(args)
@@ -199,73 +213,102 @@ def main(args):
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
 
-    # base model & tokenizer (use T5)
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
-
-    # model
-    if args.model == "T5Prompt":
-        model = T5Prompt(args,t5model,tokenizer)
-        if args.ckpt_path and args.load_ckpt:
-            load_prompt(args, model)
-        else:
-            prompt_length = args.prompt_length
-            prompt_embedding = get_prompt_embedding(model, tokenizer, prompt_length)
-            model.set_prompt_embedding(prompt_length, prompt_embedding)
-        model.to(args.device)
-    elif args.model == 'T5MixPrompt':
-        model = T5MixPrompt(args, t5model, tokenizer)
-        if args.ckpt_path and args.load_ckpt:
-            load_prompt(args, model)
-            model.to(args.device)
-        else:
-            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length_task, args.prompt_length_label)
-            model.to(args.device)
-            model.set_prompt_embedding(label_name_embs)
-    elif args.model == 'T5Finetune':
-        model = T5Finetune(args, t5model, tokenizer)
-        if args.ckpt_path and args.load_ckpt:
-            load_prompt(args, model)
-        model.to(args.device)
-    else:
-        raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
-
     # data
     dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow"]:
-        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
-        valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
+    if args.few_shot != False:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+        if args.run_one_to_debug:
+            few_shot_seeds = [0]
+            training_seeds = [10]
+        else:
+            few_shot_seeds = [0, 1, 2, 3, 4]
+            training_seeds = [10, 11]
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
+        if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
+            print('subsampling..')
+            subsample(dataset_args, args, tokenizer, few_shot_seeds, args.few_shot_save_dir)
+        # read in saved few-shot datasets
+        datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+        if args.kaggle:
+            metrics = ['best_val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        else:
+            metrics = ['test_rouge1', 'test_rouge2', 'test_rougeL', 'precision', 'recall', 'f1']
+        result_dict = {}
+        for m in metrics:
+            result_dict[m] = []
+        # for each subsampled dataset
+        for (train_dataset, valid_dataset) in datasets:
+            # for each training seed
+            for t_seed in training_seeds:
+                print(f'Training few shot model with training_seed {t_seed}')
+                args.seed = t_seed
+                seed_everything(args)
+                
+                # load model
+                model, tokenizer = load_model(args)
+
+                # Barrier to make sure all process train the model simultaneously.
+                if args.local_rank != -1:
+                    torch.distributed.barrier()
+
+                if args.train:
+                    rd = train(args, model, train_dataset, valid_dataset, test_dataset, logger)
+
+                if args.local_rank in [0, -1]:
+                    if not args.kaggle:
+                        # to test on full dataset
+                        rd = test(args, test_dataset, logger, tokenizer)
+                    # else Kaggle way: to report main performance on validation set
+
+                for m in metrics:
+                    result_dict[m].append(rd[m])
+                    
+                logger.info("Finish training and testing!")
+
+                if args.local_rank != -1:
+                    torch.distributed.destroy_process_group()
+        for m in metrics:
+            result_dict[m] = np.mean(np.array(result_dict[m]))
+        # report average
+        logger.info(f'Final test average: {result_dict}')
+        pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info(f'Total trainable parameters: {pytorch_total_params}')
     else:
-        # build a train:valid:test split
-        num_entries = args.num_entries
-        print("Total # of data points: {}".format(num_entries))
-        idx = np.random.permutation(num_entries)
-        thresh = int(0.1 * num_entries)
-        # call splits based on their indices
-        train_split = list(idx[0:(8 * thresh)])
-        valid_split = list(idx[(8 * thresh):(9 * thresh)])
-        test_split = list(idx[(9 * thresh):])
-        train_split = train_split[:50]
-        valid_split = valid_split[:10]
-        test_split = test_split[:10]
-        train_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=train_split)
-        valid_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=valid_split)
-        test_dataset = T5CNNDataset(dataset_args, tokenizer, args, split=test_split)
+        model, tokenizer = load_model(args)
+        if args.dataset_name in dataset_names:
+            train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='train')
+            valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='validation')
+            test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
+        else:
+            # build a train:valid:test split
+            num_entries = args.num_entries
+            print("Total # of data points: {}".format(num_entries))
+            idx = np.random.permutation(num_entries)
+            thresh = int(0.1 * num_entries)
+            # call splits based on their indices
+            train_split = list(idx[0:(8 * thresh)])
+            valid_split = list(idx[(8 * thresh):(9 * thresh)])
+            test_split = list(idx[(9 * thresh):])
+            train_split = train_split[:50]
+            valid_split = valid_split[:10]
+            test_split = test_split[:10]
+            train_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=train_split)
+            valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=valid_split)
+            test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split=test_split)
 
-    # Barrier to make sure all process train the model simultaneously.
-    if args.local_rank != -1:
-        torch.distributed.barrier()
+        # Barrier to make sure all process train the model simultaneously.
+        if args.local_rank != -1:
+            torch.distributed.barrier()
 
-    if args.train:
-        train(args, model, train_dataset, valid_dataset, test_dataset, logger)
+        if args.train:
+            train(args, model, train_dataset, valid_dataset, test_dataset, logger)
 
-    if args.local_rank in [0, -1]:
-        test(args, test_dataset, logger, tokenizer)
-    logger.info("Finish training and testing!")
+        if args.local_rank in [0, -1]:
+            test(args, test_dataset, logger, tokenizer)
+        logger.info("Finish training and testing!")
 
-    if args.local_rank != -1:
-        torch.distributed.destroy_process_group()
+        if args.local_rank != -1:
+            torch.distributed.destroy_process_group()
 
 
 
