@@ -108,7 +108,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     model.train()
     alllosses=[]
     logger.info("Epoch 0 validation")
-    dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, 0, logger)
+    dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, 0)
     model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
         logger.info(">>>>> New epoch, epoch {} / {}".format(i + 1, args.max_epoch))
@@ -157,38 +157,30 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
 
                 if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
-                    dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i,logger)
+                    dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i)
                     model.train()
 
-                if args.local_rank in [0, -1] and global_step % args.save_step == 0:
-                    save_model(model, args, global_step)
-                    model.train()
-        
+        mean_loss = np.mean(allloss)
+        logger.info("Mean training loss: {:.4f}".format(mean_loss))
         if args.local_rank in [0, -1]:
-            alllosses.append(np.mean(allloss))
-            dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
-            save_model(model, args, global_step)
+            dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i)
             model.train()
 
     logger.info('finish training')
-    if args.local_rank in [0, -1]:
-        save_model(model, args, global_step)
     
     return result_dict
 
 
-def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scaler, i, logger):
-    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
-        model = modeltoeval.module
+def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
+    if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+        model = model.module
     else:
-        model = modeltoeval
+        model = model
     model.eval()
     allytrue = []
     allypred = []
     with torch.no_grad():
-        for step, batch in tqdm(enumerate(valid_dataloader)):
-            #logger.info(step)
-            
+        for step, batch in tqdm(enumerate(valid_dataloader)):            
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
@@ -198,7 +190,6 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
-                # print(f"eval step: {step}")
                 sen, target, preds, _ = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
@@ -215,13 +206,15 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
 
     # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
     # change accordingly
-    result_dict['val_rouge1'].append(rouge_score["rouge1"])
-    if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
-        logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
-        result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
+    mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
+    result_dict['val_mean_rouge'].append(mean_rouge)
+    if result_dict['val_mean_rouge'][-1] > result_dict['best_val_mean_rouge']:
+        logger.info("{} epoch, best epoch was updated! val_mean_rouge: {: >4.5f}".format(i, result_dict['val_mean_rouge'][-1]))
+        result_dict["best_val_mean_rouge"] = result_dict['val_mean_rouge'][-1]
         # also append other rouge scores
+        result_dict['val_rouge1'] = rouge_score["rouge1"]
         result_dict['val_rouge2'] = rouge_score["rouge2"]
-        result_dict['val_rougeL'] = rouge_score["rougeL"]
+        result_dict['val_rougeL'] = rouge_score["rougeLsum"]
         
         result_dict['precision'] = p
         result_dict['recall'] = r
@@ -250,7 +243,7 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
         logger.info("ckpt saved")
 
 
-def test(args, test_dataset, logger, tokenizer):
+def test(args, test_dataset, tokenizer, logger):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(
         args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 

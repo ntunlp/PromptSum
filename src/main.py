@@ -257,7 +257,7 @@ def main(args):
                 if args.local_rank in [0, -1]:
                     if not args.kaggle:
                         # to test on full dataset
-                        rd = test(args, test_dataset, logger, tokenizer)
+                        rd = test(args, test_dataset, tokenizer, logger)
                     # else Kaggle way: to report main performance on validation set
 
                 for m in metrics:
@@ -305,7 +305,7 @@ def main(args):
             train(args, model, train_dataset, valid_dataset, test_dataset, logger)
 
         if args.local_rank in [0, -1]:
-            test(args, test_dataset, logger, tokenizer)
+            test(args, test_dataset, tokenizer, logger)
         logger.info("Finish training and testing!")
 
         if args.local_rank != -1:
