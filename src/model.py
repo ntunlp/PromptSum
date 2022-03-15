@@ -17,13 +17,9 @@ class T5Prompt(nn.Module):
         if args.use_lm_adapted == True:
             print("use lm adapted model!")
             t5ckpt = torch.load(args.lm_adapted_path)
-            if args.if_ckpt_only_model == True:
-                self.model.load_state_dict(t5ckpt)
-            else:
-                self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
-            ### if prompt tuning, set requires_grad false
-            for name, param in self.model.named_parameters():
-                param.requires_grad = False
+        ### if prompt tuning, set requires_grad false
+        for name, param in self.model.named_parameters():
+            param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.prompt_length = 0

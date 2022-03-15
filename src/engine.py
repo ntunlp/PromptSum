@@ -18,8 +18,9 @@ from model_mixture import T5MixPrompt
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from prompting import *
 
-def load_model(args):
 
+
+def load_model(args):
     # base model & tokenizer (use T5)
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir=args.cache_dir)
     tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
@@ -40,7 +41,7 @@ def load_model(args):
             load_prompt(args, model)
             model.to(args.device)
         else:
-            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length_task, args.prompt_length_label)
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length, args.prompt_length_discrete)
             model.to(args.device)
             model.set_prompt_embedding(label_name_embs)
     elif args.model == 'T5Finetune':
@@ -52,9 +53,10 @@ def load_model(args):
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
     return model, tokenizer
 
+
 def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     # total step
-    step_tot = int(0.5 + train_dataset.num_entries / float(args.gradient_accumulation_steps) / args.batch_size_per_gpu / args.n_gpu) * args.max_epoch
+    step_tot = int(np.round((0.5 + (train_dataset.num_entries / (float(args.gradient_accumulation_steps) * args.batch_size_per_gpu * args.n_gpu))))) * args.max_epoch
 
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
 
@@ -105,8 +107,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     model.eval()
     model.train()
     alllosses=[]
+    logger.info("Epoch 0 validation")
+    dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, 0, logger)
+    model.train()
     for i in range(startepoch, startepoch + args.max_epoch):
-        print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
+        logger.info(">>>>> New epoch, epoch {} / {}".format(i + 1, args.max_epoch))
         adjusted_evalstep = args.eval_step
 
         model.train()
@@ -152,9 +157,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
 
                 if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
-                    dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+                    dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i,logger)
                     model.train()
-                    print('back to train')
 
                 if args.local_rank in [0, -1] and global_step % args.save_step == 0:
                     save_model(model, args, global_step)
@@ -162,13 +166,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         
         if args.local_rank in [0, -1]:
             alllosses.append(np.mean(allloss))
-            print("\nEnd of epoch evaluation... loss: {}".format(alllosses))
             dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
             save_model(model, args, global_step)
             model.train()
-            print('back to train')
 
-    print('finish training')
+    logger.info('finish training')
     if args.local_rank in [0, -1]:
         save_model(model, args, global_step)
     
@@ -184,7 +186,6 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
     allytrue = []
     allypred = []
     with torch.no_grad():
-        logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
             #logger.info(step)
             
@@ -245,9 +246,8 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
             ckpt = {
                 't5-base': model_to_save.model.state_dict(),
             }
-        print("about to save")
         torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_best"))
-        print("ckpt saved")
+        logger.info("ckpt saved")
 
 
 def test(args, test_dataset, logger, tokenizer):
@@ -259,7 +259,6 @@ def test(args, test_dataset, logger, tokenizer):
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_dir)
     allckpt = torch.load(args.save_path + "/" + args.save_dir + "/ckptofT5_best")
-    print(allckpt.keys())
     if args.model == 'T5Prompt':
         model = T5Prompt(args, t5model, tokenizer)
         model.prompt_length = allckpt["prompt_length"]
@@ -318,8 +317,8 @@ def test(args, test_dataset, logger, tokenizer):
     result_dict['precision'] = p
     result_dict['recall'] = r
     result_dict['f1'] = f1
+    
     return result_dict
-
 
 
 def display_preds(source, target, preds, ents):
@@ -367,4 +366,5 @@ def entity_eval(ytrue, ypred):
     r = np.mean(all_r)
     f1 = np.mean(all_f1)
     print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
+    
     return p, r, f1

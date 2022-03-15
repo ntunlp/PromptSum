@@ -51,7 +51,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
+                    default="T5MixPrompt", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
@@ -61,15 +61,11 @@ parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
-parser.add_argument("--if_ckpt_only_model", dest="if_ckpt_only_model", type=bool,
-                    default=True, help="If ckpt only contains model. Default: True, only contains model")
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
-                    default=200, help="The number of prompt")
-parser.add_argument("--prompt_length_task", dest="prompt_length_task", type=int,
-                    default=100, help="The number of prompt")
-parser.add_argument("--prompt_length_label", dest="prompt_length_label", type=int,
-                    default=20, help="The number of prompt")
+                    default=200, help="The size of the soft prompt")
+parser.add_argument("--prompt_length_discrete", dest="prompt_length_discrete", type=int,
+                    default=20, help="The size of the discrete prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
 # guidance signal
@@ -102,7 +98,7 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-5, help='learning rate')
+                    default=5e-1, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -225,7 +221,7 @@ def main(args):
             training_seeds = [10, 11]
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
         if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
-            print('subsampling..')
+            logger.info('subsampling..')
             subsample(dataset_args, args, tokenizer, few_shot_seeds, args.few_shot_save_dir)
         # read in saved few-shot datasets
         datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
@@ -237,15 +233,19 @@ def main(args):
         for m in metrics:
             result_dict[m] = []
         # for each subsampled dataset
+        count = 0
         for (train_dataset, valid_dataset) in datasets:
+            logger.info("Dataset {} / {}".format(count + 1, len(datasets)))
             # for each training seed
             for t_seed in training_seeds:
-                print(f'Training few shot model with training_seed {t_seed}')
+                logger.info(f'Training few shot model with training_seed {t_seed}')
                 args.seed = t_seed
                 seed_everything(args)
                 
                 # load model
                 model, tokenizer = load_model(args)
+                n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                logger.info("The model has {} trainable parameters".format(n_params))
 
                 # Barrier to make sure all process train the model simultaneously.
                 if args.local_rank != -1:
@@ -267,6 +267,7 @@ def main(args):
 
                 if args.local_rank != -1:
                     torch.distributed.destroy_process_group()
+            count += 1
         for m in metrics:
             result_dict[m] = np.mean(np.array(result_dict[m]))
         # report average
