@@ -217,7 +217,7 @@ def main(args):
             few_shot_seeds = [0]
             training_seeds = [10]
         else:
-            few_shot_seeds = [0, 1, 2, 3, 4]
+            few_shot_seeds = [0, 1, 2, 3, 4] #[0, 1, 2, 3, 4]
             training_seeds = [10, 11]
         test_dataset = T5CNNDataset(dataset_args, args, tokenizer, split='test')
         if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
@@ -226,7 +226,7 @@ def main(args):
         # read in saved few-shot datasets
         datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         if args.kaggle:
-            metrics = ['best_val_mean_rouge', 'val_mean_rouge', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+            metrics = ['best_val_mean_rouge', 'val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         else:
             metrics = ['test_rouge1', 'test_rouge2', 'test_rougeL', 'precision', 'recall', 'f1']
         result_dict = {}
@@ -272,8 +272,6 @@ def main(args):
             result_dict[m] = np.mean(np.array(result_dict[m]))
         # report average
         logger.info(f'Final test average: {result_dict}')
-        pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info(f'Total trainable parameters: {pytorch_total_params}')
     else:
         model, tokenizer = load_model(args)
         if args.dataset_name in dataset_names:
