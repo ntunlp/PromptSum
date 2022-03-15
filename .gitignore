@@ -3,3 +3,7 @@ src/log
 src/t5_ckpt
 src/saved_models/*
 src/temp/*
+src/BERT-tagger/__pycache__
+src/BERT-tagger/sumdata
+src/BERT-tagger/out_base
+src/BERT-tagger/output

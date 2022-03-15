@@ -27,7 +27,7 @@ do
           --adam_epsilon 1e-8 \
           --warmup_steps 0.01 \
           --use_lm_adapted 1 \
-          --lm_adapted_path /export/home/prompting/lm_adapted_models/t5.1.1.lm100k.base/pytorch_model.bin\
+          --lm_adapted_path /data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin\
           --prompt_length 100 \
           --prompt_length_task 100\
           --ifckpt_onlymodel 1\
