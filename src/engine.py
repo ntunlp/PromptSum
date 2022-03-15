@@ -104,6 +104,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     global_step = 0
     model.eval()
     model.train()
+    alllosses=[]
     for i in range(startepoch, startepoch + args.max_epoch):
         print("\n>>>>>>>>>>>>>>New epoch<<<<<<<<<<<<<<\n")
         adjusted_evalstep = args.eval_step
@@ -160,7 +161,8 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     model.train()
         
         if args.local_rank in [0, -1]:
-            print("\nEnd of epoch evaluation...")
+            alllosses.append(np.mean(allloss))
+            print("\nEnd of epoch evaluation... loss: {}".format(alllosses))
             dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
             save_model(model, args, global_step)
             model.train()
@@ -200,12 +202,17 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
                 allypred.extend(predres)
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+    # only print the mid fmeasure to make the results more readable
+    for k in rouge_score.keys():
+        rouge_score[k] = rouge_score[k].mid.fmeasure
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
     entity_eval(allytrue, allypred)
 
-    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    # change accordingly
+    result_dict['val_rouge1'].append(rouge_score["rouge1"])
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
         logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i,result_dict['val_rouge1'][-1]))
         result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
