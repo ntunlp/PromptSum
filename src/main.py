@@ -77,7 +77,7 @@ parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=in
                     default=100, help="max guidance sequence length")
 # 1 - entities
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
-                    default=True, help="whether to filter ents based on the frequency")
+                    default=False, help="whether to filter ents based on the frequency")
 parser.add_argument("--build_ents_freq", dest="build_ents_freq", type=bool,
                     default=False, help="whether to build the entities frequency dictionary")
 parser.add_argument("--ents_freq_max_len", dest="ents_freq_max_len", type=int,
