@@ -1,28 +1,19 @@
 from __future__ import absolute_import, division, print_function
-
 import argparse
-import csv
 import gc
-import json
 import logging
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-import random
-import sys
 
 import numpy as np
-import torch
 import torch.nn.functional as F
 from transformers import (AdamW, BertConfig, BertForTokenClassification, BertTokenizer,
                                   get_linear_schedule_with_warmup)
-from torch import nn
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
-
 from seqeval.metrics import classification_report,f1_score
-
 from utils import *
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -416,30 +407,10 @@ def main():
                         type=int,
                         default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
-    parser.add_argument('--fp16',
-                        action='store_true',
-                        help="Whether to use 16-bit float precision instead of 32-bit")
-    parser.add_argument('--fp16_opt_level', type=str, default='O1',
-                        help="For fp16: Apex AMP optimization level selected in ['O0', 'O1', 'O2', and 'O3']."
-                             "See details at https://nvidia.github.io/apex/amp.html")
-    parser.add_argument('--loss_scale',
-                        type=float, default=0,
-                        help="Loss scaling to improve fp16 numeric stability. Only used when fp16 set to True.\n"
-                             "0 (default value): dynamic loss scaling.\n"
-                             "Positive power of 2: static loss scaling value.\n")
-    parser.add_argument('--server_ip', type=str, default='', help="Can be used for distant debugging.")
-    parser.add_argument('--server_port', type=str, default='', help="Can be used for distant debugging.")
 
     parser.add_argument('--sumdata', type=str, default='./sumdata/cnndm/0_42', help="The path of original sum data.")
 
     args = parser.parse_args()
-
-    if args.server_ip and args.server_port:
-        # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
-        import ptvsd
-        print("Waiting for debugger attach")
-        ptvsd.enable_attach(address=(args.server_ip, args.server_port), redirect_output=True)
-        ptvsd.wait_for_attach()
 
     processors = {"ner":NerProcessor}
 
@@ -452,8 +423,7 @@ def main():
         n_gpu = 1
         # Initializes the distributed backend which will take care of sychronizing nodes/GPUs
         torch.distributed.init_process_group(backend='nccl')
-    logger.info("device: {} n_gpu: {}, distributed training: {}, 16-bits training: {}".format(
-        device, n_gpu, bool(args.local_rank != -1), args.fp16))
+    logger.info("device: {} n_gpu: {}, distributed training: {}".format(device, n_gpu, bool(args.local_rank != -1)))
 
 
     random.seed(args.seed)
@@ -475,15 +445,15 @@ def main():
     model.to(device)
 
     #####load original sum data and process it: seperate it to document + summary.
-    sumdatapath = args.sumdata
+    sumdatapath = args.sumdata  ####default: ./sumdata/cnndm/0_42   get_doc_and_sum function use 'train.txt' and 'valid.txt' under this folder
     usetrain = True
     usevalid = True
     docfile, sumfile = get_doc_and_sum(sumdatapath, usetrain, usevalid)
-    print(docfile,sumfile)
-    #####handle sumpath to conll format and use NER model to label it
+
+    #####handle sumfile to fake conll format and use NER model to label it
     sumwithfakelabel = sumdatapath + "/sumwithfakelabel.txt"
     allsumwithfakelabeldata = getfilewithlabel(sumfile, sumwithfakelabel)
-    #exit -1
+
     #####use sumwithfakelabel as test file to get the predicted label
     sum_examples = processor.get_sum_examples(sumwithfakelabel)
     sum_features = convert_examples_to_features(sum_examples, label_list, args.max_seq_length, tokenizer)
@@ -498,7 +468,6 @@ def main():
     sum_lmask_ids = torch.tensor([f.label_mask for f in sum_features], dtype=torch.long)
     sum_eval_data = TensorDataset(sum_input_ids, sum_input_mask, sum_segment_ids, sum_label_ids, sum_valid_ids,
                               sum_lmask_ids)
-    # Run prediction for full data
     sum_eval_sampler = SequentialSampler(sum_eval_data)
     sum_eval_dataloader = DataLoader(sum_eval_data, sampler=sum_eval_sampler, batch_size=args.test_batch_size)
     model.eval()
@@ -539,14 +508,10 @@ def main():
     del model, tokenizer
     gc.collect()
 
-    print(len(sum_y_pred))
-    print(len(allsumwithfakelabeldata))
     for i in range(len(sum_y_pred)):
-        #print(sum_y_pred[i])
-        #print(allsumwithfakelabeldata[i])
         if len(sum_y_pred[i]) != len(allsumwithfakelabeldata[i]):
             print("a error!")
-    #exit -1
+
     ####get all entities from sum_y_pred and allsumwithfakelabeldata. One problem: sum_y_pred might be wrong
     allentitylist = []
     alltypelist = []
@@ -574,16 +539,9 @@ def main():
             onetypelist.append(' '.join(currenttype))
         allentitylist.append(oneentitylist)
         alltypelist.append(onetypelist)
-        # print(sum_y_pred[i])
-        # print(oneentitylist)
-        # print(onetypelist)
-    print(len(allentitylist))
+
     ####combine doc and entities
     alldocres = getdocandent(docfile,allentitylist,alltypelist)
-    print(len(alldocres))
-
-    #for one in alldocres:
-    #    print(one)
 
     ######get label for document
     alldocandlabel = []
@@ -594,17 +552,14 @@ def main():
         doclabel = ['O' for m in range(length)]
         oneent = onedata[1].split('!')
         onetype = onedata[2].split('?')
-        #print(onedoc,oneent,onetype)
         assert len(oneent) == len(onetype)
         for j in range(len(oneent)):
             enttouse = oneent[j]
             typetouse = onetype[j]
-            #print(enttouse)
             if enttouse.lower() in onedoc.lower():
                 ###add label
                 typelist = typetouse.split(' ')
                 allindex = getindex(enttouse, onedoc)
-                #print(allindex, typelist)
                 for oneindex in allindex:
                     for m in range(len(typelist)):
                         doclabel[oneindex[m]] = typelist[m]
@@ -613,6 +568,7 @@ def main():
         assert len(onedoc.split(' ')) == len(doclabel)
         #####onedoc doclabel
         alldocandlabel.append([onedoc.split(' '), doclabel])
+
     print(len(alldocandlabel))
 
     docwithlabel_train = sumdatapath + "/docwithlabel_train.txt"
@@ -636,7 +592,6 @@ def main():
             fout_1.write("\n")
     fout.close()
     fout_1.close()
-
 
     ###train
     if args.gradient_accumulation_steps < 1:
@@ -665,6 +620,7 @@ def main():
         torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
 
     # Prepare model
+
     model = Ner.from_pretrained(args.load_dir)
 
     if args.local_rank == 0:
@@ -681,15 +637,7 @@ def main():
     warmup_steps = int(args.warmup_proportion * num_train_optimization_steps)
     optimizer = AdamW(optimizer_grouped_parameters, lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_train_optimization_steps)
-    #scheduler = None
-    if args.fp16:
-        try:
-            from apex import amp
-        except ImportError:
-            raise ImportError("Please install apex from https://www.github.com/nvidia/apex to use fp16 training.")
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.fp16_opt_level)
 
-    # multi-gpu training (should be after apex fp16 initialization)
     if n_gpu > 1:
         model = torch.nn.DataParallel(model)
 
@@ -699,9 +647,6 @@ def main():
                                                           find_unused_parameters=True)
 
     global_step = 0
-    nb_tr_steps = 0
-    tr_loss = 0
-    label_map = {i : label for i, label in enumerate(label_list,1)}
     if args.do_train:
         train_features = convert_examples_to_features(
             train_examples, label_list, args.max_seq_length, tokenizer)
@@ -737,36 +682,12 @@ def main():
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
 
-                if args.fp16:
-                    with amp.scale_loss(loss, optimizer) as scaled_loss:
-                        scaled_loss.backward()
-                    torch.nn.utils.clip_grad_norm_(amp.master_params(optimizer), args.max_grad_norm)
-                else:
-                    loss.backward()
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
 
                 tr_loss += loss.item()
                 nb_tr_examples += input_ids.size(0)
                 nb_tr_steps += 1
-
-
-                # label_ids_cpu = label_ids.to('cpu').numpy()
-                # y_true = []
-                # for i, label in enumerate(label_ids_cpu):
-                #     temp_1 = []
-                #     for j, m in enumerate(label):
-                #         if j == 0:
-                #             continue
-                #         elif label_ids_cpu[i][j] == len(label_map):
-                #             y_true.append(temp_1)
-                #             break
-                #         else:
-                #             temp_1.append(label_map[label_ids_cpu[i][j]])
-                #
-                # alltokens = []
-                # for oneindex in range(input_ids.size(0)):
-                #     alltokens.append(tokenizer.convert_ids_to_tokens(input_ids[oneindex]))   ####包含[CLS], [SEP]和[PAD],是分词之后的token (一个词可能已经分成了两个token)
-                # print(alltokens)
 
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     optimizer.step()
@@ -774,88 +695,16 @@ def main():
                         scheduler.step()  # Update learning rate schedule
                     model.zero_grad()
                     global_step += 1
-            #if i > 2 and args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
             if i >= 0 and args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
                 eval_examples = processor.get_dev_examples(args.data_dir)
                 thisevalscore = dooneeval(model,eval_examples,label_list,args,tokenizer,device)
                 if thisevalscore > bestevalscore:
-                #if True:
                     logger.info('save best model')
                     bestevalscore = thisevalscore
                     #save
                     model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
                     model_to_save.save_pretrained(args.output_dir)
                     tokenizer.save_pretrained(args.output_dir)
-        model = Ner.from_pretrained(args.output_dir)
-        tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-    else:
-        # Load a trained model and vocabulary that you have fine-tuned
-        model = Ner.from_pretrained(args.output_dir)
-        tokenizer = BertTokenizer.from_pretrained(args.output_dir, do_lower_case=args.do_lower_case)
-
-    model.to(device)
-    #if args.do_eval and (args.local_rank == -1 or torch.distributed.get_rank() == 0):
-    if False:
-        #test
-        eval_examples = processor.get_test_examples(args.data_dir)
-        eval_features = convert_examples_to_features(eval_examples, label_list, args.max_seq_length, tokenizer)
-        logger.info("***** Running test *****")
-        logger.info("  Num examples = %d", len(eval_examples))
-        logger.info("  Batch size = %d", args.test_batch_size)
-        all_input_ids = torch.tensor([f.input_ids for f in eval_features], dtype=torch.long)
-        all_input_mask = torch.tensor([f.input_mask for f in eval_features], dtype=torch.long)
-        all_segment_ids = torch.tensor([f.segment_ids for f in eval_features], dtype=torch.long)
-        all_label_ids = torch.tensor([f.label_id for f in eval_features], dtype=torch.long)
-        all_valid_ids = torch.tensor([f.valid_ids for f in eval_features], dtype=torch.long)
-        all_lmask_ids = torch.tensor([f.label_mask for f in eval_features], dtype=torch.long)
-        eval_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids,all_valid_ids,all_lmask_ids)
-        # Run prediction for full data
-        eval_sampler = SequentialSampler(eval_data)
-        eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.test_batch_size)
-        model.eval()
-        eval_loss, eval_accuracy = 0, 0
-        nb_eval_steps, nb_eval_examples = 0, 0
-        y_true = []
-        y_pred = []
-        label_map = {i : label for i, label in enumerate(label_list,1)}
-        for input_ids, input_mask, segment_ids, label_ids,valid_ids,l_mask in tqdm(eval_dataloader, desc="Evaluating"):
-            input_ids = input_ids.to(device)
-            input_mask = input_mask.to(device)
-            segment_ids = segment_ids.to(device)
-            valid_ids = valid_ids.to(device)
-            label_ids = label_ids.to(device)
-            l_mask = l_mask.to(device)
-
-            with torch.no_grad():
-                logits = model(input_ids, segment_ids, input_mask,valid_ids=valid_ids,attention_mask_label=l_mask)
-
-            logits = torch.argmax(F.log_softmax(logits,dim=2),dim=2)
-            logits = logits.detach().cpu().numpy()
-            label_ids = label_ids.to('cpu').numpy()
-            input_mask = input_mask.to('cpu').numpy()
-
-            for i, label in enumerate(label_ids):
-                temp_1 = []
-                temp_2 = []
-                for j,m in enumerate(label):
-                    if j == 0:
-                        continue
-                    elif label_ids[i][j] == len(label_map):
-                        y_true.append(temp_1)
-                        y_pred.append(temp_2)
-                        break
-                    else:
-                        temp_1.append(label_map[label_ids[i][j]])
-                        temp_2.append(label_map[logits[i][j]])
-
-        report = classification_report(y_true, y_pred,digits=4)
-        logger.info("\n%s", report)
-        output_eval_file = os.path.join(args.output_dir, "test_results.txt")
-        with open(output_eval_file, "w") as writer:
-            logger.info("***** Test results *****")
-            logger.info("\n%s", report)
-            writer.write(report)
-
 
 if __name__ == "__main__":
     main()
