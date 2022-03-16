@@ -141,6 +141,8 @@ parser.add_argument("--save_dir", dest="save_dir", type=str,
                     default="t5_ckpt", help="ckpt dir to save")
 parser.add_argument("--display_preds", dest="display_preds", type=bool,
                     default=False, help="whether to display predictions during training")
+parser.add_argument("--stemmer", dest="stemmer", type=bool,
+                    default=True, help="stemmer for ROUGE evaluation")
 
 args = parser.parse_args()
 
@@ -151,6 +153,7 @@ text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
 summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
 validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
 test_keys = ["test", "test", "", "test", "test", "test"]
+highlights = [True, False, False, False, False, False]
 
 idx = dataset_names.index(args.dataset_name)
 if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -164,6 +167,7 @@ args.text_key = text_keys[idx]
 args.summary_key = summary_keys[idx]
 args.validation_key = validation_keys[idx]
 args.test_key = test_keys[idx]
+args.highlights = highlights[idx]
 args.save_path = f"../../saved_models/{save_name}/t5_base_{args.model}/"
 os.makedirs(args.save_path, exist_ok=True)
 if args.few_shot:

@@ -204,13 +204,14 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
     #for k in rouge_score.keys():
     #    rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
     # 2nd method
-    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = False)
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for i in range(len(allytrue)):
         label = allytrue[i]
         summary = allypred[i]
-        label = "\n".join(sent_tokenize(label))
-        summary = "\n".join(sent_tokenize(summary))
+        if args.highlights:
+            label = "\n".join(sent_tokenize(label))
+            summary = "\n".join(sent_tokenize(summary))
         rouge_score = scorer.score(label, summary)
         r1s.append(rouge_score["rouge1"].fmeasure)
         r2s.append(rouge_score["rouge2"].fmeasure)
