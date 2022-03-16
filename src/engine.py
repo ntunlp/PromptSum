@@ -42,7 +42,7 @@ def load_model(args):
             load_prompt(args, model)
             model.to(args.device)
         else:
-            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length, args.prompt_length_discrete)
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length)
             model.to(args.device)
             model.set_prompt_embedding(label_name_embs)
     elif args.model == 'T5Finetune':
@@ -52,6 +52,7 @@ def load_model(args):
         model.to(args.device)
     else:
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
+        
     return model, tokenizer
 
 

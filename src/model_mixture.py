@@ -38,15 +38,21 @@ class T5MixPrompt(nn.Module):
         prompt_embs = []
         for idx in range(batchsize):
             prompt_embs.append(self._construct_prompt(ent_ids[idx]).unsqueeze(0))
+
         return torch.cat(prompt_embs, 0)
     
     def _construct_prompt(self, ent_ids):
         prompt_emb = []
         # append task soft prompt 
-        prompt_emb.append(self.prompt_dict['__task__'])
+        soft_prompt = self.prompt_dict['__task__']
+        print("soft prompt", soft_prompt.shape)
+        prompt_emb.append(soft_prompt)
         # append ent fixed prompt
         if ent_ids.nelement() > 0: # possibly encounter empty entity guidance
-            prompt_emb += [self.model.encoder.embed_tokens(ent_ids)]
+            discrete_prompt = self.model.encoder.embed_tokens(ent_ids)
+            print("discrete_prompt", discrete_prompt.shape)
+            prompt_emb.append(discrete_prompt)
+
         return torch.cat(prompt_emb, 0)
 
     def _step(
@@ -68,6 +74,7 @@ class T5MixPrompt(nn.Module):
         if self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -89,6 +96,7 @@ class T5MixPrompt(nn.Module):
             labels_set=labels_set,
         )
         loss = outputs[0]
+
         return loss
 
     def _generative_step(self, batch):
@@ -126,6 +134,7 @@ class T5MixPrompt(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         ents = self.ids_to_clean_text(batch["input_ents"])
+
         return input, target, preds, ents
 
     
@@ -133,8 +142,10 @@ class T5MixPrompt(nn.Module):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+
         return self.lmap(str.strip, gen_text)
 
     def lmap(self, f, x):
         """list(map(f, x))"""
+
         return list(map(f, x))

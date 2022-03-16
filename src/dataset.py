@@ -14,6 +14,7 @@ from rouge_score import rouge_scorer
 from guidance import *
 
 
+
 class T5CNNDataset(Dataset):
     def __init__(self, dataset_args, args, tokenizer, split, data = None, subsample = False):
         '''
@@ -86,9 +87,11 @@ class T5CNNDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
+        
         return self.num_entries
 
 
@@ -117,6 +120,7 @@ class SmartBatchingCollate:
             pad_token_id=self._pad_token_id
         )
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
+        
         return output
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -148,6 +152,7 @@ class SmartBatchingCollate:
 
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+       
         return padded_sequences, attention_masks
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -168,6 +173,7 @@ class SmartBatchingCollate:
             attention_masks.append(attention_mask)
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+        
         return padded_sequences,attention_masks
 
 
@@ -188,7 +194,9 @@ def get_dataloader(num_workers,dataset, batch_size, max_length, max_guidance_len
         num_workers=num_workers,
         pin_memory=True
     )
+    
     return dataloader
+
 
 def subsample(dataset_args, args, tokenizer, few_shot_seeds, save_path):
     '''
@@ -217,6 +225,7 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds, save_path):
     # convert to original seed
     np.random.seed(args.seed)
 
+
 def read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, save_path):
     '''
     This function reads in the few-shot datasets saved at save_path
@@ -234,4 +243,15 @@ def read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, save_path):
         train_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'train', data = train_data, subsample = True)
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'valid', data = valid_data, subsample = True)
         datasets.append((train_dataset, valid_dataset))
+    
     return datasets
+
+
+
+
+
+
+
+
+
+    

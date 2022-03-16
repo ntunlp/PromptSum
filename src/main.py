@@ -64,8 +64,6 @@ parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                     default=200, help="The size of the soft prompt")
-parser.add_argument("--prompt_length_discrete", dest="prompt_length_discrete", type=int,
-                    default=20, help="The size of the discrete prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
 # guidance signal
@@ -176,7 +174,7 @@ if args.few_shot:
 
 # print args
 print(args)
-print ("ckpt path", args.ckpt_path)
+print("ckpt path", args.ckpt_path)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -185,7 +183,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-
     # set seed
     seed_everything(args)
 
@@ -316,6 +313,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-
     main(args)
 
