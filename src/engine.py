@@ -198,12 +198,7 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    # 1st method
-    #rouge = load_metric('rouge')
-    #rouge_score = rouge.compute(references=[x.lower() for x in allytrue], predictions=[x.lower() for x in allypred])
-    #for k in rouge_score.keys():
-    #    rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
-    # 2nd method
+    # Google ROUGE package
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for i in range(len(allytrue)):
