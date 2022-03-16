@@ -17,6 +17,7 @@ from model_finetune import T5Finetune
 from model_mixture import T5MixPrompt
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from prompting import *
+from rouge_score import rouge_scorer
 
 
 
@@ -197,11 +198,28 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
-    # only print the mid fmeasure to make the results more readable
-    for k in rouge_score.keys():
-        rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
+    # 1st method
+    #rouge = load_metric('rouge')
+    #rouge_score = rouge.compute(references=[x.lower() for x in allytrue], predictions=[x.lower() for x in allypred])
+    #for k in rouge_score.keys():
+    #    rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
+    # 2nd method
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = False)
+    r1s, r2s, rls = [], [], []
+    for i in range(len(allytrue)):
+        label = allytrue[i]
+        summary = allypred[i]
+        label = "\n".join(sent_tokenize(label))
+        summary = "\n".join(sent_tokenize(summary))
+        rouge_score = scorer.score(label, summary)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+    rouge_score = {
+        "rouge1": 100 * np.mean(r1s),
+        "rouge2": 100 * np.mean(r2s),
+        "rougeLsum": 100 * np.mean(rls)
+    }
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
