@@ -43,7 +43,7 @@ class T5CNNDataset(Dataset):
         self.maxlen = args.max_length
         self.num_entries = len(self.data)
 
-        if args.guidance_type == "ents":
+        if args.discrete_type == "entities":
             self.spacy_nlp = spacy.load("en_core_web_sm")
             if args.build_ents_freq and split.startswith("train"):
                 print("building entities frequency...")
@@ -53,7 +53,7 @@ class T5CNNDataset(Dataset):
             else:
                 self.ents_freq = pickle.load(open("ents_freq.pkl", "rb"))
                 print("loaded the entities frequency! There are {} entities".format(len(self.ents_freq.keys())))
-        elif args.guidance_type == "sents":
+        elif args.guidance_type == "sentences":
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
 
     def __getitem__(self, idx):
@@ -63,8 +63,8 @@ class T5CNNDataset(Dataset):
         # guidance
         input_guidance = "None"
         # 1st option: based on entities
-        if self.args.guidance_type == "ents":
-            if self.args.guidance_mode == 'oracle':
+        if self.args.discrete_type == "entities":
+            if self.args.salient_mode == 'oracle':
                 ents_x = self.spacy_nlp(inputdata).ents
                 ents_x = [ent.text for ent in ents_x]
                 ents_y = self.spacy_nlp(targetdata).ents
@@ -79,7 +79,7 @@ class T5CNNDataset(Dataset):
                     ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
                 input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
         # 2nd option: based on salient sentences
-        elif self.args.guidance_type == "sents":
+        elif self.args.discrete_type == "sentences":
             salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
             input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
         # print(input_guidance)

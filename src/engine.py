@@ -65,11 +65,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(
-        args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         train_dataset.tokenizer.pad_token_id, train_sampler
     )
     valid_dataloader = get_dataloader(
-        args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         valid_dataset.tokenizer.pad_token_id, valid_sampler
     )
 
@@ -264,7 +264,7 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
 def test(args, test_dataset, tokenizer, logger):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(
-        args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         test_dataset.tokenizer.pad_token_id, test_sampler
     )
 

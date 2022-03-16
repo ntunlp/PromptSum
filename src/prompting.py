@@ -41,7 +41,7 @@ def get_prompt_embedding(model, tokenizer, prompt_length):
     return promptinitembedding
 
 
-def get_mix_prompt_embedding(model, tokenizer):
+def get_mix_prompt_embedding(model, tokenizer, prompt_length):
     def sample_top_k_tokens(topk, t5_embedding):
         with open('allnumber.pickle', 'rb') as fr:
             alltokens = pickle.load(fr)
@@ -71,7 +71,7 @@ def get_mix_prompt_embedding(model, tokenizer):
     t5_embedding = model.model.get_input_embeddings()
     embeddingres = get_embs("summarize this article:", t5_embedding)
     embs_dict = {}
-    embs_dict['__task__'] = next(sample_top_k_tokens(task_prompt_length, t5_embedding))
+    embs_dict['__task__'] = next(sample_top_k_tokens(prompt_length, t5_embedding))
     embs_dict['__task__'][:embeddingres.size(0)] = embeddingres # set meaningful initial tokens 
     
     return embs_dict

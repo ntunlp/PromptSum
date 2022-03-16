@@ -66,13 +66,13 @@ parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                     default=200, help="The size of the soft prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
-# guidance signal
-parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                    default="ents", help="What kind of guidance as discrete entities. In [None, ents, sents]")
-parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+# discrete prompt
+parser.add_argument("--discrete_type", dest="discrete_type", type=str,
+                    default="entities", help="What kind of guidance as discrete entities. In [None, entities, sentences]")
+parser.add_argument("--salient_mode", dest="salient_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
-parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=100, help="max guidance sequence length")
+parser.add_argument("--discrete_prompt_length", dest="discrete_prompt_length", type=int,
+                    default=100, help="number of tokens for the discrete prompt")
 # 1 - entities
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                     default=False, help="whether to filter ents based on the frequency")

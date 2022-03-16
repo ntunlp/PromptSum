@@ -45,14 +45,12 @@ class T5MixPrompt(nn.Module):
         prompt_emb = []
         # append task soft prompt 
         soft_prompt = self.prompt_dict['__task__']
-        print("soft prompt", soft_prompt.shape)
         prompt_emb.append(soft_prompt)
         # append ent fixed prompt
         if ent_ids.nelement() > 0: # possibly encounter empty entity guidance
             discrete_prompt = self.model.encoder.embed_tokens(ent_ids)
-            print("discrete_prompt", discrete_prompt.shape)
             prompt_emb.append(discrete_prompt)
-
+        
         return torch.cat(prompt_emb, 0)
 
     def _step(
@@ -60,7 +58,6 @@ class T5MixPrompt(nn.Module):
     ):
         ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        
         prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
         prompt_length = prompt_embedding.size(1)
         if ent_attention_mask is None:
