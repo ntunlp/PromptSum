@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+#os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import argparse
 import time
 import logging
@@ -39,7 +39,7 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
-                    default='/data/mathieu/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
+                    default='/data/qin/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
                     default=False, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
 parser.add_argument("--kaggle", dest="kaggle", type=bool,
@@ -59,7 +59,7 @@ parser.add_argument("--cache_dir", dest="cache_dir", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
@@ -106,7 +106,7 @@ parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=32, help="gradient accumulation steps")
+                    default=1, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                     default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
@@ -143,6 +143,14 @@ parser.add_argument("--display_preds", dest="display_preds", type=bool,
                     default=False, help="whether to display predictions during training")
 parser.add_argument("--stemmer", dest="stemmer", type=bool,
                     default=True, help="stemmer for ROUGE evaluation")
+
+##### BERT tagger
+parser.add_argument("--train_bert_tagger", dest="train_bert_tagger", type=bool,
+                    default=False, help="whether finetune a BERT tagger using the fewshot summarization data")
+parser.add_argument("--pretrain_bert_path", dest="pretrain_bert_path", type=str,
+                    default='./tagger/out_base/', help="The path of bert pretrained on conll")
+parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
+                    default=True, help="whether use a bert tagger")
 
 args = parser.parse_args()
 
@@ -188,7 +196,6 @@ def main(args):
 
     # set seed
     seed_everything(args)
-
     # set cuda
     if torch.cuda.is_available():
         if args.local_rank == -1:
@@ -227,6 +234,16 @@ def main(args):
         if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
             logger.info('subsampling..')
             subsample(dataset_args, args, tokenizer, few_shot_seeds, args.few_shot_save_dir)
+
+        # handle few-shot data for BERT tagger
+        if args.train_bert_tagger:
+            #####get data
+            alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+            #print(alltrainfile, allvalidfile)
+            #####fine-tune tagger
+            #exit -1
+            train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        #exit -1
         # read in saved few-shot datasets
         datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         if args.kaggle:
@@ -257,7 +274,7 @@ def main(args):
 
                 if args.train:
                     rd = train(args, model, train_dataset, valid_dataset, test_dataset, logger)
-
+                #exit -1
                 if args.local_rank in [0, -1]:
                     if not args.kaggle:
                         # to test on full dataset
