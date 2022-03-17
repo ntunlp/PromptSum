@@ -104,15 +104,13 @@ parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=32, help="gradient accumulation steps")
+                    default=1, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                     default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
-                    default=1.0, help="max grad norm")
 
 ##### generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,

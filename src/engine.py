@@ -73,9 +73,13 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         valid_dataset.tokenizer.pad_token_id, valid_sampler
     )
 
-    base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
-                                "weight_decay": args.weight_decay,
-                                "scale_parameter": False, "relative_step": False}
+    base_optimizer_arguments = {
+        "lr": args.lr, 
+        "decay_rate": -0.8,
+        "weight_decay": args.weight_decay,                        
+        "scale_parameter": False, 
+        "relative_step": False
+    }
     if args.model == 'T5Finetune':
         optimizer = AdamW
         base_optimizer_arguments = {"lr": args.lr, "weight_decay": args.weight_decay}
@@ -145,11 +149,9 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
                     #scaler.unscale_(optimizer)
-                    #optimizer.clip_grad_norm(args.max_grad_norm)
                     scaler.step(optimizer)
                     scaler.update()
                 else:
-                    #nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                     optimizer.step()
                 if scheduler != None:
                     scheduler.step()
@@ -157,7 +159,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
-                    #logger.info("step: %d, shcedule: %.3f, loss: %.6f" % (global_step, global_step/step_tot, np.average(allloss)))
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, epoch: %d" % (
                     global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
 
