@@ -18,13 +18,9 @@ class T5MixPrompt(nn.Module):
         if args.use_lm_adapted == True:
             print("use lm adapted model!")
             t5ckpt = torch.load(args.lm_adapted_path)
-            if args.if_ckpt_only_model == True:
-                self.model.load_state_dict(t5ckpt)
-            else:
-                self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
-            ### if prompt tuning, set requires_grad false
-            for name, param in self.model.named_parameters():
-                param.requires_grad = False
+        ### if prompt tuning, set requires_grad false
+        for name, param in self.model.named_parameters():
+            param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.prompt_dict = nn.ParameterDict() # {label_name: [label_name_emb, label_soft_tokens]}, specially, self.prompt_dict['__task__']: task_soft_tokens
@@ -38,19 +34,23 @@ class T5MixPrompt(nn.Module):
     def set_prompt_embedding(self, task_emb):
         self.prompt_dict['__task__'] = nn.parameter.Parameter(task_emb['__task__'].to(self.model.device))
 
-    def _constrcut_prompt_batch(self, batchsize, ent_ids):
+    def _construct_prompt_batch(self, batchsize, ent_ids):
         prompt_embs = []
         for idx in range(batchsize):
             prompt_embs.append(self._construct_prompt(ent_ids[idx]).unsqueeze(0))
+
         return torch.cat(prompt_embs, 0)
     
     def _construct_prompt(self, ent_ids):
         prompt_emb = []
         # append task soft prompt 
-        prompt_emb.append(self.prompt_dict['__task__'])
+        soft_prompt = self.prompt_dict['__task__']
+        prompt_emb.append(soft_prompt)
         # append ent fixed prompt
         if ent_ids.nelement() > 0: # possibly encounter empty entity guidance
-            prompt_emb += [self.model.encoder.embed_tokens(ent_ids)]
+            discrete_prompt = self.model.encoder.embed_tokens(ent_ids)
+            prompt_emb.append(discrete_prompt)
+        
         return torch.cat(prompt_emb, 0)
 
     def _step(
@@ -58,13 +58,12 @@ class T5MixPrompt(nn.Module):
     ):
         ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        
-        prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
+        prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
         prompt_length = prompt_embedding.size(1)
         if ent_attention_mask is None:
             mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
         else:
-            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length_task),1).to(self.args.device), ent_attention_mask], 1)
+            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length),1).to(self.args.device), ent_attention_mask], 1)
 
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
@@ -72,6 +71,7 @@ class T5MixPrompt(nn.Module):
         if self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -93,11 +93,12 @@ class T5MixPrompt(nn.Module):
             labels_set=labels_set,
         )
         loss = outputs[0]
+
         return loss
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        prompt_embedding = self._constrcut_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=batch['input_ents'])
+        prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=batch['input_ents'])
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
         elif self.mode == 'left_concat':
@@ -106,7 +107,7 @@ class T5MixPrompt(nn.Module):
         if 'ents_mask' not in batch:
             mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
         else:
-            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.args.prompt_length_task),1).to(self.args.device), batch['ents_mask']], 1)
+            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.args.prompt_length),1).to(self.args.device), batch['ents_mask']], 1)
         if self.mode == 'right_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         elif self.mode == 'left_concat':
@@ -130,6 +131,7 @@ class T5MixPrompt(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         ents = self.ids_to_clean_text(batch["input_ents"])
+
         return input, target, preds, ents
 
     
@@ -137,8 +139,10 @@ class T5MixPrompt(nn.Module):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+
         return self.lmap(str.strip, gen_text)
 
     def lmap(self, f, x):
         """list(map(f, x))"""
+
         return list(map(f, x))

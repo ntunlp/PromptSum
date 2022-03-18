@@ -49,5 +49,3 @@ def save_model(modeltoeval, args, steps):
     print("ckpt saved")
 
 
-
-
