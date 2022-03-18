@@ -33,6 +33,7 @@ def get_prompt_embedding(model, tokenizer, prompt_length):
                 break
     vocab = tokenizer.get_vocab()
     randomtokennum = prompt_length - len(alllabel)
+    print(len(alllabel), randomtokennum)
     touse = random.sample(top5000, randomtokennum)
     for one in touse:
         promptinitembedding[startindex] = t5_embedding.weight[one[0]].clone().detach()

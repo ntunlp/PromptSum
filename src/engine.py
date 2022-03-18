@@ -93,7 +93,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     else:
         optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
     #import pdb;pdb.set_trace() #len(optimizer.param_groups[0]['params']) #len(optimizer.param_groups)
-    model.train()
     #scaler = ShardedGradScaler()
     scheduler = None
     scaler = None
@@ -113,8 +112,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         'val_rougeL': []
     }
     global_step = 0
-    model.eval()
-    model.train()
     alllosses=[]
     logger.info("Epoch 0 validation")
     dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, 0)
@@ -200,6 +197,9 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+            #if step >= 4:
+            #    print("exiting val..")
+            #    break
     # Google ROUGE package
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
