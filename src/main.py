@@ -21,7 +21,7 @@ parser.add_argument("--cuda", dest="cuda", type=str,
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--train", dest="train", type=bool,
-                    default=True, help="whether to train or not")
+                    default=False, help="whether to train or not")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
@@ -93,9 +93,9 @@ parser.add_argument("--n_top_sents", dest="n_top_sents", type=int,
 
 ##### load checkpoint
 parser.add_argument("--load_ckpt", dest="load_ckpt", type=bool,
-                    default=False, help="whether load ckpt before training")
+                    default=True, help="whether load ckpt before training")
 parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
-                    default='saved_models/cnndm_t5_pt_adapted_mix_freq_thresh/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
+                    default='saved_models/cnndm_t5_large_adapted_ft/t5_ckpt/ckptofT5_best', help="The path to prompt ckpt")
 
 ##### optimization
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
@@ -105,9 +105,9 @@ parser.add_argument("--lr", dest="lr", type=float,
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=2, help="valid size per gpu")
+                    default=8, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                    default=2, help="test size per gpu")
+                    default=8, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=32, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
@@ -246,9 +246,11 @@ def main(args):
         torch.distributed.barrier()
 
     if args.train:
+        print("\nStarting training...")
         train(args, model, train_dataset, valid_dataset, test_dataset, logger)
 
     if args.local_rank in [0, -1]:
+        print("\nStarting testing...")
         test(args, test_dataset, logger, tokenizer)
     logger.info("Finish training and testing!")
 

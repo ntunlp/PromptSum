@@ -125,6 +125,9 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                     save_model(model, args, global_step)
                     model.train()
         
+            #if step == 2:
+            #    break
+        
         if args.local_rank in [0, -1]:
             print("\nEnd of epoch evaluation...")
             dooneeval(model, valid_dataloader, args, result_dict, optimizer, scaler, i, logger)
@@ -164,6 +167,10 @@ def dooneeval(modeltoeval, valid_dataloader, args, result_dict, optimizer, scale
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+    
+            #if step == 2:
+            #    break
+
     rouge = load_metric('rouge')
     rouge_score = rouge.compute(references=allytrue, predictions=allypred)
     logger.info('----Validation Results Summary----')
@@ -267,7 +274,8 @@ def display_preds(source, target, preds, ents):
         print("Source:")
         print(source[i])
         print("Entities:")
-        print(ents[i])
+        if ents != None:
+            print(ents[i])
         print("Reference:")
         print(target[i])
         print("Predicted summary:")
