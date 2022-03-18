@@ -88,7 +88,13 @@ class T5CNNDataset(Dataset):
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
+        inputlmdata = "summarization"
+        targetlmdata = inputdata + " " + "__ans__" + " " + targetdata
+
+        inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
+
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze()
 
     def __len__(self):
         
@@ -103,15 +109,10 @@ class SmartBatchingCollate:
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-        sequences, targets, ents = list(zip(*batch))
+        sequences, targets, ents, lmseq, lmtar = list(zip(*batch))
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
-            pad_token_id=self._pad_token_id
-        )
-        ents_ids, ents_mask = self.pad_sequence(
-            ents,
-            max_sequence_length=self._max_guidance_length,
             pad_token_id=self._pad_token_id
         )
         target_ids, target_mask = self.pad_target(
@@ -119,7 +120,22 @@ class SmartBatchingCollate:
             max_sequence_length=self._max_summary_length, 
             pad_token_id=self._pad_token_id
         )
-        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
+        ents_ids, ents_mask = self.pad_sequence(
+            ents,
+            max_sequence_length=self._max_guidance_length,
+            pad_token_id=self._pad_token_id
+        )
+        lminput_id, lm_att_mask = self.pad_sequence(
+            lmseq, 
+            max_sequence_length=self._max_length, 
+            pad_token_id=self._pad_token_id
+        )
+        lmtar_id, lm_tar_mask = self.pad_target(
+            lmtar, 
+            max_sequence_length=self._max_length * 2, 
+            pad_token_id=self._pad_token_id
+        )
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask
         
         return output
 

@@ -111,6 +111,7 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         'val_rouge2': [],
         'val_rougeL': []
     }
+    lm_lambda = 0.25
     global_step = 0
     alllosses=[]
     logger.info("Epoch 0 validation")
@@ -127,14 +128,20 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+            inputs_lm = {"input_ids": batch[6].to(args.device), "attention_mask": batch[7].to(args.device),
+                         "target_ids": batch[8].to(args.device), "target_mask": batch[9].to(args.device)}
 
             if scaler is not None:
                 with autocast():
                     loss = model(inputs)
+                    lmloss = model(inputs_lm) * lm_lambda
+                    loss = loss + lmloss
                     if args.gradient_accumulation_steps > 1:
                         loss = loss / args.gradient_accumulation_steps
             else:
                 loss = model(inputs)
+                lmloss = model(inputs_lm) * lm_lambda
+                loss = loss + lmloss
                 if args.gradient_accumulation_steps > 1:
                     loss = loss / args.gradient_accumulation_steps
             finalloss = loss 
