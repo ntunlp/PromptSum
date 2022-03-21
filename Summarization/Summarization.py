@@ -251,23 +251,23 @@ if __name__ == "__main__":
                         default="4", help="gpu id")
 
     parser.add_argument("--lr", dest="lr", type=float,
-                        default=5e-5, help='learning rate')
+                        default=5e-1, help='learning rate')
     parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
-                        default=0.25, help='language model loss lambda')
+                        default=0.1, help='language model loss lambda')
     parser.add_argument("--kd_lamda", dest="kd_lamda", type=float,
-                        default=0.05, help='kd loss lambda')
+                        default=0.04, help='kd loss lambda')
     parser.add_argument("--startindex", dest="startindex", type=int,
                         default=0, help="start index")
     parser.add_argument("--taskindex", dest="taskindex", type=int,
                         default=0, help="task index")
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=16, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                         default=24, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                         default=24, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=4, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers", dest="num_workers", type=int,
@@ -301,14 +301,14 @@ if __name__ == "__main__":
     parser.add_argument("--train_sample", action="store_true",
                         help="dynamic sample or not")
     parser.add_argument("--max_length", dest="max_length", type=int,
-                        default=128, help="max sentence length")
+                        default=512, help="max sentence length")
 
     parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                         default=1e-5, help="weight decay")
     parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
                         default = 1e-8, help="adam epsilon")
     parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
-                        default=0.1, help="warmup steps")
+                        default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
                         default=1.0, help="max grad norm")
 
@@ -316,17 +316,21 @@ if __name__ == "__main__":
                         default=-1, help="local rank")
 
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                        default=0, help="whether to use lm_adapted model")
+                        default=1, help="whether to use lm_adapted model")
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                        default="../t5_ckpt_1_0622_bak/t5_ckpt/ckpt_of_step_100000",
+                        default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default="/data/qin/cache/",
+                        default="/data/mathieu/hf_models/",
                         help="The path of huggingface cache")
     parser.add_argument("--prompt_number", dest="prompt_number", type=int,
-                        default=100, help="The number of prompt")
+                        default=300, help="The number of prompt")
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                         default=1, help="If ckpt only contains model. Default: True, only contains model")
+
+    parser.add_argument("--taskindex", dest="taskindex", type=int,
+                        default=0, help="")
+
     args = parser.parse_args()
 
     # print args
@@ -358,9 +362,9 @@ if __name__ == "__main__":
             f.write("----------------------------------------------------------------------------\n")
 
     runtimes = 3
-    alltaskfold = ["cnndm", "wikihow", "xsum"]
-    alltaskname = ["cnn daily mail ", "wiki how", "extreme summarization"]
-    allgentasktoken = ["summerizationcnndm", "summerizationwikihow", "summerizationxsum"]
+    alltaskfold = ["cnndm"]
+    alltaskname = ["cnn daily mail "]
+    allgentasktoken = ["summerizationcnndm"]
     tasknum = len(alltaskfold)
     dataprefix = "./data/"
     fewshotnum = 16
