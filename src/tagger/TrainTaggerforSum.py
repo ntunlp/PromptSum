@@ -520,6 +520,122 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath):
             print(len(sum_y_pred[i]),len(allsumwithfakelabeldata[i]))
     return sum_y_pred, allsumwithfakelabeldata
 
+# def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
+#
+#     ####get all entities from sum_y_pred and allsumwithfakelabeldata. One problem: sum_y_pred might be wrong
+#     allentitylist = []
+#     alltypelist = []
+#     #print(sum_y_pred)
+#     for i in range(len(sum_y_pred)):
+#         onelength = len(sum_y_pred[i])
+#         oneentitylist = []
+#         onetypelist = []
+#         currententity = []
+#         currenttype = []
+#         for j in range(onelength):
+#             onepred = sum_y_pred[i][j]
+#             if onepred.find("B-") != -1:
+#                 if currententity != []:
+#                     oneentitylist.append(' '.join(currententity))
+#                     onetypelist.append(' '.join(currenttype))
+#                 currenttype = [onepred]
+#                 currententity = [allsumwithfakelabeldata[i][j]]
+#             elif onepred.find("I-") != -1:
+#                 currenttype.append(onepred)
+#                 currententity.append(allsumwithfakelabeldata[i][j])
+#             else:
+#                 continue
+#         if currententity != []:
+#             oneentitylist.append(' '.join(currententity))
+#             onetypelist.append(' '.join(currenttype))
+#         allentitylist.append(oneentitylist)
+#         alltypelist.append(onetypelist)
+#     #print(allentitylist)
+#     ####combine doc and entities
+#     alldocres, resfortrain = getdocandent(docfile, allentitylist, alltypelist)
+#
+#     ######handle resfortrain
+#     #print(len(resfortrain))
+#     #print("-------------------------------------")
+#     allentityfortrain = []
+#     for i in range(len(resfortrain)):
+#         oneentityfortrain = []
+#         onedata = resfortrain[i].split('\t')
+#         onedoc = onedata[0]
+#         oneent = onedata[1].split('!')
+#         #print(oneent)
+#         for j in range(len(oneent)):
+#             enttouse = oneent[j]
+#             if enttouse.lower() in onedoc.lower():
+#                 oneentityfortrain.append(enttouse)
+#         allentityfortrain.append([onedoc, oneentityfortrain])
+#     # print(len(allentityfortrain))
+#     # print("************************************")
+#     # print(allentityfortrain)
+#
+#     ######get label for document
+#     alldocandlabel = []
+#     for i in range(len(alldocres)):
+#         onedata = alldocres[i].split('\t')
+#         onedoc = onedata[0]
+#         length = len(onedoc.split(' '))
+#         doclabel = ['O' for m in range(length)]
+#         oneent = onedata[1].split('!')
+#         onetype = onedata[2].split('?')
+#         assert len(oneent) == len(onetype)
+#         for j in range(len(oneent)):
+#             enttouse = oneent[j]
+#             typetouse = onetype[j]
+#             if enttouse.lower() in onedoc.lower():
+#                 ###add label
+#                 typelist = typetouse.split(' ')
+#                 allindex = getindex(enttouse, onedoc)
+#                 for oneindex in allindex:
+#                     for m in range(len(typelist)):
+#                         doclabel[oneindex[m]] = typelist[m]
+#             else:
+#                 continue
+#         assert len(onedoc.split(' ')) == len(doclabel)
+#         #####onedoc doclabel
+#         alldocandlabel.append([onedoc.split(' '), doclabel])
+#
+#     return alldocandlabel,allentityfortrain
+#
+# def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain):
+#     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
+#     docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
+#     fout = open(docwithlabel_train, 'w')
+#     fout_1 = open(docwithlabel_vaid, 'w')
+#     fout.write("-DOCSTART- -X- -X- O\n")
+#     fout_1.write("-DOCSTART- -X- -X- O\n")
+#     fout.write("\n")
+#     fout_1.write("\n")
+#     for aa in range(len(alldocandlabel)):
+#         onedata = alldocandlabel[aa]
+#         datasize = len(onedata[0])
+#         if aa % 2 == 0:
+#             for i in range(datasize):
+#                 fout.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+#             fout.write("\n")
+#         else:
+#             for i in range(datasize):
+#                 fout_1.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+#             fout_1.write("\n")
+#     fout.close()
+#     fout_1.close()
+#
+#     ####save train ent
+#     train_ent = doc_sum_path + "trainent.txt"
+#     fe = open(train_ent, 'w')
+#     for i in range(len(allentityfortrain)):
+#         if allentityfortrain[i][1] != []:
+#             fe.write(allentityfortrain[i][0] + "\t" + ' '.join(allentityfortrain[i][1]) + '\n')
+#         else:
+#             fe.write(allentityfortrain[i][0] + "\tnone\n")
+#     fe.close()
+#     return docwithlabel_train, docwithlabel_vaid
+
+
 def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
 
     ####get all entities from sum_y_pred and allsumwithfakelabeldata. One problem: sum_y_pred might be wrong
@@ -552,7 +668,7 @@ def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
         alltypelist.append(onetypelist)
     #print(allentitylist)
     ####combine doc and entities
-    alldocres, resfortrain = getdocandent(docfile, allentitylist, alltypelist)
+    allrestrain, allresvalid, resfortrain = getdocandent(docfile,allentitylist,alltypelist)
 
     ######handle resfortrain
     #print(len(resfortrain))
@@ -574,19 +690,21 @@ def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
     # print(allentityfortrain)
 
     ######get label for document
-    alldocandlabel = []
-    for i in range(len(alldocres)):
-        onedata = alldocres[i].split('\t')
+    alldocandlabeltrain = []
+    for i in range(len(allrestrain)):
+        onedata = allrestrain[i].split('\t')
         onedoc = onedata[0]
         length = len(onedoc.split(' '))
         doclabel = ['O' for m in range(length)]
         oneent = onedata[1].split('!')
         onetype = onedata[2].split('?')
         assert len(oneent) == len(onetype)
+        allentinter = []
         for j in range(len(oneent)):
             enttouse = oneent[j]
             typetouse = onetype[j]
             if enttouse.lower() in onedoc.lower():
+                allentinter.append(enttouse)
                 ###add label
                 typelist = typetouse.split(' ')
                 allindex = getindex(enttouse, onedoc)
@@ -597,11 +715,38 @@ def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
                 continue
         assert len(onedoc.split(' ')) == len(doclabel)
         #####onedoc doclabel
-        alldocandlabel.append([onedoc.split(' '), doclabel])
+        alldocandlabeltrain.append([onedoc.split(' '), doclabel])
 
-    return alldocandlabel,allentityfortrain
+    alldocandlabelvalid = []
+    for i in range(len(allresvalid)):
+        onedata = allresvalid[i].split('\t')
+        onedoc = onedata[0]
+        length = len(onedoc.split(' '))
+        doclabel = ['O' for m in range(length)]
+        oneent = onedata[1].split('!')
+        onetype = onedata[2].split('?')
+        assert len(oneent) == len(onetype)
+        allentinter = []
+        for j in range(len(oneent)):
+            enttouse = oneent[j]
+            typetouse = onetype[j]
+            if enttouse.lower() in onedoc.lower():
+                allentinter.append(enttouse)
+                ###add label
+                typelist = typetouse.split(' ')
+                allindex = getindex(enttouse, onedoc)
+                for oneindex in allindex:
+                    for m in range(len(typelist)):
+                        doclabel[oneindex[m]] = typelist[m]
+            else:
+                continue
+        assert len(onedoc.split(' ')) == len(doclabel)
+        alldocandlabelvalid.append([onedoc.split(' '), doclabel])
 
-def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain):
+    #print(len(alldocandlabel))
+    return alldocandlabeltrain,alldocandlabelvalid,allentityfortrain
+
+def get_train_valid(alldocandlabeltrain, alldocandlabelvalid, doc_sum_path, allentityfortrain):
     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
     docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
     fout = open(docwithlabel_train, 'w')
@@ -610,18 +755,21 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain):
     fout_1.write("-DOCSTART- -X- -X- O\n")
     fout.write("\n")
     fout_1.write("\n")
-    for aa in range(len(alldocandlabel)):
-        onedata = alldocandlabel[aa]
+
+    for aa in range(len(alldocandlabeltrain)):
+        onedata = alldocandlabeltrain[aa]
         datasize = len(onedata[0])
-        if aa % 2 == 0:
-            for i in range(datasize):
-                fout.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
-            fout.write("\n")
-        else:
-            for i in range(datasize):
-                fout_1.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
-            fout_1.write("\n")
+        for i in range(datasize):
+            fout.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+        fout.write("\n")
     fout.close()
+
+    for aa in range(len(alldocandlabelvalid)):
+        onedata = alldocandlabelvalid[aa]
+        datasize = len(onedata[0])
+        for i in range(datasize):
+            fout_1.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+        fout_1.write("\n")
     fout_1.close()
 
     ####save train ent

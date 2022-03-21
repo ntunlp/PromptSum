@@ -239,9 +239,6 @@ def main(args):
         if args.train_bert_tagger:
             #####get data
             alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-            #print(alltrainfile, allvalidfile)
-            #####fine-tune tagger
-            #exit -1
             train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
         #exit -1
         # read in saved few-shot datasets

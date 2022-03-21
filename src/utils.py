@@ -48,19 +48,30 @@ def save_model(modeltoeval, args, steps):
     torch.save(ckpt, os.path.join(args.save_path + "/" + args.save_dir, "ckptofT5_"+str(steps)))
     print("ckpt saved")
 
+# def get_train_valid_data(args, sumpath, docpath, doc_sum_path):
+#
+#     ####get predict label of summarization
+#     sum_y_pred, allsumwithfakelabeldata = get_predict_label_for_sum(args, doc_sum_path, sumpath)
+#
+#     ####get label for document
+#     alldocandlabel, allentityfortrain = get_doc_label(sum_y_pred, allsumwithfakelabeldata, docpath)
+#
+#     ####split to train and valid
+#     docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain)
+#
+#     return docwithlabel_train, docwithlabel_vaid
+
 def get_train_valid_data(args, sumpath, docpath, doc_sum_path):
 
     ####get predict label of summarization
     sum_y_pred, allsumwithfakelabeldata = get_predict_label_for_sum(args, doc_sum_path, sumpath)
 
     ####get label for document
-    alldocandlabel, allentityfortrain = get_doc_label(sum_y_pred, allsumwithfakelabeldata, docpath)
+    alldocandlabeltrain, alldocandlabelvalid,allentityfortrain = get_doc_label(sum_y_pred,allsumwithfakelabeldata, docpath)
 
     ####split to train and valid
-    docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain)
+    docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabeltrain, alldocandlabelvalid, doc_sum_path, allentityfortrain)
 
     return docwithlabel_train, docwithlabel_vaid
-
-
 def train_tagger_for_one_seed(trainfile, validfile, args):
     finetune_model(trainfile, validfile, args)

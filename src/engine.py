@@ -206,9 +206,9 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
     # 2nd method
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
-    for i in range(len(allytrue)):
-        label = allytrue[i]
-        summary = allypred[i]
+    for ii in range(len(allytrue)):
+        label = allytrue[ii]
+        summary = allypred[ii]
         if args.highlights:
             label = "\n".join(sent_tokenize(label))
             summary = "\n".join(sent_tokenize(summary))

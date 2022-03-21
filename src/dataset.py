@@ -110,11 +110,13 @@ class T5CNNDataset(Dataset):
                     print(f'We are in {self.split} mode. We should use a bert tagger to predict entities.')
                     self.bert_tagger_path = f'{save_path}data_for_bert_{seed}/tagger/'
 
-                    # self.tagger = NerCPU.from_pretrained(self.bert_tagger_path)
-                    # self.tagtokenizer = BertTokenizer.from_pretrained(self.bert_tagger_path, do_lower_case=False)
+                    ####use tuned tagger
+                    self.tagger = NerCPU.from_pretrained(self.bert_tagger_path)
+                    self.tagtokenizer = BertTokenizer.from_pretrained(self.bert_tagger_path, do_lower_case=False)
 
-                    self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
-                    self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
+                    ####use tagger pretrained on conll
+                    # self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
+                    # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
 
         elif args.guidance_type == "sents":
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
@@ -175,7 +177,7 @@ class T5CNNDataset(Dataset):
                     # allentitylist.extend(allnum)
 
                     input_guidance = ','.join(list(set(allentitylist)))
-                    print(input_guidance)
+                    #print(input_guidance)
                     if input_guidance == []:
                         print("empty!")
                         ents = self.spacy_nlp(inputdata).ents

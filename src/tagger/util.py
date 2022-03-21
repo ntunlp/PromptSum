@@ -82,6 +82,35 @@ def getfilewithlabel(file, filewithfakelabel):
     fo.close()
     return alldata
 
+# def getdocandent(docfile,allentitylist,alltypelist):
+#     f = open(docfile,'r')
+#     alldoc = []
+#     while True:
+#         oneline = f.readline().strip()
+#         if not oneline:
+#             break
+#         alldoc.append(oneline)
+#     f.close()
+#     allres = []
+#     resfortrain = []
+#     trainsize = len(alldoc) // 2
+#     assert len(alldoc) == len(allentitylist)
+#     for i in range(len(alldoc)):
+#         ######split to shorter sentences
+#         onedoclist = alldoc[i].split(' ')
+#         if i < trainsize:
+#             resfortrain.append(
+#                 ' '.join(onedoclist) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
+#         num = 100
+#         newlist = []
+#         for j in range(0, len(onedoclist), num):
+#             newlist.append(onedoclist[j:j + num])
+#             # print(len(onedoclist[j:j+num]))
+#
+#         for j in range(len(newlist)):
+#             allres.append(' '.join(newlist[j]) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
+#     return allres, resfortrain
+
 def getdocandent(docfile,allentitylist,alltypelist):
     f = open(docfile,'r')
     alldoc = []
@@ -91,7 +120,10 @@ def getdocandent(docfile,allentitylist,alltypelist):
             break
         alldoc.append(oneline)
     f.close()
-    allres = []
+
+    allrestrain = []
+    allresvalid = []
+
     resfortrain = []
     trainsize = len(alldoc) // 2
     assert len(alldoc) == len(allentitylist)
@@ -99,18 +131,21 @@ def getdocandent(docfile,allentitylist,alltypelist):
         ######split to shorter sentences
         onedoclist = alldoc[i].split(' ')
         if i < trainsize:
-            resfortrain.append(
-                ' '.join(onedoclist) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
+            resfortrain.append(' '.join(onedoclist) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
         num = 100
         newlist = []
         for j in range(0, len(onedoclist), num):
-            newlist.append(onedoclist[j:j + num])
-            # print(len(onedoclist[j:j+num]))
-
-        for j in range(len(newlist)):
-            allres.append(' '.join(newlist[j]) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
-    return allres, resfortrain
-
+            newlist.append(onedoclist[j:j+num])
+            #print(len(onedoclist[j:j+num]))
+        if i < len(alldoc) // 2:
+            for j in range(len(newlist)):
+                allrestrain.append(
+                    ' '.join(newlist[j]) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
+        else:
+            for j in range(len(newlist)):
+                allresvalid.append(
+                    ' '.join(newlist[j]) + "\t" + '!'.join(allentitylist[i]) + "\t" + '?'.join(alltypelist[i]))
+    return allrestrain, allresvalid, resfortrain
 
 def getindex(str1,str2):
     ###if str1 in str2
