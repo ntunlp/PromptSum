@@ -44,6 +44,7 @@ class T5Prompt(nn.Module):
         if self.mode == 'left_concat':
             allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -61,8 +62,8 @@ class T5Prompt(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask']
         )
-
         loss = outputs[0]
+
         return loss
 
     def _generative_step(self, batch):
@@ -96,6 +97,7 @@ class T5Prompt(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         ents = self.ids_to_clean_text(batch["input_ents"])
+
         return input, target, preds, ents
 
     def _generative_samples(self, batch):
@@ -107,7 +109,6 @@ class T5Prompt(nn.Module):
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
-
         generated_ids = self.model.generate(
             inputs_embeds=allembedding,
             decoder_input_ids=decoder_input_ids,
@@ -122,19 +123,20 @@ class T5Prompt(nn.Module):
             #top_p = 0.85,
             num_return_sequences=4
         )
-
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        return input,target,preds
 
+        return input,target,preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+
         return self.lmap(str.strip, gen_text)
 
     def lmap(self, f, x):
         """list(map(f, x))"""
+
         return list(map(f, x))

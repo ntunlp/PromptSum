@@ -37,7 +37,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
 parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset for Reddit TIFU")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
+                    default=100, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
                     default='/data/qin/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
@@ -51,11 +51,11 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
+                    default="T5Prompt", choices=['T5Finetune', 'T5Prompt', 'T5MixPrompt']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                    default="../../hf_models/t5-v1-base", )
+                    default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=False, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -64,17 +64,15 @@ parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
                     default=200, help="The size of the soft prompt")
-parser.add_argument("--prompt_length_discrete", dest="prompt_length_discrete", type=int,
-                    default=20, help="The size of the discrete prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
-# guidance signal
-parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                    default="ents", help="What kind of guidance as discrete entities. In [None, ents, sents]")
-parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+# discrete prompt
+parser.add_argument("--discrete_type", dest="discrete_type", type=str,
+                    default="entities", help="What kind of guidance as discrete entities. In [None, entities, sentences]")
+parser.add_argument("--salient_mode", dest="salient_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
-parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=100, help="max guidance sequence length")
+parser.add_argument("--discrete_prompt_length", dest="discrete_prompt_length", type=int,
+                    default=100, help="number of tokens for the discrete prompt")
 # 1 - entities
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                     default=False, help="whether to filter ents based on the frequency")
@@ -98,11 +96,11 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-5, help='learning rate') # 5e-5 for FT, 5e-1 for PT
+                    default=5e-1, help='learning rate') # 5e-5 for FT, 5e-1 for PT
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=2, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=2, help="valid size per gpu")
+                    default=8, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
@@ -113,8 +111,6 @@ parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
-                    default=1.0, help="max grad norm")
 
 ##### generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
@@ -184,7 +180,7 @@ if args.few_shot:
 
 # print args
 print(args)
-print ("ckpt path", args.ckpt_path)
+print("ckpt path", args.ckpt_path)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -193,7 +189,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-
     # set seed
     seed_everything(args)
     # set cuda
@@ -330,6 +325,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-
     main(args)
 

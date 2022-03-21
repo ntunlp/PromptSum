@@ -42,7 +42,7 @@ def load_model(args):
             load_prompt(args, model)
             model.to(args.device)
         else:
-            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length, args.prompt_length_discrete)
+            label_name_embs = get_mix_prompt_embedding(model, tokenizer, args.prompt_length)
             model.to(args.device)
             model.set_prompt_embedding(label_name_embs)
     elif args.model == 'T5Finetune':
@@ -52,6 +52,7 @@ def load_model(args):
         model.to(args.device)
     else:
         raise Exception("No such model! Please make sure that `model` takes the value in {T5}")
+        
     return model, tokenizer
 
 
@@ -64,17 +65,21 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(
-        args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         train_dataset.tokenizer.pad_token_id, train_sampler
     )
     valid_dataloader = get_dataloader(
-        args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         valid_dataset.tokenizer.pad_token_id, valid_sampler
     )
 
-    base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
-                                "weight_decay": args.weight_decay,
-                                "scale_parameter": False, "relative_step": False}
+    base_optimizer_arguments = {
+        "lr": args.lr, 
+        "decay_rate": -0.8,
+        "weight_decay": args.weight_decay,                        
+        "scale_parameter": False, 
+        "relative_step": False
+    }
     if args.model == 'T5Finetune':
         optimizer = AdamW
         base_optimizer_arguments = {"lr": args.lr, "weight_decay": args.weight_decay}
@@ -88,7 +93,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
     else:
         optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
     #import pdb;pdb.set_trace() #len(optimizer.param_groups[0]['params']) #len(optimizer.param_groups)
-    model.train()
     #scaler = ShardedGradScaler()
     scheduler = None
     scaler = None
@@ -108,8 +112,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         'val_rougeL': []
     }
     global_step = 0
-    model.eval()
-    model.train()
     alllosses=[]
     logger.info("Epoch 0 validation")
     dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, 0)
@@ -144,11 +146,9 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
                     #scaler.unscale_(optimizer)
-                    #optimizer.clip_grad_norm(args.max_grad_norm)
                     scaler.step(optimizer)
                     scaler.update()
                 else:
-                    #nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                     optimizer.step()
                 if scheduler != None:
                     scheduler.step()
@@ -156,7 +156,6 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
-                    #logger.info("step: %d, shcedule: %.3f, loss: %.6f" % (global_step, global_step/step_tot, np.average(allloss)))
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, epoch: %d" % (
                     global_step, global_step / step_tot, np.average(allloss) * args.gradient_accumulation_steps, i))
 
@@ -198,12 +197,10 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    # 1st method
-    #rouge = load_metric('rouge')
-    #rouge_score = rouge.compute(references=[x.lower() for x in allytrue], predictions=[x.lower() for x in allypred])
-    #for k in rouge_score.keys():
-    #    rouge_score[k] = 100 * rouge_score[k].mid.fmeasure
-    # 2nd method
+            #if step >= 4:
+            #    print("exiting val..")
+            #    break
+    # Google ROUGE package
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for ii in range(len(allytrue)):
@@ -268,7 +265,7 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
 def test(args, test_dataset, tokenizer, logger):
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(
-        args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.max_guidance_length, args.max_summary_length, 
+        args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length, args.discrete_prompt_length, args.max_summary_length, 
         test_dataset.tokenizer.pad_token_id, test_sampler
     )
 
