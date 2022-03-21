@@ -252,6 +252,7 @@ def read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, save_path):
     datasets = []
     for seed in few_shot_seeds:
         handler_train = open(f'{save_path}{args.few_shot}_few_shot_train_seed_{seed}',"rb")
+        #handler_valid = open(f'/data/mathieu/DATASETS/PromptSumm/cnndm/10/10_few_shot_valid_seed_{seed}',"rb")
         handler_valid = open(f'{save_path}{args.few_shot}_few_shot_valid_seed_{seed}',"rb")
         train_data = pickle.load(handler_train)
         valid_data = pickle.load(handler_valid)

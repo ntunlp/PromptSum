@@ -169,7 +169,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
                 if args.local_rank in [0, -1] and global_step % adjusted_evalstep == 0:
                     dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i)
                     model.train()
-
+                
+                if step >= 4:
+                    print("stopping training...")
+                    break
+        
         mean_loss = np.mean(allloss)
         logger.info("Mean training loss: {:.4f}".format(mean_loss))
         if args.local_rank in [0, -1]:
