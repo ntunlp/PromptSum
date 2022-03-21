@@ -96,7 +96,7 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-5, help='learning rate') # 5e-5 for FT, 5e-1 for PT
+                    default=5e-1, help='learning rate') # 5e-5 for FT, 5e-1 for PT
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -104,7 +104,7 @@ parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=2, help="gradient accumulation steps")
+                    default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                     default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
