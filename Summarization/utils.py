@@ -4,6 +4,9 @@ import numpy as np
 import random
 import csv
 import pickle
+import pickle5
+
+
 def seed_everything(args):
     random.seed(args.seed)
     os.environ['PYTHONASSEED'] = str(args.seed)
@@ -89,7 +92,7 @@ def getpromptembedding(model,tokenizer,promptnumber,taskname):
         promptinitembedding[startindex] = embeddingres
         startindex += 1
     fr = open('allnumber.pickle', 'rb')
-    alltokens = pickle.load(fr)
+    alltokens = pickle5.load(fr)
     sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
     top5000 = []
     for one in sortedalltoken:

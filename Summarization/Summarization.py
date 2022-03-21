@@ -67,9 +67,9 @@ def train(args, model, train_dataset,valid_dataset,onerun):
     # distributed training
     model = ShardedDDP(model, optimizer)
     model.train()
-    scaler = ShardedGradScaler()
+    #scaler = ShardedGradScaler()
     scheduler = None
-    #scaler = None
+    scaler = None
 
     startepoch = 0
     Best_F1 = 0.0
@@ -114,6 +114,7 @@ def train(args, model, train_dataset,valid_dataset,onerun):
             allloss.append(loss.item())
             alllmloss.append(lmloss.item())
             allkdloss.append(kdloss.item())
+            #print(step, loss.item(), lmloss.item(), kdloss.item())
 
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
@@ -216,8 +217,8 @@ def test(args, test_dataset, onerun):
 
     model.to(args.device)
     model.eval()
-    scaler = ShardedGradScaler()
-    #scaler = None
+    #scaler = ShardedGradScaler()
+    scaler = None
     allytrue = []
     allypred = []
 
@@ -248,37 +249,37 @@ def test(args, test_dataset, onerun):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="4", help="gpu id")
+                        default="0", help="gpu id")
 
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
-                        default=0.1, help='language model loss lambda')
+                        default=0.0, help='language model loss lambda')
     parser.add_argument("--kd_lamda", dest="kd_lamda", type=float,
-                        default=0.04, help='kd loss lambda')
+                        default=0.0, help='kd loss lambda')
     parser.add_argument("--startindex", dest="startindex", type=int,
                         default=0, help="start index")
     parser.add_argument("--taskindex", dest="taskindex", type=int,
                         default=0, help="task index")
     parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                        default=2, help="batch size per gpu")
+                        default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                        default=24, help="valid size per gpu")
+                        default=8, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                        default=24, help="test size per gpu")
+                        default=8, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                        default=4, help="gradient accumulation steps")
+                        default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                        default=5, help="max epoch number")
+                        default=80, help="max epoch number")
     parser.add_argument("--num_workers", dest="num_workers", type=int,
-                        default=4, help="dataloader num_workers")
+                        default=0, help="dataloader num_workers")
 
     parser.add_argument("--save_step", dest="save_step", type=int,
                         default=100000, help="step to save")
     parser.add_argument("--log_step", dest="log_step", type=int,
                         default=1, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=100, help="how many steps to eval")
+                        default=100000, help="how many steps to eval")
 
     parser.add_argument("--save_dir", dest="save_dir", type=str,
                         default="t5_ckpt", help="ckpt dir to save")
@@ -289,17 +290,17 @@ if __name__ == "__main__":
 
 
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5NER", help="{T5NER}")
+                        default="T5Summarization", help="{T5NER}")
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="t5-base", help="{t5-base,google/t5-v1_1-base}")
+                        default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base}")
     parser.add_argument("--train_file_name", dest="train_file_name", type=str,
                         default="data_conll/newtrain.txt", help="train data file path")
     parser.add_argument("--valid_file_name", dest="valid_file_name", type=str,
                         default="data_conll/newvalid.txt", help="valid data file path")
     parser.add_argument("--test_file_name", dest="test_file_name", type=str,
                         default="data_conll/newtest.txt", help="test data file path")
-    parser.add_argument("--train_sample", action="store_true",
-                        help="dynamic sample or not")
+    parser.add_argument("--train_sample", dest="train_sample",
+                        default = True, help="dynamic sample or not")
     parser.add_argument("--max_length", dest="max_length", type=int,
                         default=512, help="max sentence length")
 
@@ -321,15 +322,12 @@ if __name__ == "__main__":
                         default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default="/data/mathieu/hf_models/",
+                        default="/data/mathieu/hf_models/t5-v1-large/",
                         help="The path of huggingface cache")
     parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                         default=300, help="The number of prompt")
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                         default=1, help="If ckpt only contains model. Default: True, only contains model")
-
-    parser.add_argument("--taskindex", dest="taskindex", type=int,
-                        default=0, help="")
 
     args = parser.parse_args()
 
@@ -441,6 +439,7 @@ if __name__ == "__main__":
                 thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
                 thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
                 thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
+                print(thistrainfilename, thisvalidfilename, thistestfilename)
                 if not os.path.exists(newfilefolder + "/" + thistaskfold):
                     os.mkdir(newfilefolder + "/" + thistaskfold)
                 newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
@@ -461,6 +460,8 @@ if __name__ == "__main__":
                 args.train_file_name = newtrainfile
                 args.valid_file_name = newvalidfile
                 args.test_file_name = newtestfile
+                print(newtrainfile, newvalidfile, newtestfile)
+                #raise Exception
             else:
                 logger.info("get all test data")
                 allpretest = []
