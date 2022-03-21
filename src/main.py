@@ -37,7 +37,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
 parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset for Reddit TIFU")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
+                    default=100, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
                     default='/data/mathieu/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
@@ -57,13 +57,13 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
                     default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
-                    default=False, help="whether to use lm_adapted model")
+                    default=True, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
-                    default=200, help="The size of the soft prompt")
+                    default=300, help="The size of the soft prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
 # discrete prompt
@@ -96,15 +96,15 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate') # 5e-5 for FT, 5e-1 for PT
+                    default=5e-5, help='learning rate') # 5e-5 for FT, 5e-1 for PT
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=2, help="batch size per gpu")
+                    default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=8, help="valid size per gpu")
+                    default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=1, help="gradient accumulation steps")
+                    default=2, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
                     default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
@@ -212,6 +212,9 @@ def main(args):
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.few_shot != False:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+        answertoken = "__ans__"
+        special_tokens = {"ans_token": answertoken}
+        tokenizer.add_tokens(list(special_tokens.values()))
         if args.run_one_to_debug:
             few_shot_seeds = [0]
             training_seeds = [10]

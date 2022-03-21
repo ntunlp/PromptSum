@@ -89,7 +89,8 @@ class T5CNNDataset(Dataset):
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         
         inputlmdata = "summarization"
-        targetlmdata = inputdata + " " + "__ans__" + " " + targetdata
+        answertoken = "__ans__"
+        targetlmdata = inputdata + " " + answertoken + " " + targetdata
 
         inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
