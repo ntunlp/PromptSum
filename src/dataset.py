@@ -21,7 +21,7 @@ from transformers import BertTokenizer
 import datefinder
 
 class T5CNNDataset(Dataset):
-    def __init__(self, dataset_args, args, tokenizer, split, data = None, subsample = False, seed=0, save_path="/data/qin/DATASETS/PromptSumm/cnndm/10/"):
+    def __init__(self, dataset_args, args, tokenizer, split, data = None, subsample = False, seed=0, save_path="/data/qin/DATASETS/PromptSumm/cnndm/10/", counterfactual_removal = False):
         '''
         Args:
             dataset_args: e.g ["cnn_dailymail", '3.0.0']
@@ -52,7 +52,7 @@ class T5CNNDataset(Dataset):
         self.tagtokenizer = None
         self.bert_tagger_path = ""
         self.allent = {}
-        if args.discrete_type == "entities":
+        if args.guidance_type == "ents":
             if not args.use_bert_tagger:
                 self.spacy_nlp = spacy.load("en_core_web_sm")
                 if args.build_ents_freq and split.startswith("train"):
@@ -120,7 +120,7 @@ class T5CNNDataset(Dataset):
                     # self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
                     # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
 
-        elif args.discrete_type == "sentences":
+        elif args.guidance_type == "sents":
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
         
         # counterfactual training
@@ -138,7 +138,7 @@ class T5CNNDataset(Dataset):
         # guidance
         input_guidance = "None"
         # 1st option: based on entities
-        if self.args.discrete_type == "entities":
+        if self.args.guidance_type == "ents":
             if not self.args.use_bert_tagger:
                 if self.args.guidance_mode == 'oracle':
                     ents_x = self.spacy_nlp(inputdata).ents
@@ -396,7 +396,7 @@ def read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, save_path):
         valid_data = pickle.load(handler_valid)
         handler_train.close()
         handler_valid.close()
-        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'train', data = train_data, subsample = True, seed=seed, save_path=save_path)
+        train_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'train', data = train_data, subsample = True, seed=seed, save_path=save_path, counterfactual_removal = args.counterfactual_removal)
         valid_dataset = T5CNNDataset(dataset_args, args, tokenizer, 'valid', data = valid_data, subsample = True, seed=seed, save_path=save_path)
         datasets.append((train_dataset, valid_dataset))
     return datasets
