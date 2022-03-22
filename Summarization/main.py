@@ -103,8 +103,6 @@ parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
 parser.add_argument("--stemmer", dest="stemmer"m type=bool, 
                     default=True)
-parser.add_argument("--highlights", dest="highlights"m type=bool, 
-                    default=True)
 
 # export
 parser.add_argument("--save_step", dest="save_step", type=int,
@@ -115,6 +113,29 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
 args = parser.parse_args()
+
+dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
+dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
+text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
+summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
+validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
+test_keys = ["test", "test", "", "test", "test", "test"]
+highlights = [True, False, False, False, False, False]
+
+idx = dataset_names.index(args.dataset_name)
+if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
+    idx = 0
+    save_name = 'cnndm'
+else:
+    save_name = args.dataset_name
+
+args.dataset_version = dataset_versions[idx]
+args.text_key = text_keys[idx]
+args.summary_key = summary_keys[idx]
+args.validation_key = validation_keys[idx]
+args.test_key = test_keys[idx]
+args.highlights = highlights[idx]
+
 print(args)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
