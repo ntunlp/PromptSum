@@ -399,223 +399,85 @@ if __name__ == "__main__":
         if not os.path.exists(memdatafolder):
             os.mkdir(memdatafolder)
         tostart = args.taskindex
-        for j in range(tostart, tostart + 1):
-            thistaskname = newtaskname[j]
-            thistaskfold = newtaskfold[j]
-            args.taskfold = thistaskfold
-            t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            for gg in range(0, tostart + 1):
-                gentasktoken = newtgentasktokens[gg]
-                tokenizer.add_tokens(gentasktoken)
-                # print(len(tokenizer))
-                logger.info(
-                    'gen token = {} , gen token id = {}'.format(gentasktoken,
-                                                                tokenizer.convert_tokens_to_ids(gentasktoken)))
-            answertoken = "__ans__"
-            special_tokens = {"ans_token": answertoken}
-            tokenizer.add_tokens(list(special_tokens.values()))
-            special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
+        
+        # for j in range(tostart, tostart + 1):
+        j = 0
+        thistaskname = newtaskname[j]
+        thistaskfold = newtaskfold[j]
+        args.taskfold = thistaskfold
+        t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        for gg in range(0, tostart + 1):
+            gentasktoken = newtgentasktokens[gg]
+            tokenizer.add_tokens(gentasktoken)
+            # print(len(tokenizer))
+            logger.info(
+                'gen token = {} , gen token id = {}'.format(gentasktoken,
+                                                            tokenizer.convert_tokens_to_ids(gentasktoken)))
+        answertoken = "__ans__"
+        special_tokens = {"ans_token": answertoken}
+        tokenizer.add_tokens(list(special_tokens.values()))
+        special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
 
-            globaltokenizer = tokenizer
-            model = T5forSummarization(args, t5model, tokenizer)
-            if j == 0:
-                promptnumber = args.prompt_number
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-            else:
-                logger.info("use previous prompt")
-                logger.info("Previous ckpt fold name: %s", newtaskfold[j - 1])
-                promptckpt = torch.load(args.tosavepath + "/" + newtaskfold[j - 1] + "/" + str(onerun) + "/bestckpt")
-                promptnumber = args.prompt_number
-                promptnumber_ckpt = promptckpt['promptnumber']
-                assert promptnumber == promptnumber_ckpt
-                promptembedding = promptckpt['promptembedding']
-                print(promptembedding.shape)
+        globaltokenizer = tokenizer
+        model = T5forSummarization(args, t5model, tokenizer)
+        if j == 0:
+            promptnumber = args.prompt_number
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+        else:
+            logger.info("use previous prompt")
+            logger.info("Previous ckpt fold name: %s", newtaskfold[j - 1])
+            promptckpt = torch.load(args.tosavepath + "/" + newtaskfold[j - 1] + "/" + str(onerun) + "/bestckpt")
+            promptnumber = args.prompt_number
+            promptnumber_ckpt = promptckpt['promptnumber']
+            assert promptnumber == promptnumber_ckpt
+            promptembedding = promptckpt['promptembedding']
+            print(promptembedding.shape)
 
-            model.set_prompt_embedding(promptnumber, promptembedding)
-            model.to(args.device)
+        model.set_prompt_embedding(promptnumber, promptembedding)
+        model.to(args.device)
 
-            if j == 0:
-                thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
-                thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
-                thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
-                print(thistrainfilename, thisvalidfilename, thistestfilename)
-                if not os.path.exists(newfilefolder + "/" + thistaskfold):
-                    os.mkdir(newfilefolder + "/" + thistaskfold)
-                newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
-                newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
-                newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
-                f = open(newtrainfile, 'w')
-                for line in open(thistrainfilename, 'r'):
-                    f.write(str(j) + "\t" + line)
-                f.close()
-                f = open(newvalidfile, 'w')
-                for line in open(thisvalidfilename, 'r'):
-                    f.write(str(j) + "\t" + line)
-                f.close()
-                f = open(newtestfile, 'w')
-                for line in open(thistestfilename, 'r'):
-                    f.write(str(j) + "\t" + line)
-                f.close()
-                args.train_file_name = newtrainfile
-                args.valid_file_name = newvalidfile
-                args.test_file_name = newtestfile
-                print(newtrainfile, newvalidfile, newtestfile)
-                #raise Exception
-            else:
-                logger.info("get all test data")
-                allpretest = []
-                for kk in range(0, j + 1):
-                    onepretaskfold = newtaskfold[kk]
-                    thistestfilename = dataprefix + onepretaskfold + "/" + str(onerun) + "_" + str(
-                        args.seed) + "/test.txt"
-                    allpretest.append(thistestfilename)
-                if not os.path.exists(newfilefolder + "/" + thistaskfold):
-                    os.mkdir(newfilefolder + "/" + thistaskfold)
-                newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
-                f = open(newtestfile, 'w')
-                for aa in range(len(allpretest)):
-                    oneprefile = allpretest[aa]
-                    for line in open(oneprefile, 'r'):
-                        f.write(str(aa) + "\t" + line)
-                f.close()
+        thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
+        thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
+        thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
+        print(thistrainfilename, thisvalidfilename, thistestfilename)
+        if not os.path.exists(newfilefolder + "/" + thistaskfold):
+            os.mkdir(newfilefolder + "/" + thistaskfold)
+        newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
+        newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
+        newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
+        f = open(newtrainfile, 'w')
+        for line in open(thistrainfilename, 'r'):
+            f.write(str(j) + "\t" + line)
+        f.close()
+        f = open(newvalidfile, 'w')
+        for line in open(thisvalidfilename, 'r'):
+            f.write(str(j) + "\t" + line)
+        f.close()
+        f = open(newtestfile, 'w')
+        for line in open(thistestfilename, 'r'):
+            f.write(str(j) + "\t" + line)
+        f.close()
+        args.train_file_name = newtrainfile
+        args.valid_file_name = newvalidfile
+        args.test_file_name = newtestfile
+        print(newtrainfile, newvalidfile, newtestfile)
 
-                logger.info("generate pseodu samples for previous tasks")
-                memnumforeveryclass = 4
-                scalerpre = ShardedGradScaler()
-                for aa in range(0, j):
-                    onepremempath = memdatafolder + "/" + newtaskfold[aa]
-                    if not os.path.exists(onepremempath):
-                        os.mkdir(onepremempath)
-                    logger.info("generate pseudo samples for task: %s", newtaskname[aa])
-                    tousetestfile = dataprefix + newtaskfold[aa] + "/" + str(onerun) + "_" + str(args.seed) + "/test.txt"
-                    tempfile = 'temptest.txt'
-                    f = open(tempfile, 'w')
-                    for line in open(tousetestfile, 'r'):
-                        f.write(str(aa) + "\t" + line)
-                    f.close()
+        train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
+        valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
+        test_dataset = T5SummarizationDataset(args.test_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
 
-                    pretestdataset = T5SummarizationDataset(tempfile, args.max_length, tokenizer, newtgentasktokens, answertoken, aa)
-                    pretestsampler = SequentialSampler(pretestdataset)
-                    pretestdataloader = get_dataloader(args.num_workers, pretestdataset, 32, args.max_length,
-                                                     pretestdataset.tokenizer.pad_token_id, pretestsampler)
-                    model.eval()
-                    allsampleonetask = []
-                    with torch.no_grad():
-                        for step, batch in enumerate(pretestdataloader):
-                            logger.info(step)
-                            if step > 2:
-                                break
-                            inputs_lm = {"input_ids": batch[4].to(args.device),
-                                         "attention_mask": batch[5].to(args.device),
-                                         "target_ids": batch[6].to(args.device),
-                                         "target_mask": batch[7].to(args.device)}
-                            if scalerpre is not None:
-                                with autocast():
-                                    sen, target, preds = model._generative_samples(inputs_lm)
-                            else:
-                                sen, target, preds = model._generative_samples(inputs_lm)
-                            thisdatanum = len(preds)
-                            ifoldmethod = False
-                            for ll in range(thisdatanum):
-                                if ifoldmethod:
-                                    samplelist = preds[ll].split(answertoken)
-                                    if len(samplelist) != 2:
-                                        continue
-                                    onesen = samplelist[0].strip(' ')
-                                    onesum = samplelist[1].strip(' ')
-                                    onepseudodata = onesen + "\t" + onesum
-                                    print(onepseudodata)
-                                    allsampleonetask.append(onepseudodata)
-                                else:
-                                    samplelist = preds[ll].split(answertoken)
-                                    onesen = samplelist[0].strip(' ')
-                                    if len(onesen.split(' ')) >= 256:
-                                        onesum = ""
-                                        num = 0
-                                        allwords = onesen.split(' ')
-                                        for oneword in allwords:
-                                            if len(oneword) == 0:
-                                                continue
-                                            onesum = onesum + oneword + " "
-                                            if '.' == oneword[-1]:
-                                                num += 1
-                                            if num >= 3:
-                                                break
-                                        onepseudodata = onesen + "\t" + onesum.strip(' ')
-                                        allsampleonetask.append(onepseudodata)
-                    model.train()
-                    print(len(allsampleonetask))
-                    if 2 * memnumforeveryclass < len(allsampleonetask):
-                        thisres = random.sample(allsampleonetask, 2 * memnumforeveryclass)
-                    else:
-                        thisres = allsampleonetask
-                    allchoosedsample = thisres
-                    onetrainres = allchoosedsample[0:memnumforeveryclass]
-                    onevalidres = allchoosedsample[memnumforeveryclass:]
-                    fewtrainname = memdatafolder + "/" + newtaskfold[aa] + "/train_mem.txt"
-                    fewvalidname = memdatafolder + "/" + newtaskfold[aa] + "/valid_mem.txt"
+        logger.info("Finish prepare model and dataset")
+        logger.info("Start training")
 
-                    f = open(fewtrainname, 'w')
-                    for one in onetrainres:
-                        f.write(one + "\n")
-                    f.close()
+        train(args, model, train_dataset, valid_dataset, onerun)
+        logger.info("Finish training")
 
-                    f = open(fewvalidname, 'w')
-                    for one in onevalidres:
-                        f.write(one + "\n")
-                    f.close()
-
-                del scalerpre
-                logger.info("finish generate pseudo samples")
-
-                newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
-                newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
-                thistrainfilename = dataprefix + thistaskfold + "/" + str(onerun) + "_" + str(args.seed) + "/train.txt"
-                thisvalidfilename = dataprefix + thistaskfold + "/" + str(onerun) + "_" + str(args.seed) + "/valid.txt"
-                alltrainmem = []
-                allvalidmem = []
-                for aa in range(0,j):
-                    onepremempath = memdatafolder + "/" + newtaskfold[aa] + "/"
-                    onepretrain = onepremempath + "train_mem.txt"
-                    oneprevalid = onepremempath + "valid_mem.txt"
-                    alltrainmem.append(onepretrain)
-                    allvalidmem.append(oneprevalid)
-                f = open(newtrainfile, 'w')
-                for aa in range(len(alltrainmem)):
-                    oneprefile = alltrainmem[aa]
-                    for line in open(oneprefile, 'r'):
-                        f.write(str(aa) + "\t" + line)
-                for line in open(thistrainfilename, 'r'):
-                    f.write(str(j) + "\t" + line)
-                f.close()
-                f = open(newvalidfile, 'w')
-                for aa in range(len(allvalidmem)):
-                    oneprefile = allvalidmem[aa]
-                    for line in open(oneprefile, 'r'):
-                        f.write(str(aa) + "\t" + line)
-                for line in open(thisvalidfilename, 'r'):
-                    f.write(str(j) + "\t" + line)
-                f.close()
-                args.train_file_name = newtrainfile
-                args.valid_file_name = newvalidfile
-                args.test_file_name = newtestfile
-
-            train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-            valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-            test_dataset = T5SummarizationDataset(args.test_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-
-            logger.info("Finish prepare model and dataset")
-            logger.info("Start training")
-
-            train(args, model, train_dataset, valid_dataset, onerun)
-            logger.info("Finish training")
-
-            if args.local_rank in [0, -1]:
-                logger.info("Start testing")
-                logger.info("Testing...")
-                test(args, test_dataset, onerun)
-                logger.info("Finish testing!")
+        if args.local_rank in [0, -1]:
+            logger.info("Start testing")
+            logger.info("Testing...")
+            test(args, test_dataset, onerun)
+            logger.info("Finish testing!")
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
