@@ -39,6 +39,7 @@ if __name__ == "__main__":
         for idx in range(len(train_data)):
             text = train_data[idx][args.text_key]
             summary = train_data[idx][args.summary_key]
+            summary = " ".join(summary.split("\n"))
             all_train_texts.append(text)
             all_train_summaries.append(summary)
         print(len(all_train_texts))
@@ -46,13 +47,17 @@ if __name__ == "__main__":
         print("writing to: {}".format(new_train_path))
         with open(new_train_path, "w") as f:
             for idx in range(len(all_train_texts)):
-                f.write(all_train_texts[idx] + "\t" + all_train_summaries[idx])
+                to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
+                if idx > 0:
+                    to_write = "\n" + to_write
+                f.write(to_write)
 
         valid_data = pickle.load(open(valid_path, "rb"))
         all_valid_texts, all_valid_summaries = [], []
         for idx in range(len(valid_data)):
             text = valid_data[idx][args.text_key]
             summary = valid_data[idx][args.summary_key]
+            summary = " ".join(summary.split("\n"))
             all_valid_texts.append(text)
             all_valid_summaries.append(summary)
         print(len(all_valid_texts))
@@ -60,7 +65,10 @@ if __name__ == "__main__":
         print("writing to: {}".format(new_valid_path))
         with open(new_valid_path, "w") as f:
             for idx in range(len(all_valid_texts)):
-                f.write(all_valid_texts[idx] + "\t" + all_valid_summaries[idx])
+                to_write = all_valid_texts[idx] + "\t" + all_valid_summaries[idx]
+                if idx > 0:
+                    to_write = "\n" + to_write
+                f.write(to_write)
 
 
 

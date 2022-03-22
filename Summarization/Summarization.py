@@ -251,6 +251,13 @@ if __name__ == "__main__":
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="0", help="gpu id")
 
+    parser.add_argument("--data_dir", dest="data_dir", type=str,
+                        default="/data/mathieu/DATASETS/PromptSumm/")
+    parser.add_argument("--dataset", dest="dataset", type=str,
+                        default="cnndm")
+    parser.add_argument("--few_shot", dest="few_shot", type=int,
+                        default=64)
+
     parser.add_argument("--lr", dest="lr", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
@@ -421,31 +428,26 @@ if __name__ == "__main__":
 
         globaltokenizer = tokenizer
         model = T5forSummarization(args, t5model, tokenizer)
-        if j == 0:
-            promptnumber = args.prompt_number
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-        else:
-            logger.info("use previous prompt")
-            logger.info("Previous ckpt fold name: %s", newtaskfold[j - 1])
-            promptckpt = torch.load(args.tosavepath + "/" + newtaskfold[j - 1] + "/" + str(onerun) + "/bestckpt")
-            promptnumber = args.prompt_number
-            promptnumber_ckpt = promptckpt['promptnumber']
-            assert promptnumber == promptnumber_ckpt
-            promptembedding = promptckpt['promptembedding']
-            print(promptembedding.shape)
+        promptnumber = args.prompt_number
+        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
 
         model.set_prompt_embedding(promptnumber, promptembedding)
         model.to(args.device)
 
-        thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
-        thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
-        thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
-        print(thistrainfilename, thisvalidfilename, thistestfilename)
-        if not os.path.exists(newfilefolder + "/" + thistaskfold):
-            os.mkdir(newfilefolder + "/" + thistaskfold)
-        newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
-        newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
-        newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
+        print(dataprefix, thistaskfold, onerun)
+        #thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
+        #thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
+        #thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
+        thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
+        thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
+        print(thistrainfilename, thisvalidfilename)
+        #if not os.path.exists(newfilefolder + "/" + thistaskfold):
+        #    os.mkdir(newfilefolder + "/" + thistaskfold)
+        #newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
+        #newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
+        #newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
+        newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
+        newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
         f = open(newtrainfile, 'w')
         for line in open(thistrainfilename, 'r'):
             f.write(str(j) + "\t" + line)
@@ -454,18 +456,18 @@ if __name__ == "__main__":
         for line in open(thisvalidfilename, 'r'):
             f.write(str(j) + "\t" + line)
         f.close()
-        f = open(newtestfile, 'w')
-        for line in open(thistestfilename, 'r'):
-            f.write(str(j) + "\t" + line)
-        f.close()
+        #f = open(newtestfile, 'w')
+        #for line in open(thistestfilename, 'r'):
+        #    f.write(str(j) + "\t" + line)
+        #f.close()
         args.train_file_name = newtrainfile
         args.valid_file_name = newvalidfile
-        args.test_file_name = newtestfile
-        print(newtrainfile, newvalidfile, newtestfile)
+        #args.test_file_name = newtestfile
+        print(newtrainfile, newvalidfile)
 
         train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
         valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-        test_dataset = T5SummarizationDataset(args.test_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
+        #test_dataset = T5SummarizationDataset(args.test_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
 
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
