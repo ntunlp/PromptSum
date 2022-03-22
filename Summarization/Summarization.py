@@ -357,13 +357,13 @@ if __name__ == "__main__":
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
 
-    allgentasktoken = ["summerizationcnndm"]
+    allgentasktokens = ["summerizationcnndm"]
     thistaskname = "cnn daily mail "
     thistaskfold = "cnndm"
     args.taskfold = thistaskfold
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    for gg in range(len(allgentasktoken)):
+    for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
         logger.info('gen token = {} , gen token id = {}'.format(
@@ -392,18 +392,18 @@ if __name__ == "__main__":
     newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
     f = open(newtrainfile, 'w')
     for line in open(thistrainfilename, 'r'):
-        f.write(str(j) + "\t" + line)
+        f.write("0" + "\t" + line)
     f.close()
     f = open(newvalidfile, 'w')
     for line in open(thisvalidfilename, 'r'):
-        f.write(str(j) + "\t" + line)
+        f.write("0" + "\t" + line)
     f.close()
     args.train_file_name = newtrainfile
     args.valid_file_name = newvalidfile
     print(newtrainfile, newvalidfile)
 
-    train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktoken, answertoken, j)
-    valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktoken, answertoken, j)
+    train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+    valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
 
     logger.info("Finish prepare model and dataset")
     logger.info("Start training")

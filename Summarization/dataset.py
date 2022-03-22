@@ -30,7 +30,7 @@ class T5SummarizationDataset(Dataset):
                 print(oneline)
                 print(linelist)
             typeindex = int(linelist[0])
-            ifmeme.append(1)
+            ifmem.append(1)
             onedata = []
             onedata.append(linelist[1])
             onedata.append(linelist[2])
