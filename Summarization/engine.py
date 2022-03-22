@@ -42,9 +42,14 @@ def train(args, model, train_dataset, valid_dataset, logger):
     valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
                                       valid_dataset.tokenizer.pad_token_id,valid_sampler)
 
-    base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
-                                "weight_decay": args.weight_decay,
-                                "scale_parameter": False, "relative_step": False}
+    base_optimizer_arguments = {
+        "lr": args.lr, 
+        "clip_threshold": args.max_grad_norm, 
+        "decay_rate": -0.8,
+        "weight_decay": args.weight_decay,
+        "scale_parameter": False, 
+        "relative_step": False
+    }
     optimizer = Adafactor
     optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
                     **base_optimizer_arguments)
@@ -110,7 +115,7 @@ def train(args, model, train_dataset, valid_dataset, logger):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
-                    logger.info("step: %d, shcedule: %.3f, loss: %.6f, lmloss: %.6f" % (
+                    logger.info("step: %d, schedule: %.3f, loss: %.6f, lmloss: %.6f" % (
                         global_step, global_step / step_tot, np.average(allloss), np.average(alllmloss)))
 
                 if args.local_rank in [0, -1] and global_step % thisevalstep == 0:

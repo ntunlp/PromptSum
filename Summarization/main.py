@@ -71,6 +71,8 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
 
 ### optimization
+parser.add_argument("--train_sample", dest="train_sample", type=bool,
+                    default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
                     default=5e-1, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
@@ -207,7 +209,7 @@ def main(args):
     logger.info("Finish prepare model and dataset")
     logger.info("Start training")
 
-    train(args, model, train_dataset, valid_dataset)
+    train(args, model, train_dataset, valid_dataset, logger)
     logger.info("Finish training")
 
     if args.local_rank in [0, -1]:
