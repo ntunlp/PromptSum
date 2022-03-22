@@ -5,13 +5,12 @@ import torch
 from torch.utils.data import Sampler, Dataset, DataLoader
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, maxlen, tokenizer,newtgentasktokens, answertoken, currenttasknumber):
+    def __init__(self, filename, maxlen, tokenizer,newtgentasktokens, answertoken):
         super(T5SummarizationDataset, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
         self.data = []
-        self.currenttasknumber = currenttasknumber
         self.gentasktoken = newtgentasktokens
         self.answertoken = answertoken
         self.data,self.lmdata,self.ifmem = self.getalldata(self.filename)
@@ -31,10 +30,7 @@ class T5SummarizationDataset(Dataset):
                 print(oneline)
                 print(linelist)
             typeindex = int(linelist[0])
-            if typeindex < self.currenttasknumber:
-                ifmem.append(0)
-            else:
-                ifmem.append(1)
+            ifmeme.append(1)
             onedata = []
             onedata.append(linelist[1])
             onedata.append(linelist[2])

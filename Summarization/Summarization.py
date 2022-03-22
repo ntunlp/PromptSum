@@ -44,7 +44,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     )
     return dataloader
 
-def train(args, model, train_dataset,valid_dataset,onerun):
+def train(args, model, train_dataset,valid_dataset):
     # total step
     step_tot = (len(
         train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
@@ -139,7 +139,7 @@ def train(args, model, train_dataset,valid_dataset,onerun):
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
             if i >= 8:
-                dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i,onerun)
+                dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
                 model.train()
 
         if args.train_sample:
@@ -150,7 +150,7 @@ def train(args, model, train_dataset,valid_dataset,onerun):
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
 
-def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i,onerun):
+def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -189,20 +189,15 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i,o
     if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
         logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i, result_dict['val_rouge1'][-1]))
         result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
-        if not os.path.exists(args.tosavepath):
-            os.mkdir(args.tosavepath)
-        if not os.path.exists(args.tosavepath + "/" + args.taskfold):
-            os.mkdir(args.tosavepath + "/" + args.taskfold)
-        if not os.path.exists(args.tosavepath + "/" + args.taskfold + "/" + str(onerun)):
-            os.mkdir(args.tosavepath + "/" + args.taskfold + "/" + str(onerun))
-        model_to_save = model.module if hasattr(model, 'module') else model
-        ckpt = {
-            "promptnumber": model_to_save.promptnumber,
-            "promptembedding": model_to_save.promptembedding
-        }
-        torch.save(ckpt, os.path.join(args.tosavepath + "/" + args.taskfold + "/" + str(onerun), "bestckpt"))
+        if args.save_model:
+            model_to_save = model.module if hasattr(model, 'module') else model
+            ckpt = {
+                "promptnumber": model_to_save.promptnumber,
+                "promptembedding": model_to_save.promptembedding
+            }
+            torch.save(ckpt, args.save_model_path)
 
-def test(args, test_dataset, onerun):
+def test(args, test_dataset):
 
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
@@ -210,7 +205,7 @@ def test(args, test_dataset, onerun):
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     model = T5forSummarization(args, t5model, test_dataset.tokenizer)
-    allckpt = torch.load(args.tosavepath +  "/" + args.taskfold + "/" + str(onerun) + "/bestckpt")
+    allckpt = torch.load(args.save_model_path)
     model.promptnumber = allckpt["promptnumber"]
     model.promptembedding = allckpt["promptembedding"]
     logger.info("load finished!")
@@ -338,12 +333,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # print args
-    #####handle startindex==1 and taskindex==1
-    # if args.startindex == 1 and args.taskindex == 1:
-    #     args.batch_size_per_gpu = 1
-    #     args.gradient_accumulation_steps = 8
     print(args)
+
     # set cuda
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
     if args.local_rank == -1:
@@ -366,120 +357,65 @@ if __name__ == "__main__":
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
 
-    runtimes = 3
-    alltaskfold = ["cnndm"]
-    alltaskname = ["cnn daily mail "]
     allgentasktoken = ["summerizationcnndm"]
-    tasknum = len(alltaskfold)
-    dataprefix = "./data/"
-    fewshotnum = 16
-    if args.local_rank != -1:
-        torch.distributed.barrier()
-    startindex = args.startindex
-    for onerun in range(startindex, startindex + 1):
-        logger.info(onerun)
-        args.seed = initialseed + onerun * 100
-        seed_everything(args)
-        logger.info("new seed %s", args.seed)
-        allindex = [i for i in range(tasknum)]
-        random.shuffle(allindex)
-        newtaskname = [alltaskname[i] for i in allindex]
-        print(newtaskname)
-        newtaskfold = [alltaskfold[i] for i in allindex]
-        print(newtaskfold)
-        newtgentasktokens = [allgentasktoken[i] for i in allindex]
-        print(newtgentasktokens)
-        getnewfew = False
-        if getnewfew:
-            for j in range(len(newtaskfold)):
-                onefold = newtaskfold[j]
-                if not os.path.exists(dataprefix+onefold+"/"+str(onerun)+"_"+str(args.seed)):
-                    os.mkdir(dataprefix+onefold+"/"+str(onerun)+"_"+str(args.seed))
-                thispath = dataprefix+onefold+"/"+str(onerun)+"_"+str(args.seed)
-                logger.info(thispath)
-                getfewshot(dataprefix+onefold,thispath,fewshotnum)
-        globaltokenizer = None
-        newfilefolder = "newdata"
-        memdatafolder = "memdata"
-        if not os.path.exists(newfilefolder):
-            os.mkdir(newfilefolder)
-        if not os.path.exists(memdatafolder):
-            os.mkdir(memdatafolder)
-        tostart = args.taskindex
-        
-        # for j in range(tostart, tostart + 1):
-        j = 0
-        thistaskname = newtaskname[j]
-        thistaskfold = newtaskfold[j]
-        args.taskfold = thistaskfold
-        t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        for gg in range(0, tostart + 1):
-            gentasktoken = newtgentasktokens[gg]
-            tokenizer.add_tokens(gentasktoken)
-            # print(len(tokenizer))
-            logger.info(
-                'gen token = {} , gen token id = {}'.format(gentasktoken,
-                                                            tokenizer.convert_tokens_to_ids(gentasktoken)))
-        answertoken = "__ans__"
-        special_tokens = {"ans_token": answertoken}
-        tokenizer.add_tokens(list(special_tokens.values()))
-        special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
+    thistaskname = "cnn daily mail "
+    thistaskfold = "cnndm"
+    args.taskfold = thistaskfold
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    for gg in range(len(allgentasktoken)):
+        gentasktoken = allgentasktokens[gg]
+        tokenizer.add_tokens(gentasktoken)
+        logger.info('gen token = {} , gen token id = {}'.format(
+            gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
+        ))
+    answertoken = "__ans__"
+    special_tokens = {"ans_token": answertoken}
+    tokenizer.add_tokens(list(special_tokens.values()))
+    special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
 
-        globaltokenizer = tokenizer
-        model = T5forSummarization(args, t5model, tokenizer)
-        promptnumber = args.prompt_number
-        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+    model = T5forSummarization(args, t5model, tokenizer)
+    promptnumber = args.prompt_number
+    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
 
-        model.set_prompt_embedding(promptnumber, promptembedding)
-        model.to(args.device)
+    model.set_prompt_embedding(promptnumber, promptembedding)
+    model.to(args.device)
 
-        print(dataprefix, thistaskfold, onerun)
-        #thistrainfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/train.txt"
-        #thisvalidfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/valid.txt"
-        #thistestfilename = dataprefix + thistaskfold +"/" +str(onerun)+"_"+str(args.seed) + "/test.txt"
-        thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
-        thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
-        print(thistrainfilename, thisvalidfilename)
-        #if not os.path.exists(newfilefolder + "/" + thistaskfold):
-        #    os.mkdir(newfilefolder + "/" + thistaskfold)
-        #newtrainfile = newfilefolder + "/" + thistaskfold + "/" + "train.txt"
-        #newvalidfile = newfilefolder + "/" + thistaskfold + "/" + "valid.txt"
-        #newtestfile = newfilefolder + "/" + thistaskfold + "/" + "test.txt"
-        newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
-        newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
-        f = open(newtrainfile, 'w')
-        for line in open(thistrainfilename, 'r'):
-            f.write(str(j) + "\t" + line)
-        f.close()
-        f = open(newvalidfile, 'w')
-        for line in open(thisvalidfilename, 'r'):
-            f.write(str(j) + "\t" + line)
-        f.close()
-        #f = open(newtestfile, 'w')
-        #for line in open(thistestfilename, 'r'):
-        #    f.write(str(j) + "\t" + line)
-        #f.close()
-        args.train_file_name = newtrainfile
-        args.valid_file_name = newvalidfile
-        #args.test_file_name = newtestfile
-        print(newtrainfile, newvalidfile)
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info("The model has {} trainable parameters".format(n_params))
 
-        train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-        valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
-        #test_dataset = T5SummarizationDataset(args.test_file_name, args.max_length, tokenizer, newtgentasktokens, answertoken, j)
+    thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
+    thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
+    print(thistrainfilename, thisvalidfilename)
 
-        logger.info("Finish prepare model and dataset")
-        logger.info("Start training")
+    newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
+    newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
+    f = open(newtrainfile, 'w')
+    for line in open(thistrainfilename, 'r'):
+        f.write(str(j) + "\t" + line)
+    f.close()
+    f = open(newvalidfile, 'w')
+    for line in open(thisvalidfilename, 'r'):
+        f.write(str(j) + "\t" + line)
+    f.close()
+    args.train_file_name = newtrainfile
+    args.valid_file_name = newvalidfile
+    print(newtrainfile, newvalidfile)
 
-        train(args, model, train_dataset, valid_dataset, onerun)
-        logger.info("Finish training")
+    train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktoken, answertoken, j)
+    valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktoken, answertoken, j)
 
-        if args.local_rank in [0, -1]:
-            logger.info("Start testing")
-            logger.info("Testing...")
-            test(args, test_dataset, onerun)
-            logger.info("Finish testing!")
+    logger.info("Finish prepare model and dataset")
+    logger.info("Start training")
+
+    train(args, model, train_dataset, valid_dataset)
+    logger.info("Finish training")
+
+    if args.local_rank in [0, -1]:
+        logger.info("Start testing")
+        logger.info("Testing...")
+        test(args, test_dataset)
+        logger.info("Finish testing!")
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
