@@ -3,8 +3,11 @@ import pdb
 import sys
 import torch
 import torch.nn as nn
+
 from torch.nn.functional import kl_div
 from torch.nn import Softmax
+
+
 
 class T5forSummarization(nn.Module):
     def __init__(self, args, model, tokenizer):
@@ -30,32 +33,12 @@ class T5forSummarization(nn.Module):
     def set_prompt_embedding(self,promptnumber,promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
-        self.promptembedding_kd = nn.parameter.Parameter(promptembedding)
-        self.promptembedding_kd.requires_grad = False
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
-        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
-        return self.model(
-            inputs_embeds=allembedding,
-            attention_mask=all_attention_mask,
-            decoder_input_ids=decoder_input_ids,
-            decoder_attention_mask=decoder_attention_mask,
-            labels=labels,
-            output_attentions=True,
-            output_hidden_states=True
-        )
-
-    def _step_pre(
-            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
-    ):
-        input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        prompt_embed_repeat = self.promptembedding_kd.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
@@ -78,13 +61,12 @@ class T5forSummarization(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask']
         )
-        kdloss = torch.tensor(0.0)
 
         loss = outputs[0]
         if not ifcalpre:
             return loss
         else:
-            return loss,kdloss
+            return loss
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])

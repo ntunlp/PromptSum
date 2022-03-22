@@ -7,6 +7,7 @@ import pickle
 import pickle5
 
 
+
 def seed_everything(args):
     random.seed(args.seed)
     os.environ['PYTHONASSEED'] = str(args.seed)
@@ -15,6 +16,7 @@ def seed_everything(args):
     torch.cuda.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
+
 
 def getfewshot(inpath,outpath,fewshotnum):
     ###read from inpath
@@ -76,6 +78,7 @@ def getfewshot(inpath,outpath,fewshotnum):
         f.write(one + "\n")
     f.close()
 
+
 def getpromptembedding(model,tokenizer,promptnumber,taskname):
     t5_embedding = model.model.get_input_embeddings()
     promptinitembedding = torch.FloatTensor(promptnumber, t5_embedding.weight.size(1))
@@ -112,28 +115,3 @@ def getpromptembedding(model,tokenizer,promptnumber,taskname):
         startindex += 1
     return promptinitembedding
 
-def getmemdata(alldatafile,memdatafile,memeveryclass):
-    f = open(alldatafile, 'r')
-    alldata = []
-    while True:
-        line = f.readline().strip()
-        if not line:
-            break
-        linelist = line.split('\t')
-        if len(linelist) != 2:
-            continue
-        content = linelist[0]
-        label = linelist[1]
-        onedata = content + "\t" + label
-        alldata.append(onedata)
-    f.close()
-    fo = open(memdatafile,'w')
-    if memeveryclass < len(alldata):
-        thisres = random.sample(alldata, memeveryclass)
-    else:
-        thisres = alldata
-    allmemdata = thisres
-
-    for one in allmemdata:
-        fo.write(one + "\n")
-    fo.close()

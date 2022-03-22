@@ -1,24 +1,26 @@
 import pickle
 import argparse
 import gc
+import time
 gc.enable()
 
-import time
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="latentRE")
+parser = argparse.ArgumentParser(description="latentRE")
 
-    parser.add_argument("--data_dir", type = str, default = "/data/mathieu/DATASETS/PromptSumm/")
-    parser.add_argument("--dataset_name", type=str, default="ccdv/cnn_dailymail", 
-                        choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
-    parser.add_argument("--dataset", type = str, default = "cnndm",
-                        choices = ["cnndm", "xsum", "billsum", "samsum"])
-    parser.add_argument("--size", type = int, default = 64)
-    parser.add_argument("--seeds", type = list, default = [0])
+parser.add_argument("--data_dir", type = str, default = "/data/mathieu/DATASETS/PromptSumm/")
+parser.add_argument("--dataset_name", type=str, default="ccdv/cnn_dailymail", 
+                    choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
+parser.add_argument("--dataset", type = str, default = "cnndm",
+                    choices = ["cnndm", "xsum", "billsum", "samsum"])
+parser.add_argument("--size", type = int, default = 64)
+parser.add_argument("--seeds", type = list, default = [0])
 
-    args = parser.parse_args()
+args = parser.parse_args()
 
+
+
+def main(args):
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
@@ -69,6 +71,10 @@ if __name__ == "__main__":
                 if idx > 0:
                     to_write = "\n" + to_write
                 f.write(to_write)
+
+
+if __name__ == "__main__":
+    main(args)
 
 
 
