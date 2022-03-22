@@ -51,7 +51,7 @@ class T5CNNDataset(Dataset):
         self.tagtokenizer = None
         self.bert_tagger_path = ""
         self.allent = {}
-        if args.guidance_type == "ents":
+        if args.discrete_type == "entities":
             if not args.use_bert_tagger:
                 self.spacy_nlp = spacy.load("en_core_web_sm")
                 if args.build_ents_freq and split.startswith("train"):
@@ -119,7 +119,7 @@ class T5CNNDataset(Dataset):
                     # self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
                     # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
 
-        elif args.guidance_type == "sents":
+        elif args.discrete_type == "sentences":
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
 
     def __getitem__(self, idx):
@@ -129,7 +129,7 @@ class T5CNNDataset(Dataset):
         # guidance
         input_guidance = "None"
         # 1st option: based on entities
-        if self.args.guidance_type == "ents":
+        if self.args.discrete_type == "entities":
             if not self.args.use_bert_tagger:
                 if self.args.guidance_mode == 'oracle':
                     ents_x = self.spacy_nlp(inputdata).ents
@@ -190,7 +190,7 @@ class T5CNNDataset(Dataset):
                         #print(input_guidance)
 
         # 2nd option: based on salient sentences
-        elif self.args.guidance_type == "sents":
+        elif self.args.discrete_type == "sentences":
             salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
             input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
         # print(input_guidance)
