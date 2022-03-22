@@ -23,6 +23,7 @@ from dataset import *
 from utils import *
 from datasets import load_metric
 from rouge_score import rouge_scorer
+from nltk.tokenize import sent_tokenize
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -80,8 +81,11 @@ def train(args, model, train_dataset,valid_dataset):
 
     result_dict = {
         'epoch': [],
-        'val_rouge1': [],
-        'best_val_rouge1': Best_F1
+        'val_mean_rouge': [],
+        "best_val_mean_rouge": 0.0,
+        "val_rouge1": [],
+        "val_rouge2": [],
+        "val_rougeL": []
     }
     global_step = 0
     lm_lambda = args.lm_lambda
@@ -139,7 +143,7 @@ def train(args, model, train_dataset,valid_dataset):
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            if i >= 8:
+            if i >= 0:
                 dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
                 model.train()
 
@@ -362,6 +366,8 @@ if __name__ == "__main__":
                         default=False, help="whether to save the model or not")
     parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                         default="", help="the path where to save the model")
+    parser.add_argument("--stemmer", type=bool, default=True)
+    parser.add_argument("--highlights", type=bool, default=True)
 
     args = parser.parse_args()
 
