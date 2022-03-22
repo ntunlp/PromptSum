@@ -30,7 +30,7 @@ class T5SummarizationDataset(Dataset):
             onedata.append(linelist[1])
             alldata.append(onedata)
             onelmdata = []
-            onelmdata.append(self.gentasktoken[typeindex])
+            onelmdata.append(self.gentasktoken[0])
             onelmdata.append(linelist[0] + " " + self.answertoken + " " + linelist[1])
             alllmdata.append(onelmdata)
         f.close()
