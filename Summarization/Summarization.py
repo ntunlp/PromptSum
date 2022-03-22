@@ -25,6 +25,7 @@ from utils import *
 from datasets import load_metric
 from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
+from tqdm import tqdm
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -144,7 +145,7 @@ def train(args, model, train_dataset,valid_dataset):
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            if i >= 0:
+            if i >= 8:
                 dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
                 model.train()
 
@@ -185,9 +186,9 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
 
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
-    for i in range(len(allytrue)):
-        label = allytrue[i]
-        summary = allypred[i]
+    for j in range(len(allytrue)):
+        label = allytrue[j]
+        summary = allypred[j]
         if args.highlights:
             label = "\n".join(sent_tokenize(label))
             summary = "\n".join(sent_tokenize(summary))
