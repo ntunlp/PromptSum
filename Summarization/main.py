@@ -42,8 +42,8 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
                     default="/data/mathieu/DATASETS/PromptSumm/")
-parser.add_argument("--dataset", dest="dataset", type=str,
-                    default="cnndm")
+parser.add_argument("--dataset_name", dest="dataset_name", type=str,
+                    default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=64, help="number of data points for training AND validation")
 
@@ -101,7 +101,7 @@ parser.add_argument("--log_step", dest="log_step", type=int,
                     default=1, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
-parser.add_argument("--stemmer", dest="stemmer"m type=bool, 
+parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                     default=True)
 
 # export
@@ -125,9 +125,9 @@ highlights = [True, False, False, False, False, False]
 idx = dataset_names.index(args.dataset_name)
 if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
     idx = 0
-    save_name = 'cnndm'
+    args.dataset = 'cnndm'
 else:
-    save_name = args.dataset_name
+    args.dataset = args.dataset_name
 
 args.dataset_version = dataset_versions[idx]
 args.text_key = text_keys[idx]
