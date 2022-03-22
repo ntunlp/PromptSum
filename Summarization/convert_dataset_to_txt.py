@@ -18,9 +18,9 @@ if __name__ == "__main__":
 
     print(args)
 
-    for seed in seeds:
-        train_path = args.data_dir + args.dataset + "/{}_few_shot_train_seed_{}".format(args.size, seed)
-        valid_path = args.data_dir + args.dataset + "/{}_few_shot_valid_seed_{}".format(args.size, seed)
+    for seed in args.seeds:
+        train_path = args.data_dir + args.dataset + "/{}/{}_few_shot_train_seed_{}".format(args.size, args.size, seed)
+        valid_path = args.data_dir + args.dataset + "/{}/{}_few_shot_valid_seed_{}".format(args.size, args.size, seed)
         print(train_path, valid_path)
 
         train_data = pickle.load(open(train_path, "rb"))
