@@ -22,6 +22,7 @@ from model import *
 from dataset import *
 from utils import *
 from datasets import load_metric
+from rouge_score import rouge_scorer
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -176,19 +177,45 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
+
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
+    r1s, r2s, rls = [], [], []
+    for i in range(len(allytrue)):
+        label = allytrue[i]
+        summary = allypred[i]
+        if args.highlights:
+            label = "\n".join(sent_tokenize(label))
+            summary = "\n".join(sent_tokenize(summary))
+        rouge_score = scorer.score(label, summary)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+    rouge_score = {
+        "rouge1": 100 * np.mean(r1s),
+        "rouge2": 100 * np.mean(r2s),
+        "rougeLsum": 100 * np.mean(rls)
+    }
     logger.info('----Validation Results Summary----')
     logger.info(len(allypred))
     logger.info(rouge_score)
-    logger.info("valid_rouge1: %f", rouge_score["rouge1"].mid.fmeasure)
-    logger.info("valid_rouge2: %f", rouge_score["rouge2"].mid.fmeasure)
-    logger.info("valid_rougeL: %f", rouge_score["rougeL"].mid.fmeasure)
+    p, r, f1 = entity_eval(allytrue, allypred)
 
-    result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
-    if result_dict['val_rouge1'][-1] > result_dict['best_val_rouge1']:
-        logger.info("{} epoch, best epoch was updated! val_rouge1: {: >4.5f}".format(i, result_dict['val_rouge1'][-1]))
-        result_dict["best_val_rouge1"] = result_dict['val_rouge1'][-1]
+    # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
+    # change accordingly
+    mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
+    result_dict['val_mean_rouge'].append(mean_rouge)
+    if result_dict['val_mean_rouge'][-1] > result_dict['best_val_mean_rouge']:
+        logger.info("{} epoch, best epoch was updated! val_mean_rouge: {: >4.5f}".format(i, result_dict['val_mean_rouge'][-1]))
+        result_dict["best_val_mean_rouge"] = result_dict['val_mean_rouge'][-1]
+        # also append other rouge scores
+        result_dict['val_rouge1'] = rouge_score["rouge1"]
+        result_dict['val_rouge2'] = rouge_score["rouge2"]
+        result_dict['val_rougeL'] = rouge_score["rougeLsum"]
+        
+        result_dict['precision'] = p
+        result_dict['recall'] = r
+        result_dict['f1'] = f1
+
         if args.save_model:
             model_to_save = model.module if hasattr(model, 'module') else model
             ckpt = {
@@ -394,20 +421,6 @@ if __name__ == "__main__":
     print(thistrainfilename, thisvalidfilename)
     args.train_file_name = thistrainfilename
     args.valid_file_name = thisvalidfilename
-
-    # newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
-    # newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
-    # f = open(newtrainfile, 'w')
-    # for line in open(thistrainfilename, 'r'):
-    #     f.write("0" + "\t" + line)
-    # f.close()
-    # f = open(newvalidfile, 'w')
-    # for line in open(thisvalidfilename, 'r'):
-    #     f.write("0" + "\t" + line)
-    # f.close()
-    # args.train_file_name = newtrainfile
-    # args.valid_file_name = newvalidfile
-    # print(newtrainfile, newvalidfile)
 
     train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
     valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
