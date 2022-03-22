@@ -13,34 +13,28 @@ class T5SummarizationDataset(Dataset):
         self.data = []
         self.gentasktoken = newtgentasktokens
         self.answertoken = answertoken
-        self.data,self.lmdata,self.ifmem = self.getalldata(self.filename)
+        self.data, self.lmdata = self.getalldata(self.filename)
         self.num_entries = len(self.data)
 
     def getalldata(self,filename):
         f = open(filename,'r')
         alldata = []
         alllmdata = []
-        ifmem = []
         while True:
             oneline = f.readline().strip()
             if not oneline:
                 break
             linelist = oneline.split("\t")
-            if len(linelist) != 3:
-                print(oneline)
-                print(linelist)
-            typeindex = int(linelist[0])
-            ifmem.append(1)
             onedata = []
+            onedata.append(linelist[0])
             onedata.append(linelist[1])
-            onedata.append(linelist[2])
             alldata.append(onedata)
             onelmdata = []
             onelmdata.append(self.gentasktoken[typeindex])
-            onelmdata.append(linelist[1] + " " + self.answertoken + " " + linelist[2])
+            onelmdata.append(linelist[0] + " " + self.answertoken + " " + linelist[1])
             alllmdata.append(onelmdata)
         f.close()
-        return alldata,alllmdata,ifmem
+        return alldata, alllmdata
 
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
@@ -54,8 +48,7 @@ class T5SummarizationDataset(Dataset):
         inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
 
-        thisifmem = self.ifmem[idx]
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze(), thisifmem
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze()
 
     def __len__(self):
         return self.num_entries
@@ -68,7 +61,7 @@ class SmartBatchingCollate:
 
     def __call__(self, batch):
 
-        sequences, targets, lmseq, lmtar, thisifmem = list(zip(*batch))
+        sequences, targets, lmseq, lmtar = list(zip(*batch))
 
         input_ids, attention_mask = self.pad_sequence(
             sequences,
@@ -80,8 +73,7 @@ class SmartBatchingCollate:
 
         lminput_id, lm_att_mask = self.pad_sequence(lmseq, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
         lmtar_id, lm_tar_mask = self.pad_target(lmtar, max_sequence_length=self._max_length * 2, pad_token_id=self._pad_token_id)
-        ifinmem = torch.tensor(thisifmem)
-        output = input_ids, attention_mask, target_ids, target_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask,  ifinmem
+        output = input_ids, attention_mask, target_ids, target_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):

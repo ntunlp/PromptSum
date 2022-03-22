@@ -95,7 +95,7 @@ def train(args, model, train_dataset,valid_dataset):
         allkdloss = []
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),"ifmem": batch[8].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
             inputs_lm = {"input_ids": batch[4].to(args.device), "attention_mask": batch[5].to(args.device),
                          "target_ids": batch[6].to(args.device), "target_mask": batch[7].to(args.device)}
             if scaler is not None:
@@ -331,6 +331,11 @@ if __name__ == "__main__":
     parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                         default=1, help="If ckpt only contains model. Default: True, only contains model")
 
+    parser.add_argument("--save_model", dest="save_model", type=bool,
+                        default=False, help="whether to save the model or not")
+    parser.add_argument("--save_model_path", dest="save_model_path", type=str,
+                        default="", help="the path where to save the model")
+
     args = parser.parse_args()
 
     print(args)
@@ -387,20 +392,22 @@ if __name__ == "__main__":
     thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
     thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
     print(thistrainfilename, thisvalidfilename)
+    args.train_file_name = thistrainfilename
+    args.valid_file_name = thisvalidfilename
 
-    newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
-    newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
-    f = open(newtrainfile, 'w')
-    for line in open(thistrainfilename, 'r'):
-        f.write("0" + "\t" + line)
-    f.close()
-    f = open(newvalidfile, 'w')
-    for line in open(thisvalidfilename, 'r'):
-        f.write("0" + "\t" + line)
-    f.close()
-    args.train_file_name = newtrainfile
-    args.valid_file_name = newvalidfile
-    print(newtrainfile, newvalidfile)
+    # newtrainfile = args.data_dir + args.dataset + "/{}/seed_0_new/train.txt".format(args.few_shot)
+    # newvalidfile = args.data_dir + args.dataset + "/{}/seed_0_new/valid.txt".format(args.few_shot)
+    # f = open(newtrainfile, 'w')
+    # for line in open(thistrainfilename, 'r'):
+    #     f.write("0" + "\t" + line)
+    # f.close()
+    # f = open(newvalidfile, 'w')
+    # for line in open(thisvalidfilename, 'r'):
+    #     f.write("0" + "\t" + line)
+    # f.close()
+    # args.train_file_name = newtrainfile
+    # args.valid_file_name = newvalidfile
+    # print(newtrainfile, newvalidfile)
 
     train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
     valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)

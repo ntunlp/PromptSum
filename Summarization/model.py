@@ -79,28 +79,6 @@ class T5forSummarization(nn.Module):
             decoder_attention_mask=batch['target_mask']
         )
         kdloss = torch.tensor(0.0)
-        if ifcalpre:
-            ifinmem = batch["ifmem"]
-            newindex = []
-            for i in range(0, ifinmem.shape[0]):
-                if ifinmem[i] == 0:
-                    newindex.append(i)
-            if newindex != []:
-                outputs_pre = self._step_pre(
-                    input_ids=batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    labels=lm_labels,
-                    decoder_attention_mask=batch['target_mask']
-                )
-                thisdistri = outputs[1]
-                predistri = outputs_pre[1]
-                thisdistriuse = thisdistri[newindex]
-                predistriuse = predistri[newindex]
-                thisdistriuse_sm = self.softmax(thisdistriuse)
-                predistriuse_sm = self.softmax(predistriuse)
-                kdloss = kl_div(thisdistriuse_sm.log(), predistriuse_sm, reduction='sum')
-                if torch.isinf(kdloss):
-                    kdloss = torch.tensor(0.0)
 
         loss = outputs[0]
         if not ifcalpre:
