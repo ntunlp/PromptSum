@@ -28,7 +28,7 @@ from utils import *
 
 
 
-def train(args, model, train_dataset,valid_dataset):
+def train(args, model, train_dataset, valid_dataset, logger):
     # total step
     step_tot = (len(
         train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
@@ -120,7 +120,7 @@ def train(args, model, train_dataset,valid_dataset):
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
             if i >= 8:
-                dooneeval(model,valid_dataloader,args,result_dict,optimizer,scaler,i)
+                dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,i)
                 model.train()
 
         if args.train_sample:
@@ -150,7 +150,7 @@ def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     return dataloader
 
 
-def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
+def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, i):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -224,7 +224,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,optimizer,scaler,i):
             torch.save(ckpt, args.save_model_path)
 
 
-def test(args, test_dataset):
+def test(args, test_dataset, logger):
 
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
