@@ -1,6 +1,7 @@
 
 import argparse
 import gc
+import spacy
 gc.enable()
 
 import time
@@ -272,6 +273,41 @@ def test(args, test_dataset):
     logger.info("test_rouge2: %f", rouge_score["rouge2"].mid.fmeasure)
     logger.info("test_rougeL: %f", rouge_score["rougeL"].mid.fmeasure)
 
+def entity_eval(ytrue, ypred):
+    spacy_nlp = spacy.load("en_core_web_sm")
+    all_p = []
+    all_r = []
+    all_f1 = []
+    for i in tqdm(range(len(ytrue))):
+        ents_true = spacy_nlp(ytrue[i]).ents
+        ents_true = [ent.text for ent in ents_true]
+        ents_pred = spacy_nlp(ypred[i]).ents
+        ents_pred = [ent.text for ent in ents_pred]
+        p = 0
+        r = 0
+        f1 = 0
+        if len(ents_pred) > 0:
+            p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
+        else:
+            if len(ents_true) == 0:
+                p = 100
+        if len(ents_true) > 0:
+            r = 100 * len([x for x in ents_true if x in ents_pred]) / len(ents_true)
+        else:
+            if len(ents_pred) == 0:
+                r = 100
+        if (p + r) > 0:
+            f1 = (2 * p * r) / (p + r)
+        all_p.append(p)
+        all_r.append(r)
+        all_f1.append(f1)
+    p = np.mean(all_p)
+    r = np.mean(all_r)
+    f1 = np.mean(all_f1)
+    print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
+    
+    return p, r, f1
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="latentRE")
     parser.add_argument("--cuda", dest="cuda", type=str,
@@ -445,6 +481,7 @@ if __name__ == "__main__":
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
+
 
 
 
