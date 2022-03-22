@@ -51,10 +51,13 @@ def train(args, model, train_dataset, valid_dataset, logger):
         "relative_step": False
     }
     optimizer = Adafactor
-    optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
-                    **base_optimizer_arguments)
-    # distributed training
-    model = ShardedDDP(model, optimizer)
+    if args.n_gpu > 1: # distributed training
+        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
+                        **base_optimizer_arguments)
+        # distributed training
+        model = ShardedDDP(model, optimizer)
+    else:
+        optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
     model.train()
     #scaler = ShardedGradScaler()
     scheduler = None

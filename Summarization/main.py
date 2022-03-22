@@ -1,13 +1,13 @@
 import pickle
 import argparse
 import gc
-import spacy
 import time
 import logging
 
 gc.enable()
 
 from datasets import load_metric
+import spacy
 from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
@@ -41,7 +41,7 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/mathieu/DATASETS/PromptSumm/")
+                    default="/data/ruochen/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -61,10 +61,10 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-large/",
+                    default="/data/ruochen/hf_models/t5-v1-large/",
                     help="The path of huggingface cache")
 # prompt
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
@@ -199,7 +199,7 @@ def main(args):
 
     thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
     thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
-    print(thistrainfilename, thisvalidfilename)
+    # print(thistrainfilename, thisvalidfilename)
     args.train_file_name = thistrainfilename
     args.valid_file_name = thisvalidfilename
 
