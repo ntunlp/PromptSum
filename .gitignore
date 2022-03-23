@@ -7,4 +7,6 @@ src/tagger/__pycache__
 src/tagger/sumdata
 src/tagger/out_base
 src/tagger/output
-Summarization/__pycache__/*
+Summarization/__pycache__
+Summarization/*log*
+Summarization/t5_sum_ckpt
