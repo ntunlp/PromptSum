@@ -42,6 +42,7 @@ class T5SoftPrompt(nn.Module):
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -89,6 +90,7 @@ class T5SoftPrompt(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
+        
         return input,target,preds
 
     def _generative_samples(self, batch):
@@ -118,14 +120,17 @@ class T5SoftPrompt(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
+        
         return input,target,preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
+        
         return self.lmap(str.strip, gen_text)
 
     def lmap(self, f, x):
         """list(map(f, x))"""
+        
         return list(map(f, x))

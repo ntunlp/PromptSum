@@ -22,8 +22,9 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model import *
 from model_finetune import *
+from model import *
+from model_mixture import *
 from dataset import *
 from utils import *
 from engine import *
@@ -56,7 +57,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt"])
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt"])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -217,6 +218,10 @@ def main(args):
         elif args.model == 'T5SoftPrompt':
             model = T5SoftPrompt(args, t5model, tokenizer)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model.set_prompt_embedding(promptnumber, promptembedding)
+        elif args.model == 'T5MixPrompt':
+            model = T5MixPrompt(args, t5model, tokenizer)
+            promptembedding = getmixpromptembedding(model, tokenizer, promptnumber)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
