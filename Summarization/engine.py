@@ -73,38 +73,33 @@ def train(args, model, train_dataset, valid_dataset, logger):
         'epoch': [],
         'val_mean_rouge': [],
         "best_val_mean_rouge": 0.0,
-        "val_rouge1": [],
-        "val_rouge2": [],
-        "val_rougeL": []
+        "val_rouge1": 0.0,
+        "val_rouge2": 0.0,
+        "val_rougeL": 0.0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
     }
     global_step = 0
-    lm_lambda = args.lm_lambda
     for i in range(startepoch, startepoch + args.max_epoch):
         thisevalstep = args.eval_step
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
         allloss = []
-        alllmloss = []
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            inputs_lm = {"input_ids": batch[4].to(args.device), "attention_mask": batch[5].to(args.device),
-                         "target_ids": batch[6].to(args.device), "target_mask": batch[7].to(args.device)}
             if scaler is not None:
                 with autocast():
-                    loss = model(inputs,ifcalpre=True)
-                    lmloss = model(inputs_lm,ifcalpre=False) * lm_lambda
+                    loss = model(inputs)
             else:
-                loss  = model(inputs,ifcalpre=True)
-                lmloss = model(inputs_lm,ifcalpre=False) * lm_lambda
-            finalloss = loss + lmloss
+                loss  = model(inputs)
             if scaler is not None:
-                scaler.scale(finalloss).backward()
+                scaler.scale(loss).backward()
             else:
-                finalloss.backward()
+                loss.backward()
             allloss.append(loss.item())
-            alllmloss.append(lmloss.item())
 
             if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
@@ -118,8 +113,8 @@ def train(args, model, train_dataset, valid_dataset, logger):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % args.log_step == 0:
-                    logger.info("step: %d, schedule: %.3f, loss: %.6f, lmloss: %.6f" % (
-                        global_step, global_step / step_tot, np.average(allloss), np.average(alllmloss)))
+                    logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
+                        global_step, global_step / step_tot, np.average(allloss)))
 
                 if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
                     print("not eval!!!")
@@ -209,7 +204,6 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
     logger.info(rouge_score)
     p, r, f1 = entity_eval(allytrue, allypred)
 
-    # result_dict['val_rouge1'].append(rouge_score["rouge1"].mid.fmeasure)
     # change accordingly
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
     result_dict['val_mean_rouge'].append(mean_rouge)
