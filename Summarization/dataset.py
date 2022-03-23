@@ -169,7 +169,6 @@ class T5SummarizationDataset(Dataset):
         elif self.args.guidance_type == "sents":
             salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
             input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
-        # print(input_guidance)
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")

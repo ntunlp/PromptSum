@@ -80,10 +80,12 @@ class T5MixPrompt(nn.Module):
         #     labels=labels
         # )
 
+        print(input_ids[0])
+        raise Exception
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         ent_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
-        prompt_embed = torch.cat([soft_prompt_embed, ent_prompt_embed], 1)
+        prompt_embed = torch.cat([soft_prompt_embed], 1)
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
@@ -177,7 +179,8 @@ class T5MixPrompt(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        
+       
+        return input, target, preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
