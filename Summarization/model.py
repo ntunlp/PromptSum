@@ -37,8 +37,6 @@ class T5SoftPrompt(nn.Module):
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
-        print(input_ids[0])
-        raise Exception
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
