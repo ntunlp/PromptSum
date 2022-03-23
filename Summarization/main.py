@@ -234,7 +234,7 @@ def main(args):
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif args.model == 'T5MixPrompt':
             model = T5MixPrompt(args, t5model, tokenizer)
-            promptembedding = getmixpromptembedding(model, tokenizer, promptnumber)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')

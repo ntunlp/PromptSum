@@ -24,17 +24,16 @@ class T5MixPrompt(nn.Module):
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
-        self.prompt_dict = nn.ParameterDict() # {label_name: [label_name_emb, label_soft_tokens]}, specially, self.prompt_dict['__task__']: task_soft_tokens
-        self.prompt_fix_dict = {}
+        self.promptembedding = None
         self.mode = args.concat_mode
         self.seen_labels_cl = set() # seen labels so far, under continual learning
 
     def add_seen_labels(self, labels):
         self.seen_labels_cl.update(labels)
 
-    def set_prompt_embedding(self, promptnumber, task_emb):
+    def set_prompt_embedding(self, promptnumber, promptembedding):
         self.promptnumber = promptnumber
-        self.prompt_dict['__task__'] = nn.parameter.Parameter(task_emb['__task__'].to(self.model.device))
+        self.promptembedding = nn.parameter.Parameter(promptembedding)
 
     def _construct_prompt_batch(self, batchsize, ent_ids):
         prompt_embs = []
@@ -56,29 +55,47 @@ class T5MixPrompt(nn.Module):
     def _step(
             self, input_ids, ent_ids, attention_mask=None, ent_attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, labels_set=None
     ):
-        ##### handle prompt, cal input_embed
-        input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        # ##### handle prompt, cal input_embed
+        # input_embed_part = self.model.encoder.embed_tokens(input_ids)
         
-        prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
-        prompt_length = prompt_embedding.size(1)
-        if ent_attention_mask is None:
-            mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
-        else:
-            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device), ent_attention_mask], 1)
+        # prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=ent_ids)
+        # prompt_length = prompt_embedding.size(1)
+        # if ent_attention_mask is None:
+        #     mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
+        # else:
+        #     mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device), ent_attention_mask], 1)
 
-        if self.mode == 'right_concat':
-            allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
-            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
-        if self.mode == 'left_concat':
-            allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
-            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+        # if self.mode == 'right_concat':
+        #     allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
+        #     all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        # if self.mode == 'left_concat':
+        #     allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
+        #     all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+        
+        # return self.model(
+        #     inputs_embeds=allembedding,
+        #     attention_mask=all_attention_mask,
+        #     decoder_input_ids=decoder_input_ids,
+        #     decoder_attention_mask=decoder_attention_mask,
+        #     labels=labels
+        # )
+
+        input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        ent_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+        prompt_embed = torch.cat([soft_prompt_embed, ent_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
+        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
-            labels=labels
+            labels=labels,
+            output_attentions=True,
+            output_hidden_states=True
         )
 
     def forward(self, batch, labels_set=None):
