@@ -51,7 +51,7 @@ class T5Finetune(nn.Module):
         )
 
         loss = outputs[0]
-        
+
         return loss
 
     def _generative_step(self, batch):
