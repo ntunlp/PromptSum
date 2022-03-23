@@ -12,14 +12,16 @@ from rouge_score import rouge_scorer
 
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args):
         super(T5SummarizationDataset, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
-        self.data = []
         self.gentasktoken = newtgentasktokens
         self.answertoken = answertoken
+        self.args = args
+        
+        self.data = []
         self.data = self.getalldata(self.filename)
         self.num_entries = len(self.data)
 
@@ -299,8 +301,8 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         datasets.append((train_dataset, valid_dataset))
     
     return datasets
