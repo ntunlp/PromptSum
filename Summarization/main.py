@@ -87,7 +87,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=30, help="max epoch number")
+                    default=2, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=0, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
@@ -244,6 +244,7 @@ def main(args):
         for k in keys:
             result_dict_total[k].append(result_dict[k])
     print('final results:')
+    print(result_dict_total)
     for k in keys:
         print('{}: {}'.format(k, np.mean(result_dict_total[k])))
 
