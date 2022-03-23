@@ -79,8 +79,8 @@ class T5SummarizationDataset(Dataset):
                 # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
 
         # counterfactual training
-        self.counterfactual_removal = counterfactual_removal
-        if counterfactual_removal:
+        self.counterfactual_removal = args.counterfactual_removal
+        if self.counterfactual_removal:
             self.counterfactual_remove()
             print("# After augmenting, Data points in this split: {}".format(len(self.data[self.args.text_key])))
 
@@ -120,8 +120,6 @@ class T5SummarizationDataset(Dataset):
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
-                    if self.args.filter_ents_freq:
-                        ents = [x for x in ents if x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
                     input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
             else:
                 ####for train

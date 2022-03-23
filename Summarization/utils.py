@@ -117,10 +117,10 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname):
     return promptinitembedding
 
 
-def get_mix_prompt_embedding(model, tokenizer, task_prompt_length):
+def getmixpromptembedding(model, tokenizer, task_prompt_length):
     def sample_top_k_tokens(topk, t5_embedding):
         with open('allnumber.pickle', 'rb') as fr:
-            alltokens = pickle.load(fr)
+            alltokens = pickle5.load(fr)
         sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
         top5000 = []
         for one in sortedalltoken:

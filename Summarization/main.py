@@ -71,8 +71,21 @@ parser.add_argument("--cache_path", dest="cache_path", type=str,
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
+parser.add_argument("--concat_mode", dest="concat_mode", type=str,
+                    default="right")
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
+# discrete prompt
+parser.add_argument("--guidance_type", dest="guidance_type", type=str,
+                    default="ents")
+parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+                    default="normal")
+parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
+                    default=False)
+parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
+                    default=False)
+parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
+                    default=100)
 
 ### optimization
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
@@ -222,7 +235,7 @@ def main(args):
         elif args.model == 'T5MixPrompt':
             model = T5MixPrompt(args, t5model, tokenizer)
             promptembedding = getmixpromptembedding(model, tokenizer, promptnumber)
-            model.set_prompt_embedding(promptnumber, promptembedding)
+            model.set_prompt_embedding(promptembedding)
         else:
             raise Exception('Model not implemented yet')
         model.to(args.device)
