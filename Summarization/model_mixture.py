@@ -35,12 +35,14 @@ class T5MixPrompt(nn.Module):
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 
     def _step(
-            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
+            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, ent_ids=None, ent_mask=None
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
+        soft_prompt_embed= self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         
         return self.model(
@@ -60,7 +62,9 @@ class T5MixPrompt(nn.Module):
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
             labels=lm_labels,
-            decoder_attention_mask=batch['target_mask']
+            decoder_attention_mask=batch['target_mask'],
+            ent_ids=batch["input_ents"],
+            ent_mask=batch["ents_mask"]
         )
         loss = outputs[0]
         
