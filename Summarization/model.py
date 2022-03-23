@@ -30,7 +30,7 @@ class T5SoftPrompt(nn.Module):
         self.promptembedding = None
         self.softmax = Softmax(dim=2)
 
-    def set_prompt_embedding(self,promptnumber,promptembedding):
+    def set_prompt_embedding(self, promptnumber, promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 

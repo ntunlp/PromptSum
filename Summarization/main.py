@@ -235,7 +235,7 @@ def main(args):
         elif args.model == 'T5MixPrompt':
             model = T5MixPrompt(args, t5model, tokenizer)
             promptembedding = getmixpromptembedding(model, tokenizer, promptnumber)
-            model.set_prompt_embedding(promptembedding)
+            model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
         model.to(args.device)

@@ -23,6 +23,7 @@ class T5MixPrompt(nn.Module):
             param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
+        self.promptnumber = 0
         self.prompt_dict = nn.ParameterDict() # {label_name: [label_name_emb, label_soft_tokens]}, specially, self.prompt_dict['__task__']: task_soft_tokens
         self.prompt_fix_dict = {}
         self.mode = args.concat_mode
@@ -31,7 +32,8 @@ class T5MixPrompt(nn.Module):
     def add_seen_labels(self, labels):
         self.seen_labels_cl.update(labels)
 
-    def set_prompt_embedding(self, task_emb):
+    def set_prompt_embedding(self, promptnumber, task_emb):
+        self.promptnumber = promptnumber
         self.prompt_dict['__task__'] = nn.parameter.Parameter(task_emb['__task__'].to(self.model.device))
 
     def _construct_prompt_batch(self, batchsize, ent_ids):
@@ -62,7 +64,7 @@ class T5MixPrompt(nn.Module):
         if ent_attention_mask is None:
             mask_prompt = torch.full((attention_mask.shape[0], prompt_length),1).to(self.args.device)
         else:
-            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.args.prompt_length),1).to(self.args.device), ent_attention_mask], 1)
+            mask_prompt = torch.cat([torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device), ent_attention_mask], 1)
 
         if self.mode == 'right_concat':
             allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
