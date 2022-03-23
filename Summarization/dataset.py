@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, maxlen, tokenizer, newtgentasktokens, answertoken):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken):
         super(T5SummarizationDataset, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
@@ -295,8 +295,8 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-        valid_dataset = T5SummarizationDataset(valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken)
         datasets.append((train_dataset, valid_dataset))
     
     return datasets
