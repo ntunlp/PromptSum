@@ -17,10 +17,7 @@ class T5Finetune(nn.Module):
         if args.use_lm_adapted == True:
             print("use lm adapted model!")
             t5ckpt = torch.load(args.lm_adapted_path)
-            if args.if_ckpt_only_model == True:
-                self.model.load_state_dict(t5ckpt)
-            else:
-                self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
+            self.model.load_state_dict(t5ckpt)
             ### for fine-tuning, set requires_grad True
             for name, param in self.model.named_parameters():
                 #print(name)

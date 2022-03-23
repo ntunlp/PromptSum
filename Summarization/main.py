@@ -221,12 +221,19 @@ def main(args):
 
 
         t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        model = T5forSummarization(args, t5model, tokenizer)
-        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-        model.set_prompt_embedding(promptnumber, promptembedding)
+        if args.model == 'T5Finetune':
+            print('Finetuning')
+            model = T5Finetune(args, t5model, tokenizer)
+        elif args.model == 'T5Summarization':
+            model = T5forSummarization(args, t5model, tokenizer)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model.set_prompt_embedding(promptnumber, promptembedding)
+        else:
+            raise Exception('Model not implemented yet')
         model.to(args.device)
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info("The model has {} trainable parameters".format(n_params))
 
         result_dict = train(args, model, train_dataset, valid_dataset, logger)
         logger.info("Finish training")
