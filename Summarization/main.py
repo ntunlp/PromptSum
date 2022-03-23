@@ -214,7 +214,7 @@ def main(args):
         if args.model == 'T5Finetune':
             print('Finetuning')
             model = T5Finetune(args, t5model, tokenizer)
-        elif args.model == 'T5Summarization':
+        elif args.model == 'T5SoftPrompt':
             model = T5SoftPrompt(args, t5model, tokenizer)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
