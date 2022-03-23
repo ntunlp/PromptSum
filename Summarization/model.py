@@ -9,9 +9,9 @@ from torch.nn import Softmax
 
 
 
-class T5forSummarization(nn.Module):
+class T5SoftPrompt(nn.Module):
     def __init__(self, args, model, tokenizer):
-        super(T5forSummarization, self).__init__()
+        super(T5SoftPrompt, self).__init__()
         self.args = args
         self.model = model
         ### load ckpt
@@ -52,7 +52,7 @@ class T5forSummarization(nn.Module):
             output_hidden_states=True
         )
 
-    def forward(self, batch, ifcalpre):
+    def forward(self, batch):
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
         outputs = self._step(
@@ -63,10 +63,8 @@ class T5forSummarization(nn.Module):
         )
 
         loss = outputs[0]
-        if not ifcalpre:
-            return loss
-        else:
-            return loss
+        
+        return loss
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])

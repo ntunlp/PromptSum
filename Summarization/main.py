@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="0", help="gpu id")
+                    default="1", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
@@ -56,16 +56,16 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Summarization", help="{T5NER}") # can be T5Summarization, T5Finetune
+                    default="T5Finetune", choices = ["T5Finetune", "T5SoftPrompt"])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base}")
+                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-large/",
+                    default="/data/mathieu/hf_models/t5-v1-base/",
                     help="The path of huggingface cache")
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -77,7 +77,7 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate')
+                    default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -98,8 +98,6 @@ parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
                     default=1.0, help="max grad norm")
-parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
-                    default=0.0, help='language model loss lambda')
 
 # evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,
@@ -191,16 +189,6 @@ def main(args):
 
     promptnumber = args.prompt_number
 
-    # original_way of loading
-    # thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
-    # thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
-    # # print(thistrainfilename, thisvalidfilename)
-    # args.train_file_name = thistrainfilename
-    # args.valid_file_name = thisvalidfilename
-
-    # train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-    # valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-
     # new way of loading
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
     dataset_args = [args.dataset_name, args.dataset_version]
@@ -214,7 +202,7 @@ def main(args):
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
-    keys = ['val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+    keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
     result_dict_total = {}
     for k in keys:
         result_dict_total[k] = []
@@ -222,13 +210,12 @@ def main(args):
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-
         t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         if args.model == 'T5Finetune':
             print('Finetuning')
             model = T5Finetune(args, t5model, tokenizer)
         elif args.model == 'T5Summarization':
-            model = T5forSummarization(args, t5model, tokenizer)
+            model = T5SoftPrompt(args, t5model, tokenizer)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
