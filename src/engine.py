@@ -75,10 +75,11 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
 
     base_optimizer_arguments = {
         "lr": args.lr, 
+        "clip_threshold": 1.0,
         "decay_rate": -0.8,
         "weight_decay": args.weight_decay,                        
         "scale_parameter": False, 
-        "relative_step": False
+        "relative_step": False,
     }
     if args.model == 'T5Finetune':
         optimizer = AdamW

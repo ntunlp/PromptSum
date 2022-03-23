@@ -37,7 +37,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
 parser.add_argument("--num_entries", dest="num_entries", type=int,
                     default=42139, help="size of the dataset for Reddit TIFU")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="size of the few_shot dataset, False if want to run on whole dataset")
+                    default=100, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
                     default='/data/mathieu/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
@@ -51,7 +51,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices=['T5Finetune', 'T5Prompt', 'T5MixPrompt']) #T5Prompt: with soft prompt tuning
+                    default="T5Prompt", choices=['T5Finetune', 'T5Prompt', 'T5MixPrompt']) #T5Prompt: with soft prompt tuning
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
@@ -106,7 +106,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=1, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=10, help="max epoch number")
+                    default=30, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
