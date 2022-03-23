@@ -4,7 +4,6 @@ import gc
 import logging
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-
 import numpy as np
 import torch.nn.functional as F
 from transformers import (AdamW, BertConfig, BertForTokenClassification, BertTokenizer,
@@ -14,7 +13,8 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from seqeval.metrics import classification_report,f1_score
-from utils import *
+
+from util import *
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -27,6 +27,7 @@ class Ner(BertForTokenClassification):
         sequence_output = self.bert(input_ids, token_type_ids, attention_mask,head_mask=None)[0]
         batch_size,max_len,feat_dim = sequence_output.shape
         valid_output = torch.zeros(batch_size,max_len,feat_dim,dtype=torch.float32,device='cuda')
+        #valid_output = torch.zeros(batch_size, max_len, feat_dim, dtype=torch.float32)
         for i in range(batch_size):
             jj = -1
             for j in range(max_len):
@@ -51,6 +52,36 @@ class Ner(BertForTokenClassification):
         else:
             return logits
 
+
+class NerCPU(BertForTokenClassification):
+
+    def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None,valid_ids=None,attention_mask_label=None):
+        sequence_output = self.bert(input_ids, token_type_ids, attention_mask,head_mask=None)[0]
+        batch_size,max_len,feat_dim = sequence_output.shape
+        valid_output = torch.zeros(batch_size, max_len, feat_dim, dtype=torch.float32)
+        for i in range(batch_size):
+            jj = -1
+            for j in range(max_len):
+                    if valid_ids[i][j].item() == 1:
+                        jj += 1
+                        valid_output[i][jj] = sequence_output[i][j]
+        sequence_output = self.dropout(valid_output)
+        logits = self.classifier(sequence_output)
+
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss(ignore_index=0)
+            # Only keep active parts of the loss
+            #attention_mask_label = None
+            if attention_mask_label is not None:
+                active_loss = attention_mask_label.view(-1) == 1
+                active_logits = logits.view(-1, self.num_labels)[active_loss]
+                active_labels = labels.view(-1)[active_loss]
+                loss = loss_fct(active_logits, active_labels)
+            else:
+                loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            return loss
+        else:
+            return logits
 
 class InputExample(object):
     """A single training/test example for simple sequence classification."""
@@ -151,8 +182,11 @@ class NerProcessor(DataProcessor):
 
     def get_sum_examples(self, sum_dir):
         """See base class."""
-        return self._create_examples(
-            self._read_tsv(sum_dir), "sum")
+        return self._create_examples(self._read_tsv(sum_dir), "sum")
+
+    def get_from_list(self, datalist):
+        """See base class."""
+        return self._create_examples(datalist, "datalist")
 
     def get_labels(self):
         return ["O", "B-MISC", "I-MISC",  "B-PER", "I-PER", "B-ORG", "I-ORG", "B-LOC", "I-LOC", "[CLS]", "[SEP]"]
@@ -256,8 +290,8 @@ def convert_examples_to_features(examples, label_list, max_seq_length, tokenizer
                               label_mask=label_mask))
     return features
 
-def dooneeval(model,eval_examples,label_list,args,tokenizer,device):
-    eval_features = convert_examples_to_features(eval_examples, label_list, args.max_seq_length, tokenizer)
+def dooneeval(model,eval_examples,label_list,args,tokenizer,device,max_seq_length=128, eval_batch_size=8):
+    eval_features = convert_examples_to_features(eval_examples, label_list, max_seq_length, tokenizer)
     all_input_ids = torch.tensor([f.input_ids for f in eval_features], dtype=torch.long)
     all_input_mask = torch.tensor([f.input_mask for f in eval_features], dtype=torch.long)
     all_segment_ids = torch.tensor([f.segment_ids for f in eval_features], dtype=torch.long)
@@ -268,7 +302,7 @@ def dooneeval(model,eval_examples,label_list,args,tokenizer,device):
                               all_lmask_ids)
     # Run prediction for full data
     eval_sampler = SequentialSampler(eval_data)
-    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=args.eval_batch_size)
+    eval_dataloader = DataLoader(eval_data, sampler=eval_sampler, batch_size=eval_batch_size)
     model.eval()
     eval_loss, eval_accuracy = 0, 0
     nb_eval_steps, nb_eval_examples = 0, 0
@@ -305,16 +339,593 @@ def dooneeval(model,eval_examples,label_list,args,tokenizer,device):
                 else:
                     temp_1.append(label_map[label_ids[i][j]])
                     temp_2.append(label_map[logits[i][j]])
-    # print(len(y_true))
-    # print(len(y_pred))
     # for i in range(len(y_true)):
     #     print(y_true[i])
+    #     print("&&&&&&&&&&&&&&&&&&&")
     #     print(y_pred[i])
     f1score = f1_score(y_true, y_pred)
     logger.info('----Validation Results Summary----')
     logger.info(f1score)
     return f1score
 
+
+def getentitiesforonedata(newdata,bert_tagger_path,model,tokenizer,args):
+    processors = {"ner": NerProcessor}
+    task_name = 'ner'
+    if task_name not in processors:
+        raise ValueError("Task not found: %s" % (task_name))
+
+    processor = processors[task_name]()
+    label_list = processor.get_labels()
+    num_labels = len(label_list) + 1
+
+    # model = Ner.from_pretrained(bert_tagger_path)
+    # tokenizer = BertTokenizer.from_pretrained(bert_tagger_path, do_lower_case=False)
+    # model.to(args.device)
+
+    sum_examples = processor.get_from_list(newdata)
+    sum_features = convert_examples_to_features(sum_examples, label_list, 128, tokenizer)
+    sum_input_ids = torch.tensor([f.input_ids for f in sum_features], dtype=torch.long)
+    sum_input_mask = torch.tensor([f.input_mask for f in sum_features], dtype=torch.long)
+    sum_segment_ids = torch.tensor([f.segment_ids for f in sum_features], dtype=torch.long)
+    sum_label_ids = torch.tensor([f.label_id for f in sum_features], dtype=torch.long)
+    sum_valid_ids = torch.tensor([f.valid_ids for f in sum_features], dtype=torch.long)
+    sum_lmask_ids = torch.tensor([f.label_mask for f in sum_features], dtype=torch.long)
+    sum_eval_data = TensorDataset(sum_input_ids, sum_input_mask, sum_segment_ids, sum_label_ids, sum_valid_ids,
+                                  sum_lmask_ids)
+    sum_eval_sampler = SequentialSampler(sum_eval_data)
+    sum_eval_dataloader = DataLoader(sum_eval_data, sampler=sum_eval_sampler, batch_size=len(newdata))
+    model.eval()
+
+    sum_y_true = []
+    sum_y_pred = []
+    label_map = {i: label for i, label in enumerate(label_list, 1)}
+    #for input_ids, input_mask, segment_ids, label_ids, valid_ids, l_mask in tqdm(sum_eval_dataloader, desc="SumEvaluating"):
+    for step, (input_ids, input_mask, segment_ids, label_ids, valid_ids, l_mask) in enumerate(sum_eval_dataloader):
+        # input_ids = input_ids.to(args.device)
+        # input_mask = input_mask.to(args.device)
+        # segment_ids = segment_ids.to(args.device)
+        # valid_ids = valid_ids.to(args.device)
+        # label_ids = label_ids.to(args.device)
+        # l_mask = l_mask.to(args.device)
+
+        with torch.no_grad():
+            logits = model(input_ids, segment_ids, input_mask, valid_ids=valid_ids, attention_mask_label=l_mask)
+
+        logits = torch.argmax(F.log_softmax(logits, dim=2), dim=2)
+        logits = logits.detach().cpu().numpy()
+
+        for i, label in enumerate(label_ids):
+            temp_1 = []
+            temp_2 = []
+            for j, m in enumerate(label):
+                if j == 0:
+                    continue
+                elif label_ids[i][j].item() == len(label_map):
+                    sum_y_true.append(temp_1)
+                    sum_y_pred.append(temp_2)
+                    break
+                else:
+                    temp_1.append(label_map[label_ids[i][j].item()])
+                    temp_2.append(label_map[logits[i][j].item()])
+    torch.cuda.empty_cache()
+    #del model, tokenizer
+    gc.collect()
+
+    for i in range(len(sum_y_pred)):
+        assert len(sum_y_pred[i]) == len(newdata[i][0])
+
+    allentitylist = []
+    for i in range(len(sum_y_pred)):
+        onelength = len(sum_y_pred[i])
+        oneentitylist = []
+        currententity = []
+        for j in range(onelength):
+            onepred = sum_y_pred[i][j]
+            if onepred.find("B-") != -1:
+                if currententity != []:
+                    oneentitylist.append(' '.join(currententity))
+                currententity = [newdata[i][0][j]]
+            elif onepred.find("I-") != -1:
+                currententity.append(newdata[i][0][j])
+            else:
+                continue
+        if currententity != []:
+            oneentitylist.append(' '.join(currententity))
+        allentitylist.extend(oneentitylist)
+    #print(allentitylist)
+    return allentitylist
+
+
+def get_predict_label_for_sum(args, doc_sum_path, sumpath):
+
+    #####handle sumfile to fake conll format and use NER model to label it
+    sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
+    allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
+
+    processors = {"ner": NerProcessor}
+    task_name = 'ner'
+    if task_name not in processors:
+        raise ValueError("Task not found: %s" % (task_name))
+
+    processor = processors[task_name]()
+    label_list = processor.get_labels()
+    num_labels = len(label_list) + 1
+
+    model = Ner.from_pretrained(args.pretrain_bert_path)
+    tokenizer = BertTokenizer.from_pretrained(args.pretrain_bert_path, do_lower_case=False)
+    model.to(args.device)
+
+    #####use sumwithfakelabel as test file to get the predicted label
+    sum_examples = processor.get_sum_examples(sumwithfakelabel)
+    #sum_features = convert_examples_to_features(sum_examples, label_list, 128, tokenizer)
+    sum_features = convert_examples_to_features(sum_examples, label_list, 200, tokenizer) ####which length?
+    logger.info("***** Running sumwithfakelabel *****")
+    logger.info("  Num examples = %d", len(sum_examples))
+    logger.info("  Batch size = %d", 32)
+    sum_input_ids = torch.tensor([f.input_ids for f in sum_features], dtype=torch.long)
+    sum_input_mask = torch.tensor([f.input_mask for f in sum_features], dtype=torch.long)
+    sum_segment_ids = torch.tensor([f.segment_ids for f in sum_features], dtype=torch.long)
+    sum_label_ids = torch.tensor([f.label_id for f in sum_features], dtype=torch.long)
+    sum_valid_ids = torch.tensor([f.valid_ids for f in sum_features], dtype=torch.long)
+    sum_lmask_ids = torch.tensor([f.label_mask for f in sum_features], dtype=torch.long)
+    sum_eval_data = TensorDataset(sum_input_ids, sum_input_mask, sum_segment_ids, sum_label_ids, sum_valid_ids,
+                                  sum_lmask_ids)
+    sum_eval_sampler = SequentialSampler(sum_eval_data)
+    sum_eval_dataloader = DataLoader(sum_eval_data, sampler=sum_eval_sampler, batch_size=32)
+    model.eval()
+
+    sum_y_true = []
+    sum_y_pred = []
+    label_map = {i: label for i, label in enumerate(label_list, 1)}
+    for input_ids, input_mask, segment_ids, label_ids, valid_ids, l_mask in tqdm(sum_eval_dataloader,
+                                                                                 desc="SumEvaluating"):
+        input_ids = input_ids.to(args.device)
+        input_mask = input_mask.to(args.device)
+        segment_ids = segment_ids.to(args.device)
+        valid_ids = valid_ids.to(args.device)
+        label_ids = label_ids.to(args.device)
+        l_mask = l_mask.to(args.device)
+
+        with torch.no_grad():
+            logits = model(input_ids, segment_ids, input_mask, valid_ids=valid_ids, attention_mask_label=l_mask)
+
+        logits = torch.argmax(F.log_softmax(logits, dim=2), dim=2)
+        logits = logits.detach().cpu().numpy()
+        label_ids = label_ids.to('cpu').numpy()
+
+        for i, label in enumerate(label_ids):
+            temp_1 = []
+            temp_2 = []
+            for j, m in enumerate(label):
+                if j == 0:
+                    continue
+                elif label_ids[i][j] == len(label_map):
+                    sum_y_true.append(temp_1)
+                    sum_y_pred.append(temp_2)
+                    break
+                else:
+                    temp_1.append(label_map[label_ids[i][j]])
+                    temp_2.append(label_map[logits[i][j]])
+    torch.cuda.empty_cache()
+    del model, tokenizer
+    gc.collect()
+
+    for i in range(len(sum_y_pred)):
+        #print(sum_y_pred[i])
+        #print("&&&&&&&&&&&&&&&&&&&")
+        #print(allsumwithfakelabeldata[i])
+        if len(sum_y_pred[i]) != len(allsumwithfakelabeldata[i]):
+            print("a error!")
+            print(len(sum_y_pred[i]),len(allsumwithfakelabeldata[i]))
+    return sum_y_pred, allsumwithfakelabeldata
+
+# def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
+#
+#     ####get all entities from sum_y_pred and allsumwithfakelabeldata. One problem: sum_y_pred might be wrong
+#     allentitylist = []
+#     alltypelist = []
+#     #print(sum_y_pred)
+#     for i in range(len(sum_y_pred)):
+#         onelength = len(sum_y_pred[i])
+#         oneentitylist = []
+#         onetypelist = []
+#         currententity = []
+#         currenttype = []
+#         for j in range(onelength):
+#             onepred = sum_y_pred[i][j]
+#             if onepred.find("B-") != -1:
+#                 if currententity != []:
+#                     oneentitylist.append(' '.join(currententity))
+#                     onetypelist.append(' '.join(currenttype))
+#                 currenttype = [onepred]
+#                 currententity = [allsumwithfakelabeldata[i][j]]
+#             elif onepred.find("I-") != -1:
+#                 currenttype.append(onepred)
+#                 currententity.append(allsumwithfakelabeldata[i][j])
+#             else:
+#                 continue
+#         if currententity != []:
+#             oneentitylist.append(' '.join(currententity))
+#             onetypelist.append(' '.join(currenttype))
+#         allentitylist.append(oneentitylist)
+#         alltypelist.append(onetypelist)
+#     #print(allentitylist)
+#     ####combine doc and entities
+#     alldocres, resfortrain = getdocandent(docfile, allentitylist, alltypelist)
+#
+#     ######handle resfortrain
+#     #print(len(resfortrain))
+#     #print("-------------------------------------")
+#     allentityfortrain = []
+#     for i in range(len(resfortrain)):
+#         oneentityfortrain = []
+#         onedata = resfortrain[i].split('\t')
+#         onedoc = onedata[0]
+#         oneent = onedata[1].split('!')
+#         #print(oneent)
+#         for j in range(len(oneent)):
+#             enttouse = oneent[j]
+#             if enttouse.lower() in onedoc.lower():
+#                 oneentityfortrain.append(enttouse)
+#         allentityfortrain.append([onedoc, oneentityfortrain])
+#     # print(len(allentityfortrain))
+#     # print("************************************")
+#     # print(allentityfortrain)
+#
+#     ######get label for document
+#     alldocandlabel = []
+#     for i in range(len(alldocres)):
+#         onedata = alldocres[i].split('\t')
+#         onedoc = onedata[0]
+#         length = len(onedoc.split(' '))
+#         doclabel = ['O' for m in range(length)]
+#         oneent = onedata[1].split('!')
+#         onetype = onedata[2].split('?')
+#         assert len(oneent) == len(onetype)
+#         for j in range(len(oneent)):
+#             enttouse = oneent[j]
+#             typetouse = onetype[j]
+#             if enttouse.lower() in onedoc.lower():
+#                 ###add label
+#                 typelist = typetouse.split(' ')
+#                 allindex = getindex(enttouse, onedoc)
+#                 for oneindex in allindex:
+#                     for m in range(len(typelist)):
+#                         doclabel[oneindex[m]] = typelist[m]
+#             else:
+#                 continue
+#         assert len(onedoc.split(' ')) == len(doclabel)
+#         #####onedoc doclabel
+#         alldocandlabel.append([onedoc.split(' '), doclabel])
+#
+#     return alldocandlabel,allentityfortrain
+#
+# def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain):
+#     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
+#     docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
+#     fout = open(docwithlabel_train, 'w')
+#     fout_1 = open(docwithlabel_vaid, 'w')
+#     fout.write("-DOCSTART- -X- -X- O\n")
+#     fout_1.write("-DOCSTART- -X- -X- O\n")
+#     fout.write("\n")
+#     fout_1.write("\n")
+#     for aa in range(len(alldocandlabel)):
+#         onedata = alldocandlabel[aa]
+#         datasize = len(onedata[0])
+#         if aa % 2 == 0:
+#             for i in range(datasize):
+#                 fout.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+#             fout.write("\n")
+#         else:
+#             for i in range(datasize):
+#                 fout_1.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+#             fout_1.write("\n")
+#     fout.close()
+#     fout_1.close()
+#
+#     ####save train ent
+#     train_ent = doc_sum_path + "trainent.txt"
+#     fe = open(train_ent, 'w')
+#     for i in range(len(allentityfortrain)):
+#         if allentityfortrain[i][1] != []:
+#             fe.write(allentityfortrain[i][0] + "\t" + ' '.join(allentityfortrain[i][1]) + '\n')
+#         else:
+#             fe.write(allentityfortrain[i][0] + "\tnone\n")
+#     fe.close()
+#     return docwithlabel_train, docwithlabel_vaid
+
+
+def get_doc_label(sum_y_pred,allsumwithfakelabeldata, docfile):
+
+    ####get all entities from sum_y_pred and allsumwithfakelabeldata. One problem: sum_y_pred might be wrong
+    allentitylist = []
+    alltypelist = []
+    #print(sum_y_pred)
+    for i in range(len(sum_y_pred)):
+        onelength = len(sum_y_pred[i])
+        oneentitylist = []
+        onetypelist = []
+        currententity = []
+        currenttype = []
+        for j in range(onelength):
+            onepred = sum_y_pred[i][j]
+            if onepred.find("B-") != -1:
+                if currententity != []:
+                    oneentitylist.append(' '.join(currententity))
+                    onetypelist.append(' '.join(currenttype))
+                currenttype = [onepred]
+                currententity = [allsumwithfakelabeldata[i][j]]
+            elif onepred.find("I-") != -1:
+                currenttype.append(onepred)
+                currententity.append(allsumwithfakelabeldata[i][j])
+            else:
+                continue
+        if currententity != []:
+            oneentitylist.append(' '.join(currententity))
+            onetypelist.append(' '.join(currenttype))
+        allentitylist.append(oneentitylist)
+        alltypelist.append(onetypelist)
+    #print(allentitylist)
+    ####combine doc and entities
+    allrestrain, allresvalid, resfortrain = getdocandent(docfile,allentitylist,alltypelist)
+
+    ######handle resfortrain
+    #print(len(resfortrain))
+    #print("-------------------------------------")
+    allentityfortrain = []
+    for i in range(len(resfortrain)):
+        oneentityfortrain = []
+        onedata = resfortrain[i].split('\t')
+        onedoc = onedata[0]
+        oneent = onedata[1].split('!')
+        #print(oneent)
+        for j in range(len(oneent)):
+            enttouse = oneent[j]
+            if enttouse.lower() in onedoc.lower():
+                oneentityfortrain.append(enttouse)
+        allentityfortrain.append([onedoc, oneentityfortrain])
+    # print(len(allentityfortrain))
+    # print("************************************")
+    # print(allentityfortrain)
+
+    ######get label for document
+    alldocandlabeltrain = []
+    for i in range(len(allrestrain)):
+        onedata = allrestrain[i].split('\t')
+        onedoc = onedata[0]
+        length = len(onedoc.split(' '))
+        doclabel = ['O' for m in range(length)]
+        oneent = onedata[1].split('!')
+        onetype = onedata[2].split('?')
+        assert len(oneent) == len(onetype)
+        allentinter = []
+        for j in range(len(oneent)):
+            enttouse = oneent[j]
+            typetouse = onetype[j]
+            if enttouse.lower() in onedoc.lower():
+                allentinter.append(enttouse)
+                ###add label
+                typelist = typetouse.split(' ')
+                allindex = getindex(enttouse, onedoc)
+                for oneindex in allindex:
+                    for m in range(len(typelist)):
+                        doclabel[oneindex[m]] = typelist[m]
+            else:
+                continue
+        assert len(onedoc.split(' ')) == len(doclabel)
+        #####onedoc doclabel
+        alldocandlabeltrain.append([onedoc.split(' '), doclabel])
+
+    alldocandlabelvalid = []
+    for i in range(len(allresvalid)):
+        onedata = allresvalid[i].split('\t')
+        onedoc = onedata[0]
+        length = len(onedoc.split(' '))
+        doclabel = ['O' for m in range(length)]
+        oneent = onedata[1].split('!')
+        onetype = onedata[2].split('?')
+        assert len(oneent) == len(onetype)
+        allentinter = []
+        for j in range(len(oneent)):
+            enttouse = oneent[j]
+            typetouse = onetype[j]
+            if enttouse.lower() in onedoc.lower():
+                allentinter.append(enttouse)
+                ###add label
+                typelist = typetouse.split(' ')
+                allindex = getindex(enttouse, onedoc)
+                for oneindex in allindex:
+                    for m in range(len(typelist)):
+                        doclabel[oneindex[m]] = typelist[m]
+            else:
+                continue
+        assert len(onedoc.split(' ')) == len(doclabel)
+        alldocandlabelvalid.append([onedoc.split(' '), doclabel])
+
+    #print(len(alldocandlabel))
+    return alldocandlabeltrain,alldocandlabelvalid,allentityfortrain
+
+def get_train_valid(alldocandlabeltrain, alldocandlabelvalid, doc_sum_path, allentityfortrain):
+    docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
+    docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
+    fout = open(docwithlabel_train, 'w')
+    fout_1 = open(docwithlabel_vaid, 'w')
+    fout.write("-DOCSTART- -X- -X- O\n")
+    fout_1.write("-DOCSTART- -X- -X- O\n")
+    fout.write("\n")
+    fout_1.write("\n")
+
+    for aa in range(len(alldocandlabeltrain)):
+        onedata = alldocandlabeltrain[aa]
+        datasize = len(onedata[0])
+        for i in range(datasize):
+            fout.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+        fout.write("\n")
+    fout.close()
+
+    for aa in range(len(alldocandlabelvalid)):
+        onedata = alldocandlabelvalid[aa]
+        datasize = len(onedata[0])
+        for i in range(datasize):
+            fout_1.write(onedata[0][i] + " NNP B-NP " + onedata[1][i] + "\n")
+        fout_1.write("\n")
+    fout_1.close()
+
+    ####save train ent
+    train_ent = doc_sum_path + "trainent.txt"
+    fe = open(train_ent, 'w')
+    for i in range(len(allentityfortrain)):
+        if allentityfortrain[i][1] != []:
+            fe.write(allentityfortrain[i][0] + "\t" + ' '.join(allentityfortrain[i][1]) + '\n')
+        else:
+            fe.write(allentityfortrain[i][0] + "\tnone\n")
+    fe.close()
+    return docwithlabel_train, docwithlabel_vaid
+
+
+def finetune_model(trainfile, validfile, args):
+    processors = {"ner": NerProcessor}
+    task_name = 'ner'
+    if task_name not in processors:
+        raise ValueError("Task not found: %s" % (task_name))
+
+    processor = processors[task_name]()
+    label_list = processor.get_labels()
+    num_labels = len(label_list) + 1
+    print(trainfile, validfile)
+
+    ###train
+    gradient_accumulation_steps = 1
+    train_batch_size = 4
+    eval_batch_size = 8
+    num_train_epochs = 30
+    warmup_proportion = 0.1
+    learning_rate = 5e-5
+    adam_epsilon = 1e-8
+    weight_decay = 0.01
+    max_grad_norm = 1.0
+    max_seq_length = 128
+
+    train_batch_size = train_batch_size // gradient_accumulation_steps
+
+    #####the path of tuned model
+    pos = trainfile.find("docwithlabel_train")
+    foldername = trainfile[0:pos]
+    print(foldername)
+    output_dir = foldername + "tagger"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    tokenizer = BertTokenizer.from_pretrained(args.pretrain_bert_path, do_lower_case=False)
+
+    train_examples = processor.get_train_examples(foldername)
+    num_train_optimization_steps = int(
+        len(train_examples) / train_batch_size / gradient_accumulation_steps) * num_train_epochs
+    if args.local_rank != -1:
+        num_train_optimization_steps = num_train_optimization_steps // torch.distributed.get_world_size()
+
+    if args.local_rank not in [-1, 0]:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+
+    # Prepare model
+
+    model = Ner.from_pretrained(args.pretrain_bert_path)
+
+    if args.local_rank == 0:
+        torch.distributed.barrier()  # Make sure only the first process in distributed training will download model & vocab
+
+    model.to(args.device)
+
+    param_optimizer = list(model.named_parameters())
+    no_decay = ['bias', 'LayerNorm.weight']
+    optimizer_grouped_parameters = [
+        {'params': [p for n, p in param_optimizer if not any(nd in n for nd in no_decay)],
+         'weight_decay': weight_decay},
+        {'params': [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
+    ]
+    warmup_steps = int(warmup_proportion * num_train_optimization_steps)
+
+    optimizer = AdamW(optimizer_grouped_parameters, lr=learning_rate, eps=adam_epsilon)
+
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_train_optimization_steps)
+
+    if args.n_gpu > 1:
+        model = torch.nn.DataParallel(model)
+
+    if args.local_rank != -1:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.local_rank],
+                                                          output_device=args.local_rank,
+                                                          find_unused_parameters=True)
+
+    global_step = 0
+
+    train_features = convert_examples_to_features(
+        train_examples, label_list, max_seq_length, tokenizer)
+    logger.info("***** Running training *****")
+    logger.info("  Num examples = %d", len(train_examples))
+    logger.info("  Batch size = %d", train_batch_size)
+    logger.info("  Num steps = %d", num_train_optimization_steps)
+    all_input_ids = torch.tensor([f.input_ids for f in train_features], dtype=torch.long)
+    all_input_mask = torch.tensor([f.input_mask for f in train_features], dtype=torch.long)
+    all_segment_ids = torch.tensor([f.segment_ids for f in train_features], dtype=torch.long)
+    all_label_ids = torch.tensor([f.label_id for f in train_features], dtype=torch.long)
+    all_valid_ids = torch.tensor([f.valid_ids for f in train_features], dtype=torch.long)
+    all_lmask_ids = torch.tensor([f.label_mask for f in train_features], dtype=torch.long)
+    train_data = TensorDataset(all_input_ids, all_input_mask, all_segment_ids, all_label_ids, all_valid_ids,
+                               all_lmask_ids)
+    if args.local_rank == -1:
+        train_sampler = RandomSampler(train_data)
+    else:
+        train_sampler = DistributedSampler(train_data)
+    train_dataloader = DataLoader(train_data, sampler=train_sampler, batch_size=train_batch_size)
+
+    model.train()
+    bestevalscore = -100
+    for i in trange(int(num_train_epochs), desc="Epoch"):
+        tr_loss = 0
+        nb_tr_examples, nb_tr_steps = 0, 0
+        for step, batch in enumerate(tqdm(train_dataloader, desc="Iteration")):
+            batch = tuple(t.to(args.device) for t in batch)
+            input_ids, input_mask, segment_ids, label_ids, valid_ids, l_mask = batch
+            loss = model(input_ids, segment_ids, input_mask, label_ids, valid_ids, l_mask)
+
+            if args.n_gpu > 1:
+                loss = loss.mean()  # mean() to average on multi-gpu.
+            if gradient_accumulation_steps > 1:
+                loss = loss / gradient_accumulation_steps
+
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+
+            tr_loss += loss.item()
+            nb_tr_examples += input_ids.size(0)
+            nb_tr_steps += 1
+
+            if (step + 1) % gradient_accumulation_steps == 0:
+                optimizer.step()
+                if scheduler != None:
+                    scheduler.step()  # Update learning rate schedule
+                model.zero_grad()
+                global_step += 1
+        if args.local_rank == -1 or torch.distributed.get_rank() == 0:
+            eval_examples = processor.get_dev_examples(foldername)
+            thisevalscore = dooneeval(model, eval_examples, label_list, args, tokenizer, args.device, max_seq_length, eval_batch_size)
+            if thisevalscore > bestevalscore:
+                logger.info('save best model')
+                bestevalscore = thisevalscore
+                # save
+                model_to_save = model.module if hasattr(model, 'module') else model  # Only save the model it-self
+                model_to_save.save_pretrained(output_dir)
+                tokenizer.save_pretrained(output_dir)
+    ###kill
+
+    torch.cuda.empty_cache()
+    del model, tokenizer
+    gc.collect()
+
+    if args.local_rank != -1:
+        torch.distributed.destroy_process_group()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -541,7 +1152,8 @@ def main():
         alltypelist.append(onetypelist)
 
     ####combine doc and entities
-    alldocres = getdocandent(docfile,allentitylist,alltypelist)
+    alldocres, resfortrain = getdocandent(docfile,allentitylist,alltypelist)
+
 
     ######get label for document
     alldocandlabel = []

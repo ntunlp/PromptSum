@@ -1,0 +1,179 @@
+import sys
+sys.path.append("../..")
+
+import torch
+import datasets
+from torch.utils.data import Sampler, Dataset, DataLoader
+import os
+import numpy as np
+
+class T5SummarizationDataset(Dataset):
+    def __init__(self, filename, maxlen, tokenizer,newtgentasktokens, answertoken):
+        super(T5SummarizationDataset, self).__init__()
+        self.filename = filename
+        self.maxlen = maxlen
+        self.tokenizer = tokenizer
+        self.data = []
+        self.gentasktoken = newtgentasktokens
+        self.answertoken = answertoken
+        self.data, self.lmdata = self.getalldata(self.filename)
+        self.num_entries = len(self.data)
+
+    def getalldata(self,filename):
+        f = open(filename,'r')
+        alldata = []
+        alllmdata = []
+        while True:
+            oneline = f.readline().strip()
+            if not oneline:
+                break
+            linelist = oneline.split("\t")
+            onedata = []
+            onedata.append(linelist[0])
+            onedata.append(linelist[1])
+            alldata.append(onedata)
+            onelmdata = []
+            onelmdata.append(self.gentasktoken[0])
+            onelmdata.append(linelist[0] + " " + self.answertoken + " " + linelist[1])
+            alllmdata.append(onelmdata)
+        f.close()
+        return alldata, alllmdata
+
+    def __getitem__(self, idx):
+        inputdata = self.data[idx][0]
+        targetdata = self.data[idx][1]
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+
+        inputlmdata = self.lmdata[idx][0]
+        targetlmdata = self.lmdata[idx][1]
+
+        inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
+
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze()
+
+    def __len__(self):
+        return self.num_entries
+
+
+class SmartBatchingCollate:
+    def __init__(self, max_length, pad_token_id):
+        self._max_length = max_length
+        self._pad_token_id = pad_token_id
+
+    def __call__(self, batch):
+
+        sequences, targets, lmseq, lmtar = list(zip(*batch))
+
+        input_ids, attention_mask = self.pad_sequence(
+            sequences,
+            max_sequence_length=self._max_length,
+            pad_token_id=self._pad_token_id
+        )
+
+        target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
+
+        lminput_id, lm_att_mask = self.pad_sequence(lmseq, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
+        lmtar_id, lm_tar_mask = self.pad_target(lmtar, max_sequence_length=self._max_length * 2, pad_token_id=self._pad_token_id)
+        output = input_ids, attention_mask, target_ids, target_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask
+        return output
+
+    def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_len = min(max_batch_len, max_sequence_length)
+        padded_sequences = []
+        attention_masks = []
+        attend, no_attend = 1, 0
+        for sequence in sequence_batch:
+            new_sequence = list(sequence[:max_len])
+            attention_mask = [attend] * len(new_sequence)
+            pad_length = max_len - len(new_sequence)
+            new_sequence.extend([pad_token_id] * pad_length)
+            attention_mask.extend([no_attend] * pad_length)
+            padded_sequences.append(new_sequence)
+            attention_masks.append(attention_mask)
+        padded_sequences = torch.tensor(padded_sequences)
+        attention_masks = torch.tensor(attention_masks)
+        return padded_sequences,attention_masks
+
+
+    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_len = min(max_batch_len, max_sequence_length)
+        padded_sequences = []
+        attention_masks = []
+        attend, no_attend = 1, 0
+        for sequence in sequence_batch:
+            new_sequence = list(sequence[:max_len])
+
+            attention_mask = [attend] * len(new_sequence)
+            pad_length = max_len - len(new_sequence)
+
+            new_sequence.extend([pad_token_id] * pad_length)
+            attention_mask.extend([no_attend] * pad_length)
+
+            padded_sequences.append(new_sequence)
+            attention_masks.append(attention_mask)
+
+        padded_sequences = torch.tensor(padded_sequences)
+        attention_masks = torch.tensor(attention_masks)
+        return padded_sequences, attention_masks
+
+def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
+    '''
+    This function reads in the few-shot datasets saved at save_path
+    returns:
+        list of tuples (train_dataset, valid_dataset)
+    '''
+    datasets = []
+    for seed in few_shot_seeds:
+        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        train_dataset = T5SummarizationDataset(train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+        valid_dataset = T5SummarizationDataset(valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+        datasets.append((train_dataset, valid_dataset))
+    return datasets
+
+def convert_data_to_txt(train_data, new_train_path, args):
+    all_train_texts, all_train_summaries = [], []
+    for idx in range(len(train_data)):
+        text = train_data[idx][args.text_key]
+        summary = train_data[idx][args.summary_key]
+        summary = " ".join(summary.split("\n"))
+        all_train_texts.append(text)
+        all_train_summaries.append(summary)
+    print("writing to: {}".format(new_train_path))
+    with open(new_train_path, "w") as f:
+        for idx in range(len(all_train_texts)):
+            to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
+            if idx > 0:
+                to_write = "\n" + to_write
+            f.write(to_write)
+            
+def subsample(dataset_args, args, tokenizer, few_shot_seeds):
+    '''
+    Function that subsamples a dataset and saves the results for few-shot exps
+    args:
+        few_shot_seeds: list of random seeds to produce the subsamples repeatively
+    '''
+    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    train_data = data['train']
+    valid_data = data['validation']
+    len_train = len(train_data)
+    len_valid = len(valid_data)
+    for seed in few_shot_seeds:
+        os.makedirs(args.few_shot_save_dir + 'seed_{}'.format(seed), exist_ok=True)
+        # re-set random seed
+        np.random.seed(seed)
+        indices = np.random.choice(range(len_train), args.few_shot)
+        train_data_new = train_data.select(indices)
+        indices = np.random.choice(range(len_valid), args.few_shot)
+        valid_data_new = valid_data.select(indices)
+        # save
+        train_path = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        valid_path = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        convert_data_to_txt(train_data_new, train_path, args)
+        convert_data_to_txt(valid_data_new, valid_path, args)
+    # convert to original seed
+    np.random.seed(args.seed)
