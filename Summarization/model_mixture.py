@@ -101,9 +101,11 @@ class T5MixPrompt(nn.Module):
 
     def _generative_samples(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
