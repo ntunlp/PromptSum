@@ -23,6 +23,7 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from model import *
+from model_finetune import *
 from dataset import *
 from utils import *
 from engine import *
@@ -55,7 +56,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Summarization", help="{T5NER}")
+                    default="T5Summarization", help="{T5NER}") # can be T5Summarization, T5Finetune
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
