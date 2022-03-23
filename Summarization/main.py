@@ -214,7 +214,10 @@ def main(args):
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
-    
+    keys = ['val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+    result_dict_total = {}
+    for k in keys:
+        result_dict_total[k] = []
     for (train_dataset, valid_dataset) in datasets:
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
@@ -238,10 +241,11 @@ def main(args):
         result_dict = train(args, model, train_dataset, valid_dataset, logger)
         logger.info("Finish training")
         logger.info("The model has {} trainable parameters".format(n_params))
+        for k in keys:
+            result_dict_total[k].append(result_dict[k])
     print('final results:')
-    keys = ['val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
     for k in keys:
-        print('{}: {}'.format(k, np.mean(result_dict[k])))
+        print('{}: {}'.format(k, np.mean(result_dict_total[k])))
 
     # don't test for now, as it takes too long
     # if args.local_rank in [0, -1]:
