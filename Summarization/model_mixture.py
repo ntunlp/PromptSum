@@ -115,21 +115,50 @@ class T5MixPrompt(nn.Module):
         return loss
 
     def _generative_step(self, batch):
+        # input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        # prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=batch['input_ents'])
+        # if self.mode == 'right_concat':
+        #     allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
+        # elif self.mode == 'left_concat':
+        #     allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
+        # prompt_length = prompt_embedding.size(1)
+        # if 'ents_mask' not in batch:
+        #     mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
+        # else:
+        #     mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.promptnumber),1).to(self.args.device), batch['ents_mask']], 1)
+        # if self.mode == 'right_concat':
+        #     all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        # elif self.mode == 'left_concat':
+        #     all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
+        # decoder_input_ids = (
+        #     torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        # )
+        # generated_ids = self.model.generate(
+        #     inputs_embeds=allembedding,
+        #     decoder_input_ids=decoder_input_ids,
+        #     attention_mask=all_attention_mask,
+        #     use_cache=True,
+        #     #decoder_attention_mask=batch['target_mask'],
+        #     max_length=128,
+        #     num_beams=4,
+        #     repetition_penalty=2.5,
+        #     length_penalty=1.0,
+        #     early_stopping=True
+        # )
+        # preds = self.ids_to_clean_text(generated_ids)
+        # target = self.ids_to_clean_text(batch["target_ids"])
+        # input = self.ids_to_clean_text(batch["input_ids"])
+        # ents = self.ids_to_clean_text(batch["input_ents"])
+        
+        # return input, target, preds
+
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        prompt_embedding = self._construct_prompt_batch(batchsize=input_embed_part.size(0), ent_ids=batch['input_ents'])
-        if self.mode == 'right_concat':
-            allembedding = torch.cat([input_embed_part, prompt_embedding], 1)
-        elif self.mode == 'left_concat':
-            allembedding = torch.cat([prompt_embedding, input_embed_part], 1)
-        prompt_length = prompt_embedding.size(1)
-        if 'ents_mask' not in batch:
-            mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
-        else:
-            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.promptnumber),1).to(self.args.device), batch['ents_mask']], 1)
-        if self.mode == 'right_concat':
-            all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
-        elif self.mode == 'left_concat':
-            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        ent_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        prompt_embed = torch.cat([soft_prompt_embed, ent_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -138,19 +167,17 @@ class T5MixPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            #decoder_attention_mask=batch['target_mask'],
             max_length=128,
             num_beams=4,
             repetition_penalty=2.5,
             length_penalty=1.0,
             early_stopping=True
         )
+
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        ents = self.ids_to_clean_text(batch["input_ents"])
         
-        return input, target, preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
