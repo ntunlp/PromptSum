@@ -38,9 +38,9 @@ def train(args, model, train_dataset, valid_dataset, logger):
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
-                                      train_dataset.tokenizer.pad_token_id,train_sampler)
+                                      train_dataset.tokenizer.pad_token_id, train_sampler)
     valid_dataloader = get_dataloader(args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
-                                      valid_dataset.tokenizer.pad_token_id,valid_sampler)
+                                      valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
     base_optimizer_arguments = {
         "lr": args.lr, 
@@ -63,9 +63,6 @@ def train(args, model, train_dataset, valid_dataset, logger):
     scheduler = None
     scaler = None
 
-    startepoch = 0
-    Best_F1 = 0.0
-
     logger.info("Begin train...")
     logger.info("We will train model in %d steps" % step_tot)
 
@@ -81,7 +78,7 @@ def train(args, model, train_dataset, valid_dataset, logger):
         "f1": 0.0
     }
     global_step = 0
-    for i in range(startepoch, startepoch + args.max_epoch):
+    for i in range(args.max_epoch):
         thisevalstep = args.eval_step
         logger.info(i)
         model.train()

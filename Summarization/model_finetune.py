@@ -103,7 +103,6 @@ class T5Finetune(nn.Module):
         input = self.ids_to_clean_text(batch["input_ids"])
         return input, target, preds
 
-
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False

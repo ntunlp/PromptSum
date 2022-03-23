@@ -22,8 +22,8 @@ class T5SoftPrompt(nn.Module):
                 self.model.load_state_dict(t5ckpt)
             else:
                 self.model.load_state_dict(t5ckpt['t5-large-prefixlm'])
-            for name, param in self.model.named_parameters():
-                param.requires_grad = False
+        for name, param in self.model.named_parameters():
+            param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
@@ -61,7 +61,6 @@ class T5SoftPrompt(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask']
         )
-
         loss = outputs[0]
         
         return loss
@@ -120,7 +119,6 @@ class T5SoftPrompt(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         return input,target,preds
-
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(
