@@ -57,7 +57,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt"])
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt"])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
