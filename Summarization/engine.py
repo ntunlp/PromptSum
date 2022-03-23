@@ -127,9 +127,10 @@ def train(args, model, train_dataset, valid_dataset, logger):
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            if i >= 8:
-                dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,i)
-                model.train()
+            # if i >= 8:
+            # do after every epoch
+            dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,i)
+            model.train()
 
         if args.train_sample:
             logger.info("sampling...")
@@ -138,6 +139,7 @@ def train(args, model, train_dataset, valid_dataset, logger):
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
+    return result_dict
 
 
 def get_dataloader(num_workers,dataset, batch_size, max_len, pad_id, sampler):
@@ -230,6 +232,7 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
                 "promptembedding": model_to_save.promptembedding
             }
             torch.save(ckpt, args.save_model_path)
+    return result_dict
 
 
 def test(args, test_dataset, logger):

@@ -61,11 +61,13 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/ruochen/hf_models/t5-v1-large/",
+                    default="/data/mathieu/hf_models/t5-v1-large/",
                     help="The path of huggingface cache")
+parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
+                    default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
@@ -84,7 +86,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=80, help="max epoch number")
+                    default=30, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=0, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
@@ -174,8 +176,7 @@ def main(args):
     thistaskname = "cnn daily mail "
     thistaskfold = "cnndm"
     args.taskfold = thistaskfold
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path, local_files_only=True)
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
@@ -187,36 +188,59 @@ def main(args):
     tokenizer.add_tokens(list(special_tokens.values()))
     special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
 
-    model = T5forSummarization(args, t5model, tokenizer)
     promptnumber = args.prompt_number
-    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
 
-    model.set_prompt_embedding(promptnumber, promptembedding)
-    model.to(args.device)
+    # original_way of loading
+    # thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
+    # thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
+    # # print(thistrainfilename, thisvalidfilename)
+    # args.train_file_name = thistrainfilename
+    # args.valid_file_name = thisvalidfilename
 
-    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    # train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+    # valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
 
-    thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
-    thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
-    # print(thistrainfilename, thisvalidfilename)
-    args.train_file_name = thistrainfilename
-    args.valid_file_name = thisvalidfilename
+    # new way of loading
+    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    dataset_args = [args.dataset_name, args.dataset_version]
+    if not os.path.isdir(args.few_shot_save_dir):
+        os.makedirs(args.few_shot_save_dir)
+    # sample multiple datasets (reproducible with fixed seeds)
+    few_shot_seeds = [0, 1, 2]
+    # if files don't exist, subsample
+    if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds):
+        logger.info('subsampling..')
+        subsample(dataset_args, args, tokenizer, few_shot_seeds)
+    # read datasets
+    datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
+    
+    for (train_dataset, valid_dataset) in datasets:
+        logger.info("Finish prepare model and dataset")
+        logger.info("Start training")
 
-    train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-    valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
 
-    logger.info("Finish prepare model and dataset")
-    logger.info("Start training")
+        t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        model = T5forSummarization(args, t5model, tokenizer)
+        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+        model.set_prompt_embedding(promptnumber, promptembedding)
+        model.to(args.device)
 
-    train(args, model, train_dataset, valid_dataset, logger)
-    logger.info("Finish training")
+        n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    if args.local_rank in [0, -1]:
-        logger.info("Start testing")
-        logger.info("Testing...")
-        test(args, test_dataset)
-        logger.info("Finish testing!")
+        result_dict = train(args, model, train_dataset, valid_dataset, logger)
+        logger.info("Finish training")
+        logger.info("The model has {} trainable parameters".format(n_params))
+    print('final results:')
+    keys = ['val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+    for k in keys:
+        print('{}: {}'.format(k, np.mean(result_dict[k])))
+
+    # don't test for now, as it takes too long
+    # if args.local_rank in [0, -1]:
+    #     logger.info("Start testing")
+    #     logger.info("Testing...")
+    #     test(args, test_dataset)
+    #     logger.info("Finish testing!")
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
