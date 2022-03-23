@@ -108,7 +108,7 @@ class T5MixPrompt(nn.Module):
         if 'ents_mask' not in batch:
             mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_length), 1).to(self.args.device)
         else:
-            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.args.prompt_length),1).to(self.args.device), batch['ents_mask']], 1)
+            mask_prompt = torch.cat([torch.full((batch["attention_mask"].shape[0], self.promptnumber),1).to(self.args.device), batch['ents_mask']], 1)
         if self.mode == 'right_concat':
             all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         elif self.mode == 'left_concat':
@@ -122,10 +122,10 @@ class T5MixPrompt(nn.Module):
             attention_mask=all_attention_mask,
             use_cache=True,
             #decoder_attention_mask=batch['target_mask'],
-            max_length=self.args.max_summary_length,
-            num_beams=self.args.num_beams,
-            repetition_penalty=self.args.repetition_penalty,
-            length_penalty=self.args.length_penalty,
+            max_length=128,
+            num_beams=4,
+            repetition_penalty=2.5,
+            length_penalty=1.0,
             early_stopping=True
         )
         preds = self.ids_to_clean_text(generated_ids)
@@ -133,7 +133,7 @@ class T5MixPrompt(nn.Module):
         input = self.ids_to_clean_text(batch["input_ids"])
         ents = self.ids_to_clean_text(batch["input_ents"])
         
-        return input, target, preds, ents
+        return input, target, preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(

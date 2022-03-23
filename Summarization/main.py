@@ -72,7 +72,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
-                    default="right")
+                    default="right_concat")
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
 # discrete prompt

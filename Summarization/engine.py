@@ -169,7 +169,8 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
         for step, batch in enumerate(valid_dataloader):
             logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
