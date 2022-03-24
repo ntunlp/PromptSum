@@ -86,10 +86,10 @@ class T5MixPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            max_length=128,
-            num_beams=4,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
+            max_length=self.args.max_summary_length,
+            num_beams=self.args.num_beams,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
             early_stopping=True
         )
 
@@ -116,9 +116,9 @@ class T5MixPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            max_length=self.args.max_length,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
+            max_length=self.args.max_summary_length,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
             early_stopping=True,
             do_sample=True,
             top_k = 64,

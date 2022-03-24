@@ -78,8 +78,10 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
 # discrete prompt
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
+parser.add_argument("--separator", dest="separator", type=str,
+                    default=" ", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal")
+                    default="normal", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
@@ -120,6 +122,16 @@ parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
 parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                     default=True)
+
+##### generation
+parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
+                    default=128, help="max summary length")
+parser.add_argument("--num_beams", dest="num_beams", type=int,
+                    default=4, help="number of beams in beam search")
+parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
+                    default=2.5, help="repetition penalty")
+parser.add_argument("--length_penalty", dest="length_penalty", type=float,
+                    default=1.0, help="length penalty")
 
 # export
 parser.add_argument("--save_step", dest="save_step", type=int,

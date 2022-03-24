@@ -62,7 +62,7 @@ class T5SummarizationDataset(Dataset):
                     # #print(allnum)
                     # templist.extend(allnum)
 
-                    entlist = ','.join(templist)
+                    entlist = self.args.separator.join(templist)
                     #print(entlist)
                     self.allent[doc] = entlist
                 fe.close()
@@ -116,11 +116,11 @@ class T5SummarizationDataset(Dataset):
                     ents_y = [ent.text for ent in ents_y]
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
-                    input_guidance = ' '.join(ents_intersection)
+                    input_guidance = self.args.separator.join(ents_intersection)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
-                    input_guidance = ' '.join(ents) # can decide which delimiter works the best, just pick comma first
+                    input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
             else:
                 ####for train
                 if self.split.startswith("train"):
@@ -153,16 +153,13 @@ class T5SummarizationDataset(Dataset):
                     # allnum = list(set(allnum))
                     # allentitylist.extend(allnum)
 
-                    input_guidance = ','.join(list(set(allentitylist)))
+                    input_guidance = self.args.separator.join(list(set(allentitylist)))
                     #print(input_guidance)
                     if input_guidance == []:
                         print("empty!")
                         ents = self.spacy_nlp(inputdata).ents
                         ents = [ent.text for ent in ents]
-                        if self.args.filter_ents_freq:
-                            ents = [x for x in ents if
-                                    x in self.ents_freq.keys() and self.ents_freq[x] >= self.args.min_ents_freq]
-                        input_guidance = ','.join(ents)  # can decide which delimiter works the best, just pick comma first
+                        input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
                         #print(input_guidance)
 
         # 2nd option: based on salient sentences
