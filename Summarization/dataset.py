@@ -116,11 +116,11 @@ class T5SummarizationDataset(Dataset):
                     ents_y = [ent.text for ent in ents_y]
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
-                    input_guidance = ','.join(ents_intersection)
+                    input_guidance = ' '.join(ents_intersection)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
-                    input_guidance = ','.join(ents) # can decide which delimiter works the best, just pick comma first
+                    input_guidance = ' '.join(ents) # can decide which delimiter works the best, just pick comma first
             else:
                 ####for train
                 if self.split.startswith("train"):
