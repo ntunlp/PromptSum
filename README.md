@@ -2,14 +2,8 @@
 cool prompting for summarization!
 
 # Running command
-To train with LM adapted: 
-   python main.py --use_lm_adapted=True --model=T5Prompt --max_epoch=30 --batch_size_per_gpu=3 --few_shot=10 --lr=5e-1
-To train with fine-tuned dataset:
-   python main.py --model=T5Finetune --max_epoch=30 --few_shot=64
-To train with counterfactual:
-   python main.py --counterfactual_removal=True --use_lm_adapted=True --max_epoch=30 --model=T5MixPrompt --few_shot=64
-To train on dataset cnndm with few shot 100 (as an example): 
-   python main.py --dataset_name='ccdv/cnn_dailymail' --few_shot=100
+CNN soft prompt: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=?
+CNN finetune: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=? --model=T5Finetune --lr=5e-5
 
 ## Contents
 

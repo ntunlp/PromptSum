@@ -85,7 +85,7 @@ def getpromptembedding(model,tokenizer,promptnumber,taskname):
     startindex = 0
     alllabel = ["summarization"]
     alllabel.append(taskname)
-    print(alllabel)
+    # print(alllabel)
     for one in alllabel:
         encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
         touse = encoderes["input_ids"].squeeze()[:-1]
@@ -109,7 +109,7 @@ def getpromptembedding(model,tokenizer,promptnumber,taskname):
     vocab = tokenizer.get_vocab()
     randomtokennum = promptnumber - len(alllabel)
     touse = random.sample(top5000, randomtokennum)
-    print(touse)
+    # print(touse)
     for one in touse:
         promptinitembedding[startindex] = t5_embedding.weight[one[0]].clone().detach()
         startindex += 1

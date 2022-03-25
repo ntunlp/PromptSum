@@ -17,7 +17,10 @@ class T5Finetune(nn.Module):
         if args.use_lm_adapted == True:
             print("use lm adapted model!")
             t5ckpt = torch.load(args.lm_adapted_path)
-            self.model.load_state_dict(t5ckpt)
+            if args.ifckpt_onlymodel == True:
+                self.model.load_state_dict(t5ckpt)
+            else:
+                self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
             ### for fine-tuning, set requires_grad True
             for name, param in self.model.named_parameters():
                 #print(name)
@@ -37,7 +40,7 @@ class T5Finetune(nn.Module):
             labels=labels
         )
         
-    def forward(self, batch):
+    def forward(self, batch, ifcalpre):
         lm_labels = batch["target_ids"]
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
         outputs = self._step(
@@ -48,7 +51,10 @@ class T5Finetune(nn.Module):
         )
 
         loss = outputs[0]
-        return loss
+        if not ifcalpre:
+            return loss
+        else:
+            return loss
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
@@ -61,18 +67,17 @@ class T5Finetune(nn.Module):
             attention_mask=batch["attention_mask"],
             use_cache=True,
             #decoder_attention_mask=batch['target_mask'],
-            max_length=self.args.max_summary_length,
-            num_beams=self.args.num_beams,
-            repetition_penalty=self.args.repetition_penalty,
-            length_penalty=self.args.length_penalty,
+            max_length=128,
+            num_beams=4,
+            repetition_penalty=2.5,
+            length_penalty=1.0,
             early_stopping=True
         )
 
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        ents = self.ids_to_clean_text(batch["input_ents"])
-        return input,target,preds, ents
+        return input,target,preds
 
     def _generative_samples(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
@@ -85,9 +90,9 @@ class T5Finetune(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=batch["attention_mask"],
             use_cache=True,
-            max_length=self.args.max_summary_length,
-            repetition_penalty=self.args.repetition_penalty,
-            length_penalty=self.args.length_penalty,
+            max_length=self.args.max_length,
+            repetition_penalty=2.5,
+            length_penalty=1.0,
             early_stopping=True,
             do_sample=True,
             top_k = 64,
@@ -98,8 +103,7 @@ class T5Finetune(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        ents = self.ids_to_clean_text(batch["input_ents"])
-        return input, target, preds, ents
+        return input, target, preds
 
 
     def ids_to_clean_text(self, generated_ids):
