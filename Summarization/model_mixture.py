@@ -9,9 +9,9 @@ from torch.nn import Softmax
 
 
 
-class T5SoftPrompt(nn.Module):
+class T5MixPrompt(nn.Module):
     def __init__(self, args, model, tokenizer):
-        super(T5SoftPrompt, self).__init__()
+        super(T5MixPrompt, self).__init__()
         self.args = args
         self.model = model
         ### load ckpt
@@ -35,12 +35,14 @@ class T5SoftPrompt(nn.Module):
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 
     def _step(
-            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
+            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, ent_ids=None, ent_mask=None
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
+        soft_prompt_embed= self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         
         return self.model(
@@ -60,7 +62,9 @@ class T5SoftPrompt(nn.Module):
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
             labels=lm_labels,
-            decoder_attention_mask=batch['target_mask']
+            decoder_attention_mask=batch['target_mask'],
+            ent_ids=batch["input_ents"],
+            ent_mask=batch["ents_mask"]
         )
         loss = outputs[0]
         
@@ -68,9 +72,11 @@ class T5SoftPrompt(nn.Module):
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
@@ -80,8 +86,8 @@ class T5SoftPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            num_beams=self.args.num_beams,
             max_length=self.args.max_summary_length,
+            num_beams=self.args.num_beams,
             repetition_penalty=self.args.repetition_penalty,
             length_penalty=self.args.length_penalty,
             early_stopping=True
@@ -95,9 +101,11 @@ class T5SoftPrompt(nn.Module):
 
     def _generative_samples(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
@@ -108,9 +116,9 @@ class T5SoftPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            max_length=self.args.max_length,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
+            max_length=self.args.max_summary_length,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
             early_stopping=True,
             do_sample=True,
             top_k = 64,

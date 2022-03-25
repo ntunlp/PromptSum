@@ -1,28 +1,98 @@
 import sys
 sys.path.append("../..")
 
+import spacy
 import torch
 import datasets
-from torch.utils.data import Sampler, Dataset, DataLoader
 import os
 import numpy as np
 
+from torch.utils.data import Sampler, Dataset, DataLoader
+from rouge_score import rouge_scorer
+
+import re
+from utils import *
+from transformers import BertTokenizer
+import nltk
+
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, maxlen, tokenizer,newtgentasktokens, answertoken):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed = 0):
         super(T5SummarizationDataset, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
-        self.data = []
         self.gentasktoken = newtgentasktokens
         self.answertoken = answertoken
-        self.data, self.lmdata = self.getalldata(self.filename)
+        self.args = args
+        self.save_path = args.few_shot_save_dir
+        self.seed = seed
+        
+        self.data = []
+        self.data = self.getalldata(self.filename)
         self.num_entries = len(self.data)
+
+        self.split = split
+        self.tagger = None
+        self.tagtokenizer = None
+        self.bert_tagger_path = ""
+        self.allent = {}
+        self.spacy_nlp = spacy.load("en_core_web_sm")
+        self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
+        if args.use_bert_tagger:
+            ####train valid test
+            if self.split.startswith("train"):
+                ####load entity file for training data
+                entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/trainent.txt'
+                fe = open(entpath,'r')
+                while True:
+                    oneline = fe.readline().strip()
+                    if not oneline:
+                        break
+                    content = oneline.split("\t")
+                    if len(content) != 2:
+                        print("train data entity error!!!!")
+                        continue
+                    doc = content[0]
+
+                    templist = content[1].split(' ')
+
+                    # try:
+                    #     matches = list(datefinder.find_dates(doc))
+                    # except:
+                    #     print("one except")
+                    # print(len(matches))
+                    # templist.extend([str(aa) for aa in matches])
+
+                    # allnum = [s for s in doc.split(' ') if s.isdigit()]
+                    # allnum = list(set(allnum))
+                    # #print(allnum)
+                    # templist.extend(allnum)
+
+                    entlist = self.args.separator.join(templist)
+                    #print(entlist)
+                    self.allent[doc] = entlist
+                fe.close()
+            else:
+                print(f'We are in {self.split} mode. We should use a bert tagger to predict entities.')
+                self.bert_tagger_path = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/tagger/'
+
+                ####use tuned tagger
+                self.tagger = NerCPU.from_pretrained(self.bert_tagger_path)
+                self.tagtokenizer = BertTokenizer.from_pretrained(self.bert_tagger_path, do_lower_case=False)
+
+                ####use tagger pretrained on conll
+                # self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
+                # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
+
+        # counterfactual training
+        self.counterfactual_removal = args.counterfactual_removal
+        if self.counterfactual_removal:
+            self.counterfactual_remove()
+            print("# After augmenting, Data points in this split: {}".format(len(self.data[self.args.text_key])))
 
     def getalldata(self,filename):
         f = open(filename,'r')
         alldata = []
-        alllmdata = []
         while True:
             oneline = f.readline().strip()
             if not oneline:
@@ -32,51 +102,149 @@ class T5SummarizationDataset(Dataset):
             onedata.append(linelist[0])
             onedata.append(linelist[1])
             alldata.append(onedata)
-            onelmdata = []
-            onelmdata.append(self.gentasktoken[0])
-            onelmdata.append(linelist[0] + " " + self.answertoken + " " + linelist[1])
-            alllmdata.append(onelmdata)
         f.close()
-        return alldata, alllmdata
+        
+        return alldata
 
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
+
+        # guidance
+        input_guidance = "None"
+        # 1st option: based on entities
+        if self.args.guidance_type == "ents":
+            if not self.args.use_bert_tagger:
+                if self.args.guidance_mode == 'oracle':
+                    ents_x = self.spacy_nlp(inputdata).ents
+                    ents_x = [ent.text for ent in ents_x]
+                    ents_y = self.spacy_nlp(targetdata).ents
+                    ents_y = [ent.text for ent in ents_y]
+                    ents_intersection = [ent for ent in ents_x if ent in ents_y]
+                    ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
+                    input_guidance = self.args.separator.join(ents_intersection)
+                else:
+                    ents = self.spacy_nlp(inputdata).ents
+                    ents = [ent.text for ent in ents]
+                    input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+            else:
+                ####for train
+                if self.split.startswith("train"):
+                    tempdata = re.sub(' +', ' ', inputdata)
+                    ####search inputdata in the dic self.allent
+                    if tempdata in self.allent.keys():
+                        input_guidance = self.allent[tempdata]
+                    else:
+                        print("we can not find inputdata in the dictionary!! There should be some errors!")
+                else:
+                    ####we use the tuned entity model to predict entities
+                    tempdata = re.sub(' +', ' ', inputdata)
+                    templist = tempdata.split(' ')
+                    num = 100
+                    newlist = []
+                    for j in range(0, len(templist), num):
+                        newlist.append(templist[j:j + num])
+                    ####handle newlist
+                    newdata = []
+                    for j in range(len(newlist)):
+                        onedata = newlist[j]
+                        onelabel = ['O' for oned in onedata]
+                        newdata.append((onedata, onelabel))
+                    allentitylist = getentitiesforonedata(newdata,self.bert_tagger_path,self.tagger,self.tagtokenizer, self.args)
+
+                    # matches = datefinder.find_dates(tempdata)
+                    # allentitylist.extend([str(aa) for aa in matches])
+
+                    # allnum = [s for s in tempdata.split(' ') if s.isdigit()]
+                    # allnum = list(set(allnum))
+                    # allentitylist.extend(allnum)
+
+                    input_guidance = self.args.separator.join(list(set(allentitylist)))
+                    if allentitylist == []:
+                        ents = self.spacy_nlp(inputdata).ents
+                        ents = [ent.text for ent in ents]
+                        input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
+                        #print(input_guidance)
+
+        # 2nd option: based on salient sentences
+        elif self.args.guidance_type == "sents":
+            salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
+            input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
+
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
 
-        inputlmdata = self.lmdata[idx][0]
-        targetlmdata = self.lmdata[idx][1]
-
-        inputlmres = self.tokenizer.batch_encode_plus([inputlmdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        targetlmres = self.tokenizer.batch_encode_plus([targetlmdata], padding=False, max_length=self.maxlen * 2, truncation=True, return_tensors="pt")
-
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputlmres["input_ids"].squeeze(), targetlmres["input_ids"].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
+        
         return self.num_entries
+
+    def counterfactual_remove(self):
+        '''
+        Function to add counterfactually removed instances to data
+        input:
+            data: has fields article, highlights, id
+        '''
+        inputdata = self.data[self.args.text_key]
+        targetdata = self.data[self.args.summary_key]
+        new_inputdata = inputdata
+        new_targetdata = targetdata
+        removed_ents = [None]*len(inputdata)
+        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
+        for i in range(len(inputdata)):
+            ents_x = self.spacy_nlp(inputdata[i]).ents
+            ents_x = [ent.text for ent in ents_x]
+            ents_y = self.spacy_nlp(targetdata[i]).ents
+            ents_y = [ent.text for ent in ents_y]
+            ents_intersection = [ent for ent in ents_x if ent in ents_y]
+            ents_intersection = list(dict.fromkeys(ents_intersection))
+            # split summaries into sentences
+            sents = tokenizer.tokenize(targetdata[i])
+            if len(sents) > 1:
+                for sent in sents:
+                    # for each sentence, find its entities
+                    ents = self.spacy_nlp(sent).ents
+                    # if it's in the intersection list
+                    removed = [ent.text for ent in ents if ent.text in ents_intersection]
+                    # if this list is not empty
+                    if len(removed)>0:
+                        # construct counterfactual example
+                        new_targetdata.append(' '.join(sents).replace(sent, ''))
+                        new_inputdata.append(inputdata[i])
+                        removed_ents.append(removed)
+        # change self.data
+        self.data = datasets.Dataset.from_dict({self.args.text_key: new_inputdata, self.args.summary_key: new_targetdata, 'removed_ents': removed_ents})
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, pad_token_id):
+    def __init__(self, max_length, max_guidance_length, pad_token_id):
         self._max_length = max_length
+        self._max_guidance_length = max_guidance_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-
-        sequences, targets, lmseq, lmtar = list(zip(*batch))
+        sequences, targets, ents = list(zip(*batch))
 
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
+        ents_ids, ents_mask = self.pad_sequence(
+            ents,
+            max_sequence_length=self._max_guidance_length,
+            pad_token_id=self._pad_token_id
+        )
+        target_ids, target_mask = self.pad_target(
+            targets, 
+            max_sequence_length=self._max_length, 
+            pad_token_id=self._pad_token_id
+        )
 
-        target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
-
-        lminput_id, lm_att_mask = self.pad_sequence(lmseq, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
-        lmtar_id, lm_tar_mask = self.pad_target(lmtar, max_sequence_length=self._max_length * 2, pad_token_id=self._pad_token_id)
-        output = input_ids, attention_mask, target_ids, target_mask, lminput_id, lm_att_mask, lmtar_id, lm_tar_mask
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
+        
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -95,8 +263,8 @@ class SmartBatchingCollate:
             attention_masks.append(attention_mask)
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+        
         return padded_sequences,attention_masks
-
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         max_batch_len = max(len(sequence) for sequence in sequence_batch)
@@ -118,6 +286,7 @@ class SmartBatchingCollate:
 
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+        
         return padded_sequences, attention_masks
 
 def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
@@ -130,9 +299,10 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-        valid_dataset = T5SummarizationDataset(valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset))
+    
     return datasets
 
 def convert_data_to_txt(train_data, new_train_path, args):
@@ -177,3 +347,75 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
         convert_data_to_txt(valid_data_new, valid_path, args)
     # convert to original seed
     np.random.seed(args.seed)
+
+def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
+
+    usetrain = True
+    usevalid = True
+    alltrainfile = []
+    allvalidfile = []
+    for seed in few_shot_seeds:
+        train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
+        valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
+        handler_train = open(train_file_name, "r")
+        handler_valid = open(valid_file_name, "r")
+
+        alldoc = []
+        allsum = []
+        if usetrain:
+            while True:
+                oneline = handler_train.readline().strip()
+                if not oneline:
+                    break
+                onedata = oneline.split('\t')
+                if len(onedata) != 2:
+                    print("train doc sum split error")
+                    continue
+                onedoc = re.sub(' +', ' ', onedata[0].replace("\n"," "))
+                alldoc.append(onedoc)
+                onesum = re.sub(' +', ' ', onedata[1].replace("\n"," "))
+                allsum.append(onesum)
+        if usevalid:
+            while True:
+                oneline = handler_valid.readline().strip()
+                if not oneline:
+                    break
+                onedata = oneline.split('\t')
+                if len(onedata) != 2:
+                    print("valid doc sum split error")
+                    continue
+                onedoc = re.sub(' +', ' ', onedata[0].replace("\n", " "))
+                alldoc.append(onedoc)
+                onesum = re.sub(' +', ' ', onedata[1].replace("\n", " "))
+                allsum.append(onesum)
+
+        handler_train.close()
+        handler_valid.close()
+        doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
+        if not os.path.exists(doc_sum_path):
+            os.makedirs(doc_sum_path, exist_ok=True)
+
+        #####seperate it to document + summary
+        docpath = doc_sum_path + "doc.txt"
+        sumpath = doc_sum_path + "sum.txt"
+        f = open(docpath, 'w')
+        for oned in alldoc:
+            f.write(oned + "\n")
+        f.close()
+        f = open(sumpath, 'w')
+        for ones in allsum:
+            f.write(ones + "\n")
+        f.close()
+
+        ####get train and valid data for bert tagger
+        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path)
+        #print(docwithlabel_train, docwithlabel_vaid)
+        alltrainfile.append(docwithlabel_train)
+        allvalidfile.append(docwithlabel_vaid)
+    return alltrainfile, allvalidfile
+
+
+def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
+    print("train tagger")
+    for i in range(len(alltrainfile)):
+        train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)

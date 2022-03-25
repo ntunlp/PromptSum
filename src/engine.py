@@ -72,9 +72,20 @@ def train(args, model, train_dataset, valid_dataset, test_dataset, logger):
         valid_dataset.tokenizer.pad_token_id, valid_sampler
     )
 
+<<<<<<< HEAD
+    base_optimizer_arguments = {
+        "lr": args.lr, 
+        "clip_threshold": 1.0,
+        "decay_rate": -0.8,
+        "weight_decay": args.weight_decay,                        
+        "scale_parameter": False, 
+        "relative_step": False,
+    }
+=======
     base_optimizer_arguments = {"lr": args.lr, "clip_threshold": args.max_grad_norm, "decay_rate": -0.8,
                                 "weight_decay": args.weight_decay,
                                 "scale_parameter": False, "relative_step": False}
+>>>>>>> f07686175c33a9102c4874f2853d6962690e2dec
     if args.model == 'T5Finetune':
         optimizer = AdamW
         base_optimizer_arguments = {"lr": args.lr, "weight_decay": args.weight_decay}

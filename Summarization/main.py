@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import pickle
 import argparse
 import gc
@@ -22,8 +24,9 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model import *
 from model_finetune import *
+from model import *
+from model_mixture import *
 from dataset import *
 from utils import *
 from engine import *
@@ -36,17 +39,18 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="0", help="gpu id")
+                    default="2", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
                     default="/data/qin/DATASETS/PromptSumm/")
+
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=64, help="number of data points for training AND validation")
+                    default=10, help="number of data points for training AND validation")
 
 ### model
 parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
@@ -56,22 +60,36 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Summarization", help="{T5NER}") # can be T5Summarization, T5Finetune
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt"])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base}")
+                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/qin/hf_models/t5-v1-large/",
+                    default="/data/qin/hf_models/t5-v1-base/",
+
                     help="The path of huggingface cache")
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
+parser.add_argument("--concat_mode", dest="concat_mode", type=str,
+                    default="right_concat")
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
+# discrete prompt
+parser.add_argument("--guidance_type", dest="guidance_type", type=str,
+                    default="ents")
+parser.add_argument("--separator", dest="separator", type=str,
+                    default=" ", choices=[",", " "])
+parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+                    default="normal", choices=["nomral", "oracle"])
+parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
+                    default=False)
+parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
+                    default=100)
 
 ### optimization
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
@@ -98,8 +116,6 @@ parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
                     default=1.0, help="max grad norm")
-parser.add_argument("--lm_lambda", dest="lm_lambda", type=float,
-                    default=0.0, help='language model loss lambda')
 
 # evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,
@@ -109,6 +125,16 @@ parser.add_argument("--eval_step", dest="eval_step", type=int,
 parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                     default=True)
 
+##### generation
+parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
+                    default=128, help="max summary length")
+parser.add_argument("--num_beams", dest="num_beams", type=int,
+                    default=4, help="number of beams in beam search")
+parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
+                    default=2.5, help="repetition penalty")
+parser.add_argument("--length_penalty", dest="length_penalty", type=float,
+                    default=1.0, help="length penalty")
+
 # export
 parser.add_argument("--save_step", dest="save_step", type=int,
                     default=100000, help="step to save")
@@ -116,6 +142,14 @@ parser.add_argument("--save_model", dest="save_model", type=bool,
                     default=False, help="whether to save the model or not")
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
+
+##### BERT tagger
+parser.add_argument("--train_bert_tagger", dest="train_bert_tagger", type=bool,
+                    default=False, help="whether finetune a BERT tagger using the fewshot summarization data")
+parser.add_argument("--pretrain_bert_path", dest="pretrain_bert_path", type=str,
+                    default='./tagger/out_base/', help="The path of bert pretrained on conll")
+parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
+                    default=True, help="whether use a bert tagger")
 
 args = parser.parse_args()
 
@@ -174,7 +208,7 @@ def main(args):
             f.write("----------------------------------------------------------------------------\n")
 
     allgentasktokens = ["summerizationcnndm"]
-    thistaskname = "cnn daily mail "
+    thistaskname = "cnn daily mail"
     thistaskfold = "cnndm"
     args.taskfold = thistaskfold
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path, local_files_only=True)
@@ -191,16 +225,6 @@ def main(args):
 
     promptnumber = args.prompt_number
 
-    # original_way of loading
-    # thistrainfilename = args.data_dir + args.dataset + "/{}/seed_0/train.txt".format(args.few_shot)
-    # thisvalidfilename = args.data_dir + args.dataset + "/{}/seed_0/valid.txt".format(args.few_shot)
-    # # print(thistrainfilename, thisvalidfilename)
-    # args.train_file_name = thistrainfilename
-    # args.valid_file_name = thisvalidfilename
-
-    # train_dataset = T5SummarizationDataset(args.train_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-    # valid_dataset = T5SummarizationDataset(args.valid_file_name, args.max_length, tokenizer, allgentasktokens, answertoken)
-
     # new way of loading
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
     dataset_args = [args.dataset_name, args.dataset_version]
@@ -212,9 +236,14 @@ def main(args):
     if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
+    # handle few-shot data for BERT tagger
+    if args.train_bert_tagger:
+        #####get data
+        alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
-    keys = ['val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+    keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
     result_dict_total = {}
     for k in keys:
         result_dict_total[k] = []
@@ -222,13 +251,16 @@ def main(args):
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-
         t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         if args.model == 'T5Finetune':
             print('Finetuning')
             model = T5Finetune(args, t5model, tokenizer)
-        elif args.model == 'T5Summarization':
-            model = T5forSummarization(args, t5model, tokenizer)
+        elif args.model == 'T5SoftPrompt':
+            model = T5SoftPrompt(args, t5model, tokenizer)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model.set_prompt_embedding(promptnumber, promptembedding)
+        elif args.model == 'T5MixPrompt':
+            model = T5MixPrompt(args, t5model, tokenizer)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
