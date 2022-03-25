@@ -80,6 +80,7 @@ class T5SoftPrompt(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
+            num_beams=self.args.num_beams,
             max_length=self.args.max_summary_length,
             repetition_penalty=self.args.repetition_penalty,
             length_penalty=self.args.length_penalty,
