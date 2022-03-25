@@ -32,7 +32,7 @@ class T5Prompt(nn.Module):
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
-    ):
+    ):  
         ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.prompt_embedding.repeat(input_embed_part.size(0), 1, 1)
