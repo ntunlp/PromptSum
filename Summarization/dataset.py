@@ -241,7 +241,8 @@ class SmartBatchingCollate:
         ents_ids, ents_mask = self.pad_sequence(
             ents,
             max_sequence_length=self._max_guidance_length,
-            pad_token_id=self._pad_token_id
+            pad_token_id=self._pad_token_id,
+            right = False
         )
         target_ids, target_mask = self.pad_target(
             targets, 
@@ -272,7 +273,7 @@ class SmartBatchingCollate:
         
         return padded_sequences,attention_masks
 
-    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
+    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right = True):
         max_batch_len = max(len(sequence) for sequence in sequence_batch)
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
@@ -284,8 +285,14 @@ class SmartBatchingCollate:
             attention_mask = [attend] * len(new_sequence)
             pad_length = max_len - len(new_sequence)
 
-            new_sequence.extend([pad_token_id] * pad_length)
-            attention_mask.extend([no_attend] * pad_length)
+            if right:
+                new_sequence.extend([pad_token_id] * pad_length)
+                attention_mask.extend([no_attend] * pad_length)
+            else:
+                padding = [pad_token_id] * pad_length
+                new_sequence = padding + new_sequence 
+                padding = [no_attend] * pad_length
+                attention_mask = padding + attention_mask
 
             padded_sequences.append(new_sequence)
             attention_masks.append(attention_mask)

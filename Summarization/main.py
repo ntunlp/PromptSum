@@ -26,6 +26,7 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 from model_finetune import *
 from model import *
 from model_mixture import *
+from model_mixture_discrete_in_decoder import * 
 from dataset import *
 from utils import *
 from engine import *
@@ -60,16 +61,16 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/ruochen/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/ruochen/hf_models/t5-v1-base/",
+                    default="/data/mathieu/hf_models/t5-v1-base/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -261,6 +262,10 @@ def main(args):
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)
+        elif 'MixPromptDID' in args.model:
+            model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
+            model.set_prompt_embedding(promptnumber, promptembedding)            
         else:
             raise Exception('Model not implemented yet')
         model.to(args.device)
