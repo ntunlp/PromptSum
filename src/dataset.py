@@ -123,7 +123,7 @@ class T5CNNDataset(Dataset):
         elif args.guidance_type == "sents":
             self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
         
-        # counterfactual training
+        # counterfactual data augmentation
         self.counterfactual_removal = counterfactual_removal
         if counterfactual_removal:
             self.counterfactual_remove()
