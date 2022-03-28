@@ -45,11 +45,11 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/ruochen/DATASETS/PromptSumm/")
+                    default="/data/mathieu/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="number of data points for training AND validation")
+                    default=100, help="number of data points for training AND validation")
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
@@ -61,7 +61,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5MixPromptDID", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -85,11 +85,11 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=" ", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal", choices=["nomral", "oracle"])
+                    default="oracle", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=100)
+                    default=50)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
@@ -221,6 +221,7 @@ def main(args):
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
     special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
+    tokenizer.add_tokens(['[SEP]'])
 
     promptnumber = args.prompt_number
 
@@ -252,17 +253,20 @@ def main(args):
         logger.info("Start training")
 
         if 'Finetune' in args.model:
-            print('Finetuning')
+            print('\nFinetuning')
             model = ModelFinetune(args, basemodel, tokenizer, args.model)
         elif 'SoftPrompt' in args.model:
+            print('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif 'MixPrompt' in args.model:
+        elif 'MixPrompt' in args.model and not('DID' in args.model):
+            print('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif 'MixPromptDID' in args.model:
+            print('\nMix prompt tuning with discrete prompt in decoder')
             model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)            

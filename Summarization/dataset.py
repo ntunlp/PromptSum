@@ -178,7 +178,10 @@ class T5SummarizationDataset(Dataset):
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.args.max_guidance_length, truncation=True, return_tensors="pt")
+        if "DID" in self.args.model:
+            sep = self.tokenizer.batch_encode_plus(["[SEP]"], return_tensors = "pt")
+            input_ents_res["input_ids"] = torch.cat((input_ents_res["input_ids"][:, :-1], sep["input_ids"][:, 0:1]), 1)
 
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
@@ -225,7 +228,8 @@ class T5SummarizationDataset(Dataset):
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, max_guidance_length, pad_token_id):
+    def __init__(self, args, max_length, max_guidance_length, pad_token_id):
+        self.args = args
         self._max_length = max_length
         self._max_guidance_length = max_guidance_length
         self._pad_token_id = pad_token_id
@@ -238,11 +242,14 @@ class SmartBatchingCollate:
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
+        right = True
+        if "DID" in self.args.model:
+            right = False
         ents_ids, ents_mask = self.pad_sequence(
             ents,
-            max_sequence_length=self._max_guidance_length,
+            max_sequence_length=self._max_guidance_length + 1,
             pad_token_id=self._pad_token_id,
-            right = False
+            right = right
         )
         target_ids, target_mask = self.pad_target(
             targets, 

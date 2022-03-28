@@ -48,31 +48,39 @@ class ModelMixPromptDID(nn.Module):
         mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
 
-        labels = torch.cat((labels, ent_ids), 1)
-        
+        labels = torch.cat((ent_ids, labels), 1)
+    
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
             decoder_input_ids=None,
-            decoder_attention_mask=decoder_attention_mask,
+            decoder_attention_mask=None,
             labels=labels,
             output_attentions=True,
             output_hidden_states=True
         )
 
     def forward(self, batch):
-        lm_labels = batch["target_ids"]
-        lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
+        labels = batch["target_ids"]
+        labels[labels[:, :] == self.tokenizer.pad_token_id] = -100
         outputs = self._step(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
-            labels=lm_labels,
+            labels=labels,
             decoder_attention_mask=batch['target_mask'],
             ent_ids=batch["input_ents"],
             ent_mask=batch["ents_mask"]
         )
         logits = outputs["logits"]
-        print(logits.shape)
+        ents_size = batch["input_ents"].shape[1]
+        logits_labels = logits[:, ents_size:, :]
+        probs_labels = torch.softmax(logits_labels, dim = 2)
+        loss = torch.tensor(0.0).to(batch["input_ids"].device)
+        for i in range(labels.shape[0]):
+            for t in range(labels.shape[1]):
+                loss_i_t = -torch.log(probs_labels[i, t, labels[i, t]] + 1e-8)
+                loss += loss_i_t
+        loss /= (labels.shape[0] * labels.shape[1])
         
         return loss
 
@@ -82,24 +90,22 @@ class ModelMixPromptDID(nn.Module):
         else:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-
-        if 'T5' in self.model_name:
-            discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
-        else:
-            discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["input_ents"])
             
-        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        prompt_embed = soft_prompt_embed
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
-        decoder_input_ids = (
-            torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
-        )
+        #decoder_input_ids = (
+        #    torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        #)
+        decoder_input_ids = batch["input_ents"]
+        
         generated_ids = self.model.generate(
             inputs_embeds=allembedding,
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
+            min_length=batch["input_ents"].shape[1]+5,
             max_length=self.args.max_summary_length,
             num_beams=self.args.num_beams,
             repetition_penalty=self.args.repetition_penalty,
@@ -111,7 +117,22 @@ class ModelMixPromptDID(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         
-        return input,target,preds
+        if "DID" in self.args.model:
+            all_preds = []
+            for j in range(len(preds)):
+                preds_split = preds[j].split("[SEP]")
+                if len(preds_split) == 1:
+                    preds_j = preds_split[0]
+                else:
+                    preds_j = preds_split[1]
+                all_preds.append(preds_j)
+            preds = all_preds
+
+        #print("*"*50)
+        #print(self.ids_to_clean_text(batch["input_ents"][0])) 
+        #print(preds[0])
+
+        return input, target, preds
 
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
