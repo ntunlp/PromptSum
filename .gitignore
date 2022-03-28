@@ -8,3 +8,4 @@ src/tagger/sumdata
 src/tagger/out_base
 src/tagger/output
 Summarization/__pycache__/*
+Summarization/t5_sum_ckpt/*
