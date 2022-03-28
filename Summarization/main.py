@@ -60,7 +60,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "BartFinetune"])
+                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -160,9 +160,6 @@ if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailym
     args.dataset = 'cnndm'
 else:
     args.dataset = args.dataset_name
-#if we use bart, then automatically don't use lm_adapted
-if 'Bart' in args.model:
-    args.use_lm_adapted = 0
 
 args.dataset_version = dataset_versions[idx]
 args.text_key = text_keys[idx]
@@ -246,26 +243,23 @@ def main(args):
     
     # base model
     if 'Bart' in args.model:
-        bartmodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     else:
-        t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for (train_dataset, valid_dataset) in datasets:
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-        if args.model == 'T5Finetune':
+        if 'Finetune' in args.model:
             print('Finetuning')
-            model = T5Finetune(args, t5model, tokenizer)
-        elif args.model == 'BartFinetune':
-            print('Finetuning')
-            model = BartFinetune(args, bartmodel, tokenizer)
-        elif args.model == 'T5SoftPrompt':
-            model = T5SoftPrompt(args, t5model, tokenizer)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model = ModelFinetune(args, basemodel, tokenizer, args.model)
+        elif 'SoftPrompt' in args.model:
+            model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif args.model == 'T5MixPrompt':
-            model = T5MixPrompt(args, t5model, tokenizer)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+        elif 'MixPrompt' in args.model:
+            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
