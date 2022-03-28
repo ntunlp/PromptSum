@@ -9,19 +9,18 @@ from torch.nn import Softmax
 
 
 
-class T5MixPrompt(nn.Module):
-    def __init__(self, args, model, tokenizer):
-        super(T5MixPrompt, self).__init__()
+class ModelMixPrompt(nn.Module):
+    def __init__(self, args, model, tokenizer, model_name):
+        super(ModelMixPrompt, self).__init__()
         self.args = args
         self.model = model
+        self.model_name = model_name
         ### load ckpt
-        if args.use_lm_adapted == 1:
-            print("use lm adapted model!")
-            t5ckpt = torch.load(args.lm_adapted_path)
-            if args.ifckpt_onlymodel == 1:
+        if 'T5' in self.model_name: #only T5 has the option to load lm_adapted
+            if args.use_lm_adapted == 1:
+                print("use lm adapted model!")
+                t5ckpt = torch.load(args.lm_adapted_path)
                 self.model.load_state_dict(t5ckpt)
-            else:
-                self.model.load_state_dict(t5ckpt['t5-large-prefixlm'])
         for name, param in self.model.named_parameters():
             param.requires_grad = False
         self.tokenizer = tokenizer
@@ -37,9 +36,17 @@ class T5MixPrompt(nn.Module):
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, ent_ids=None, ent_mask=None
     ):
-        input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
+
         soft_prompt_embed= self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+
+        if 'T5' in self.model_name:
+            discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+        else:
+            discrete_prompt_embed = self.model.get_encoder().embed_tokens(ent_ids)
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
@@ -71,9 +78,17 @@ class T5MixPrompt(nn.Module):
         return loss
 
     def _generative_step(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+
+        if 'T5' in self.model_name:
+            discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        else:
+            discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["input_ents"])
+            
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
@@ -100,9 +115,15 @@ class T5MixPrompt(nn.Module):
         return input,target,preds
 
     def _generative_samples(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        if 'T5' in self.model_name:
+            discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
+        else:
+            discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["input_ents"])
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
