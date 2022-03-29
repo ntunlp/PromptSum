@@ -79,16 +79,15 @@ def getfewshot(inpath,outpath,fewshotnum):
     f.close()
 
 
-def getpromptembedding(model, tokenizer, promptnumber, taskname, device):
-    t5_embedding = model.model.get_input_embeddings().to(device)
+def getpromptembedding(model, tokenizer, promptnumber, taskname):
+    t5_embedding = model.model.get_input_embeddings()
     promptinitembedding = torch.FloatTensor(promptnumber, t5_embedding.weight.size(1))
     startindex = 0
     alllabel = ["summarization"]
     alllabel.append(taskname)
-    # print(alllabel)
     for one in alllabel:
         encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
-        touse = encoderes["input_ids"].squeeze()[:-1].to(device)
+        touse = encoderes["input_ids"].squeeze()[:-1]
         embeddingres = t5_embedding(touse).clone().detach()
         if embeddingres.shape[0] > 1:
             embeddingres = torch.mean(embeddingres, 0, keepdim=True)

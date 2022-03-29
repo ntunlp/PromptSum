@@ -160,7 +160,6 @@ class T5SummarizationDataset(Dataset):
                         ents = self.spacy_nlp(inputdata).ents
                         ents = [ent.text for ent in ents]
                         input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
-                        #print(input_guidance)
             # if counterfactual_removed, remove removed_ents in the input_guidance
             if self.counterfactual_removal:
                 if self.removed_ents[idx] != None:
@@ -178,12 +177,7 @@ class T5SummarizationDataset(Dataset):
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.args.max_guidance_length, truncation=True, return_tensors="pt")
-        #if len(input_guidance.split()) == 0:
-        #    input_guidance = "no_entity"
-        if "DID" in self.args.model:
-            sep = self.tokenizer.batch_encode_plus(["[SEP]"], return_tensors = "pt")
-            input_ents_res["input_ids"] = torch.cat((input_ents_res["input_ids"][:, :], sep["input_ids"][:, :]), 1)
+        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
@@ -230,8 +224,9 @@ class T5SummarizationDataset(Dataset):
 
 
 class SmartBatchingCollate:
-    def __init__(self, args, max_length, max_guidance_length, pad_token_id):
+    def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
         self.args = args
+        self.tokenizer = tokenizer
         self._max_length = max_length
         self._max_guidance_length = max_guidance_length
         self._pad_token_id = pad_token_id
@@ -249,10 +244,15 @@ class SmartBatchingCollate:
             right = False
         ents_ids, ents_mask = self.pad_sequence(
             ents,
-            max_sequence_length=self._max_guidance_length + 2,
+            max_sequence_length=self._max_guidance_length,
             pad_token_id=self._pad_token_id,
             right = right
         )
+        if "DID" in self.args.model:
+            sep_ids = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device) * self.tokenizer.encode("[SEP]")[0]
+            ents_ids = torch.cat((ents_ids, sep_ids), 1)
+            sep_mask = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device)
+            ents_mask = torch.cat((ents_mask, sep_mask), 1)
         target_ids, target_mask = self.pad_target(
             targets, 
             max_sequence_length=self._max_length, 
