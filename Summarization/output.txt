@@ -26,3 +26,7 @@ Entity-level eval, mean precision: 12.2619, recall: 4.7619, F-1: 6.1607
 Entity-level eval, mean precision: 11.5043, recall: 7.2619, F-1: 6.9385
 
 Entity-level eval, mean precision: 15.0000, recall: 8.4524, F-1: 10.7879
+
+Entity-level eval, mean precision: 14.8333, recall: 10.9524, F-1: 12.1212
+
+Entity-level eval, mean precision: 16.1667, recall: 10.4524, F-1: 12.5339
