@@ -179,10 +179,12 @@ class T5SummarizationDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.args.max_guidance_length, truncation=True, return_tensors="pt")
+        #if len(input_guidance.split()) == 0:
+        #    input_guidance = "no_entity"
         if "DID" in self.args.model:
             sep = self.tokenizer.batch_encode_plus(["[SEP]"], return_tensors = "pt")
-            input_ents_res["input_ids"] = torch.cat((input_ents_res["input_ids"][:, :-1], sep["input_ids"][:, 0:1]), 1)
-
+            input_ents_res["input_ids"] = torch.cat((input_ents_res["input_ids"][:, :], sep["input_ids"][:, :]), 1)
+        
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -247,7 +249,7 @@ class SmartBatchingCollate:
             right = False
         ents_ids, ents_mask = self.pad_sequence(
             ents,
-            max_sequence_length=self._max_guidance_length + 1,
+            max_sequence_length=self._max_guidance_length + 2,
             pad_token_id=self._pad_token_id,
             right = right
         )

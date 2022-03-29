@@ -121,7 +121,7 @@ parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
 
 # evaluation
 parser.add_argument("--log_step", dest="log_step", type=int,
-                    default=1, help="how many steps to log")
+                    default=5, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
 parser.add_argument("--stemmer", dest="stemmer", type=bool, 
