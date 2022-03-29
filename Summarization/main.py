@@ -61,7 +61,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5MixPromptDID", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -85,7 +85,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal", choices=["nomral", "oracle"])
+                    default="oracle", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -258,7 +258,7 @@ def main(args):
         elif 'SoftPrompt' in args.model:
             print('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif 'MixPrompt' in args.model and not('DID' in args.model):
             print('\nMix prompt tuning')
@@ -268,7 +268,7 @@ def main(args):
         elif 'MixPromptDID' in args.model:
             print('\nMix prompt tuning with discrete prompt in decoder')
             model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)            
         else:
             raise Exception('Model not implemented yet')
@@ -277,7 +277,7 @@ def main(args):
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
 
-        result_dict = train(args, model, train_dataset, valid_dataset, logger)
+        result_dict = train(args, tokenizer, model, train_dataset, valid_dataset, logger)
         logger.info("Finish training")
         logger.info("The model has {} trainable parameters".format(n_params))
         for k in keys:
@@ -290,7 +290,7 @@ def main(args):
     # if args.local_rank in [0, -1]:
     #     logger.info("Start testing")
     #     logger.info("Testing...")
-    #     test(args, test_dataset)
+    #     test(args, tokenizer, test_dataset, logger)
     #     logger.info("Finish testing!")
 
     if args.local_rank != -1:
