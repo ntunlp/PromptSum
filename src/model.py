@@ -120,7 +120,8 @@ class T5Prompt(nn.Module):
             do_sample=True,
             top_k = 64,
             #top_p = 0.85,
-            num_return_sequences=4
+            num_beams=args.num_beams,
+            #num_return_sequences=4
         )
 
         preds = self.ids_to_clean_text(generated_ids)

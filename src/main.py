@@ -1,4 +1,5 @@
 import os
+#os.environ["CUDA_VISIBLE_DEVICES"] = '0'
 import argparse
 import time
 import logging
@@ -38,14 +39,11 @@ parser.add_argument("--num_entries", dest="num_entries", type=int,
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=100, help="size of the few_shot dataset, False if want to run on whole dataset")
 parser.add_argument("--few_shot_save_dir", dest="few_shot_save_dir", type=str,
-                    default='/data/qin/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
+                    default='/data/mathieu/DATASETS/PromptSumm/', help="path to save the subsampled datasetss")
 parser.add_argument("--run_one_to_debug", dest="run_one_to_debug", type=bool,
                     default=False, help="whether to use only one data sampling seed and one training seed to test, instead of using the averate")
 parser.add_argument("--kaggle", dest="kaggle", type=bool,
                     default=True, help="whether to report average validation performance instead of test")
-                    # CURRENTLY ONLY USED IN FEW-SHOT SETTING
-parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
-                    default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 ##### model
 # input 
@@ -53,34 +51,28 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max source length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-<<<<<<< HEAD
                     default="T5Prompt", choices=['T5Finetune', 'T5Prompt', 'T5MixPrompt']) #T5Prompt: with soft prompt tuning
-=======
-                    default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune']) #T5Prompt: with soft prompt tuning
->>>>>>> f07686175c33a9102c4874f2853d6962690e2dec
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                    default="../../hf_models/t5-v1-base", )
+                    default="../../hf_models/t5-v1-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
-                    default=False, help="whether to use lm_adapted model")
+                    default=True, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 # prompt 
 parser.add_argument("--prompt_length", dest="prompt_length", type=int,
-                    default=200, help="The size of the soft prompt")
-parser.add_argument("--prompt_length_discrete", dest="prompt_length_discrete", type=int,
-                    default=20, help="The size of the discrete prompt")
+                    default=300, help="The size of the soft prompt")
 parser.add_argument("--concat_mode", dest="concat_mode", choices=['left_concat', 'right_concat'],
                     default='right_concat', help='append prompt to the left or right')
-# guidance signal
-parser.add_argument("--guidance_type", dest="guidance_type", type=str,
-                    default="ents", help="What kind of guidance as discrete entities. In [None, ents, sents]")
-parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
+# discrete prompt
+parser.add_argument("--discrete_type", dest="discrete_type", type=str,
+                    default="entities", help="What kind of guidance as discrete entities. In [None, entities, sentences]")
+parser.add_argument("--salient_mode", dest="salient_mode", type=str,
                     default="normal", choices=['oracle', 'normal'], help='if to use oracle guidance')
-parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=100, help="max guidance sequence length")
+parser.add_argument("--discrete_prompt_length", dest="discrete_prompt_length", type=int,
+                    default=100, help="number of tokens for the discrete prompt")
 # 1 - entities
 parser.add_argument("--filter_ents_freq", dest="filter_ents_freq", type=bool,
                     default=False, help="whether to filter ents based on the frequency")
@@ -104,23 +96,21 @@ parser.add_argument("--ckpt_path", dest="ckpt_path", type=str,
 parser.add_argument("--optimizer", dest="optimizer", choices=['AdamW', 'Adafactor'],
                     default='Adafactor', help='choice of optimizer')
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-5, help='learning rate') # 5e-5 for FT, 5e-1 for PT
+                    default=5e-1, help='learning rate') # 5e-5 for FT, 5e-1 for PT
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=2, help="batch size per gpu")
+                    default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
                     default=2, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=2, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=32, help="gradient accumulation steps")
+                    default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=30, help="max epoch number")
+                    default=10, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
-                    default=1.0, help="max grad norm")
 
 ##### generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
@@ -149,14 +139,6 @@ parser.add_argument("--display_preds", dest="display_preds", type=bool,
                     default=False, help="whether to display predictions during training")
 parser.add_argument("--stemmer", dest="stemmer", type=bool,
                     default=True, help="stemmer for ROUGE evaluation")
-
-##### BERT tagger
-parser.add_argument("--train_bert_tagger", dest="train_bert_tagger", type=bool,
-                    default=False, help="whether finetune a BERT tagger using the fewshot summarization data")
-parser.add_argument("--pretrain_bert_path", dest="pretrain_bert_path", type=str,
-                    default='./tagger/out_base/', help="The path of bert pretrained on conll")
-parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
-                    default=False, help="whether use a bert tagger")
 
 args = parser.parse_args()
 
@@ -187,12 +169,10 @@ os.makedirs(args.save_path, exist_ok=True)
 if args.few_shot:
     args.few_shot_save_dir = args.few_shot_save_dir + f'{save_name}/{args.few_shot}/'
     os.makedirs(args.few_shot_save_dir, exist_ok=True)
-    # if running few-shot exps, always not filter ents freq
-    args.filter_ents_freq = False
 
 # print args
 print(args)
-print ("ckpt path", args.ckpt_path)
+print("ckpt path", args.ckpt_path)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -201,9 +181,9 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-
     # set seed
     seed_everything(args)
+
     # set cuda
     if torch.cuda.is_available():
         if args.local_rank == -1:
@@ -232,6 +212,9 @@ def main(args):
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.few_shot != False:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+        answertoken = "__ans__"
+        special_tokens = {"ans_token": answertoken}
+        tokenizer.add_tokens(list(special_tokens.values()))
         if args.run_one_to_debug:
             few_shot_seeds = [0]
             training_seeds = [10]
@@ -242,13 +225,6 @@ def main(args):
         if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds)*2:
             logger.info('subsampling..')
             subsample(dataset_args, args, tokenizer, few_shot_seeds, args.few_shot_save_dir)
-
-        # handle few-shot data for BERT tagger
-        if args.train_bert_tagger:
-            #####get data
-            alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-            train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
-        #exit -1
         # read in saved few-shot datasets
         datasets = read_subsampled(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         if args.kaggle:
@@ -279,7 +255,7 @@ def main(args):
 
                 if args.train:
                     rd = train(args, model, train_dataset, valid_dataset, test_dataset, logger)
-                #exit -1
+
                 if args.local_rank in [0, -1]:
                     if not args.kaggle:
                         # to test on full dataset
@@ -338,6 +314,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-
     main(args)
 

@@ -197,7 +197,8 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
     with torch.no_grad():
         for step, batch in tqdm(enumerate(valid_dataloader)):            
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), 
+                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds, _ = model._generative_step(inputs)
@@ -218,6 +219,10 @@ def dooneeval(args, model, valid_dataloader, scaler, result_dict, logger, i):
         if args.highlights:
             label = "\n".join(sent_tokenize(label))
             summary = "\n".join(sent_tokenize(summary))
+        #print("*"*50)
+        #print(label)
+        #print("*"*20)
+        #print(summary)
         rouge_score = scorer.score(label, summary)
         r1s.append(rouge_score["rouge1"].fmeasure)
         r2s.append(rouge_score["rouge2"].fmeasure)
@@ -307,7 +312,8 @@ def test(args, test_dataset, tokenizer, logger):
     with torch.no_grad():
         for step, batch in tqdm(enumerate(test_dataloader)):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device), 
+                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     source, target, preds, ents = model._generative_step(inputs)
