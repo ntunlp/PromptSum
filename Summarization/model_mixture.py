@@ -23,6 +23,7 @@ class ModelMixPrompt(nn.Module):
                 self.model.load_state_dict(t5ckpt)
         for name, param in self.model.named_parameters():
             param.requires_grad = False
+            print(name)
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
