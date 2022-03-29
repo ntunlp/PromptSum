@@ -49,7 +49,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=100, help="number of data points for training AND validation")
+                    default=10, help="number of data points for training AND validation")
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
@@ -61,7 +61,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPromptDID", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -83,13 +83,13 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
 parser.add_argument("--separator", dest="separator", type=str,
-                    default=" ", choices=[",", " "])
+                    default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="oracle", choices=["nomral", "oracle"])
+                    default="normal", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=50)
+                    default=100)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
@@ -263,7 +263,7 @@ def main(args):
         elif 'MixPrompt' in args.model and not('DID' in args.model):
             print('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.device)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif 'MixPromptDID' in args.model:
             print('\nMix prompt tuning with discrete prompt in decoder')
