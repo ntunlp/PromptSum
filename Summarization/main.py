@@ -83,9 +83,9 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
 parser.add_argument("--separator", dest="separator", type=str,
-                    default=" ", choices=[",", " "])
+                    default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal", choices=["nomral", "oracle"])
+                    default="oracle", choices=["nomral", "oracle"])
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -143,13 +143,11 @@ parser.add_argument("--save_model", dest="save_model", type=bool,
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
-##### BERT tagger
-parser.add_argument("--train_bert_tagger", dest="train_bert_tagger", type=bool,
-                    default=False, help="whether finetune a BERT tagger using the fewshot summarization data")
-parser.add_argument("--pretrain_bert_path", dest="pretrain_bert_path", type=str,
-                    default='./tagger/out_base/', help="The path of bert pretrained on conll")
-parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
-                    default=True, help="whether use a bert tagger")
+##### T5 tagger
+parser.add_argument("--train_t5_tagger", dest="train_t5_tagger", type=bool,
+                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+parser.add_argument("--use_t5_tagger", dest="use_t5_tagger", type=bool,
+                    default=True, help="whether use a t5 tagger")
 
 args = parser.parse_args()
 
@@ -237,9 +235,10 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
-    if args.train_bert_tagger:
+    if args.train_t5_tagger:
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+        #exit -1
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
@@ -247,7 +246,7 @@ def main(args):
     result_dict_total = {}
     for k in keys:
         result_dict_total[k] = []
-    for (train_dataset, valid_dataset) in datasets:
+    for (train_dataset, valid_dataset, seed) in datasets:
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
@@ -265,7 +264,16 @@ def main(args):
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
+        ####add t5 tagger
+        if args.use_t5_tagger and args.model == "T5MixPrompt":
+            ####add tagger embeddings to t5 model
+            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt'
+            oneckpt = torch.load(onepath)
+            model.set_tagger_embedding(oneckpt["promptembedding"])
+
         model.to(args.device)
+        if args.use_t5_tagger and args.model == "T5MixPrompt":
+            valid_dataset.set_tagger_tokenizer(model, tokenizer)
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))

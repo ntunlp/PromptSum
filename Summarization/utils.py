@@ -1,13 +1,13 @@
 import torch
 import os
 import sys
-sys.path.append("./tagger/")
+sys.path.append("./T5PromptNER/")
 import numpy as np
 import random
 import csv
 import pickle
 import pickle5
-from tagger.TrainTaggerforSum import *
+from T5PromptNER.TrainTaggerforSum import *
 
 
 def seed_everything(args):
@@ -157,15 +157,15 @@ def getmixpromptembedding(model, tokenizer, task_prompt_length):
 def get_train_valid_data(args, sumpath, docpath, doc_sum_path):
 
     ####get predict label of summarization
-    sum_y_pred, allsumwithfakelabeldata = get_predict_label_for_sum(args, doc_sum_path, sumpath)
+    sum_y_pred = get_predict_label_for_sum(args, doc_sum_path, sumpath)
 
     ####get label for document
-    #alldocandlabeltrain, alldocandlabelvalid,allentityfortrain = get_doc_label(sum_y_pred,allsumwithfakelabeldata, docpath)
-    alldocandlabel, allentityfortrain = get_doc_label(sum_y_pred, allsumwithfakelabeldata, docpath)
+    alldocandlabel, allentityfortrain, allentityforvalid = get_doc_label(sum_y_pred, docpath)
+    #alldocandlabeltrain, alldocandlabelvalid, allentityfortrain = get_doc_label(sum_y_pred, docpath)
 
     ####split to train and valid
     #docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabeltrain, alldocandlabelvalid, doc_sum_path, allentityfortrain)
-    docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain)
+    docwithlabel_train, docwithlabel_vaid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid)
 
     return docwithlabel_train, docwithlabel_vaid
 

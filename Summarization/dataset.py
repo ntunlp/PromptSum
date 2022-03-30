@@ -18,6 +18,7 @@ import nltk
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed = 0):
         super(T5SummarizationDataset, self).__init__()
+
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
@@ -32,13 +33,14 @@ class T5SummarizationDataset(Dataset):
         self.num_entries = len(self.data)
 
         self.split = split
+
         self.tagger = None
         self.tagtokenizer = None
-        self.bert_tagger_path = ""
+
         self.allent = {}
         self.spacy_nlp = spacy.load("en_core_web_sm")
         self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
-        if args.use_bert_tagger:
+        if args.use_t5_tagger:
             ####train valid test
             if self.split.startswith("train"):
                 ####load entity file for training data
@@ -56,33 +58,30 @@ class T5SummarizationDataset(Dataset):
 
                     templist = content[1].split(' ')
 
-                    # try:
-                    #     matches = list(datefinder.find_dates(doc))
-                    # except:
-                    #     print("one except")
-                    # print(len(matches))
-                    # templist.extend([str(aa) for aa in matches])
-
-                    # allnum = [s for s in doc.split(' ') if s.isdigit()]
-                    # allnum = list(set(allnum))
-                    # #print(allnum)
-                    # templist.extend(allnum)
-
                     entlist = self.args.separator.join(templist)
                     #print(entlist)
                     self.allent[doc] = entlist
                 fe.close()
             else:
-                print(f'We are in {self.split} mode. We should use a bert tagger to predict entities.')
-                self.bert_tagger_path = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/tagger/'
+                if self.args.guidance_mode == 'oracle':
+                    entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
+                    fe = open(entpath, 'r')
+                    while True:
+                        oneline = fe.readline().strip()
+                        if not oneline:
+                            break
+                        content = oneline.split("\t")
+                        if len(content) != 2:
+                            print("valid data entity error!!!!")
+                            continue
+                        doc = content[0]
 
-                ####use tuned tagger
-                self.tagger = NerCPU.from_pretrained(self.bert_tagger_path)
-                self.tagtokenizer = BertTokenizer.from_pretrained(self.bert_tagger_path, do_lower_case=False)
+                        templist = content[1].split(' ')
 
-                ####use tagger pretrained on conll
-                # self.tagger = NerCPU.from_pretrained(self.args.pretrain_bert_path)
-                # self.tagtokenizer = BertTokenizer.from_pretrained(self.args.pretrain_bert_path, do_lower_case=False)
+                        entlist = self.args.separator.join(templist)
+                        # print(entlist)
+                        self.allent[doc] = entlist
+                    fe.close()
 
         # counterfactual training
         self.counterfactual_removal = args.counterfactual_removal
@@ -106,6 +105,10 @@ class T5SummarizationDataset(Dataset):
         
         return alldata
 
+    def set_tagger_tokenizer(self,tagger,tokenizer):
+        self.tagger = tagger
+        self.tagtokenizer = tokenizer
+
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
@@ -114,7 +117,7 @@ class T5SummarizationDataset(Dataset):
         input_guidance = "None"
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
-            if not self.args.use_bert_tagger:
+            if not self.args.use_t5_tagger:
                 if self.args.guidance_mode == 'oracle':
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
@@ -136,35 +139,31 @@ class T5SummarizationDataset(Dataset):
                         input_guidance = self.allent[tempdata]
                     else:
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
+                    #print(input_guidance)
                 else:
                     ####we use the tuned entity model to predict entities
-                    tempdata = re.sub(' +', ' ', inputdata)
-                    templist = tempdata.split(' ')
-                    num = 100
-                    newlist = []
-                    for j in range(0, len(templist), num):
-                        newlist.append(templist[j:j + num])
-                    ####handle newlist
-                    newdata = []
-                    for j in range(len(newlist)):
-                        onedata = newlist[j]
-                        onelabel = ['O' for oned in onedata]
-                        newdata.append((onedata, onelabel))
-                    allentitylist = getentitiesforonedata(newdata,self.bert_tagger_path,self.tagger,self.tagtokenizer, self.args)
-
-                    # matches = datefinder.find_dates(tempdata)
-                    # allentitylist.extend([str(aa) for aa in matches])
-
-                    # allnum = [s for s in tempdata.split(' ') if s.isdigit()]
-                    # allnum = list(set(allnum))
-                    # allentitylist.extend(allnum)
-
-                    input_guidance = self.args.separator.join(list(set(allentitylist)))
-                    if allentitylist == []:
-                        ents = self.spacy_nlp(inputdata).ents
-                        ents = [ent.text for ent in ents]
-                        input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
-                        #print(input_guidance)
+                    if self.args.guidance_mode == 'oracle':
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        ####search inputdata in the dic self.allent
+                        if tempdata in self.allent.keys():
+                            input_guidance = self.allent[tempdata]
+                        else:
+                            print("we can not find inputdata in the dictionary!! There should be some errors!")
+                    else:
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(self.args.device)
+                        attention_mask = inputres["attention_mask"].to(self.args.device)
+                        input = {"input_ids": input_ids, "attention_mask":attention_mask}
+                        taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        input_guidance = self.args.separator.join(list(set(allentitylist)))
+                        if allentitylist == []:
+                            print("empty")
+                            ents = self.spacy_nlp(inputdata).ents
+                            ents = [ent.text for ent in ents]
+                            input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
+                            #print(input_guidance)
 
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
@@ -301,7 +300,7 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
-        datasets.append((train_dataset, valid_dataset))
+        datasets.append((train_dataset, valid_dataset, seed))
     
     return datasets
 
