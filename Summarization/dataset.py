@@ -6,13 +6,13 @@ import torch
 import datasets
 import os
 import numpy as np
-
+import nltk
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
 
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, counterfactual_removal = False):
         super(T5SummarizationDataset, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
@@ -82,7 +82,7 @@ class T5SummarizationDataset(Dataset):
         self.counterfactual_removal = args.counterfactual_removal
         if self.counterfactual_removal:
             self.counterfactual_remove()
-            print("# After augmenting, Data points in this split: {}".format(len(self.data[self.args.text_key])))
+            print("# After augmenting, Data points in this split: {}".format(len(self.data)))
 
     def getalldata(self,filename):
         f = open(filename,'r')
@@ -121,7 +121,7 @@ class T5SummarizationDataset(Dataset):
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
-            else:
+            else: #use bert_tagger
                 ####for train
                 if self.split.startswith("train"):
                     tempdata = re.sub(' +', ' ', inputdata)
@@ -160,7 +160,15 @@ class T5SummarizationDataset(Dataset):
                         ents = self.spacy_nlp(inputdata).ents
                         ents = [ent.text for ent in ents]
                         input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
-                        #print(input_guidance)
+            # if counterfactual_removed, remove removed_ents in the input_guidance
+            if self.counterfactual_removal:
+                if self.removed_ents[idx] != None:
+                    for ent in self.removed_ents:
+                        print('input_guidance: ', input_guidance)
+                        input_guidance = input_guidance.replace(ent.text, '')
+                        print('input_guidance2: ', input_guidance)
+                        print('removed_ents[idx]: ', self.removed_ents[idx])
+                        raise Exception('end')
 
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
@@ -170,7 +178,7 @@ class T5SummarizationDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-
+        
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -181,10 +189,10 @@ class T5SummarizationDataset(Dataset):
         '''
         Function to add counterfactually removed instances to data
         input:
-            data: has fields article, highlights, id
+            data: list of (text, summary) tuples
         '''
-        inputdata = self.data[self.args.text_key]
-        targetdata = self.data[self.args.summary_key]
+        inputdata = [i[0] for i in self.data]
+        targetdata = [i[1] for i in self.data]
         new_inputdata = inputdata
         new_targetdata = targetdata
         removed_ents = [None]*len(inputdata)
@@ -211,11 +219,14 @@ class T5SummarizationDataset(Dataset):
                         new_inputdata.append(inputdata[i])
                         removed_ents.append(removed)
         # change self.data
-        self.data = datasets.Dataset.from_dict({self.args.text_key: new_inputdata, self.args.summary_key: new_targetdata, 'removed_ents': removed_ents})
+        self.data = [(new_inputdata[i], new_targetdata[i]) for i in range(len(new_inputdata))]
+        self.removed_ents = removed_ents
 
 
 class SmartBatchingCollate:
-    def __init__(self, max_length, max_guidance_length, pad_token_id):
+    def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
+        self.args = args
+        self.tokenizer = tokenizer
         self._max_length = max_length
         self._max_guidance_length = max_guidance_length
         self._pad_token_id = pad_token_id
@@ -228,11 +239,20 @@ class SmartBatchingCollate:
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
+        right = True
+        if "DID" in self.args.model:
+            right = False
         ents_ids, ents_mask = self.pad_sequence(
             ents,
             max_sequence_length=self._max_guidance_length,
-            pad_token_id=self._pad_token_id
+            pad_token_id=self._pad_token_id,
+            right = right
         )
+        if "DID" in self.args.model:
+            sep_ids = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device) * self.tokenizer.encode("[SEP]")[0]
+            ents_ids = torch.cat((ents_ids, sep_ids), 1)
+            sep_mask = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device)
+            ents_mask = torch.cat((ents_mask, sep_mask), 1)
         target_ids, target_mask = self.pad_target(
             targets, 
             max_sequence_length=self._max_length, 
@@ -262,7 +282,7 @@ class SmartBatchingCollate:
         
         return padded_sequences,attention_masks
 
-    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
+    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right = True):
         max_batch_len = max(len(sequence) for sequence in sequence_batch)
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
@@ -274,8 +294,14 @@ class SmartBatchingCollate:
             attention_mask = [attend] * len(new_sequence)
             pad_length = max_len - len(new_sequence)
 
-            new_sequence.extend([pad_token_id] * pad_length)
-            attention_mask.extend([no_attend] * pad_length)
+            if right:
+                new_sequence.extend([pad_token_id] * pad_length)
+                attention_mask.extend([no_attend] * pad_length)
+            else:
+                padding = [pad_token_id] * pad_length
+                new_sequence = padding + new_sequence 
+                padding = [no_attend] * pad_length
+                attention_mask = padding + attention_mask
 
             padded_sequences.append(new_sequence)
             attention_masks.append(attention_mask)
@@ -295,7 +321,7 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, counterfactual_removal = args.counterfactual_removal)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         datasets.append((train_dataset, valid_dataset))
     

@@ -85,7 +85,6 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname):
     startindex = 0
     alllabel = ["summarization"]
     alllabel.append(taskname)
-    # print(alllabel)
     for one in alllabel:
         encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
         touse = encoderes["input_ids"].squeeze()[:-1]

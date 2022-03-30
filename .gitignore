@@ -10,3 +10,8 @@ src/tagger/output
 Summarization/__pycache__
 Summarization/*log*
 Summarization/t5_sum_ckpt
+Summarization/tagger/__pycache__
+Summarization/tagger/sumdata
+Summarization/tagger/out_base
+Summarization/tagger/output
+Summarization/T5PromptNER/__pycache__

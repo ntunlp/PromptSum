@@ -13,6 +13,7 @@ from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -25,6 +26,7 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 from model_finetune import *
 from model import *
 from model_mixture import *
+from model_mixture_discrete_in_decoder import * 
 from dataset import *
 from utils import *
 from engine import *
@@ -48,6 +50,8 @@ parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="ccdv/cnn_dailymail")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=10, help="number of data points for training AND validation")
+parser.add_argument("--num_seeds", dest="num_seeds", type=int,
+                    default=3, help="number of seeds to sample for training AND validation")
 
 ### model
 parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
@@ -57,17 +61,17 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt"])
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base}")
+                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                    default=1, help="whether to use lm_adapted model")
+                    default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
                     default="/data/mathieu/hf_models/t5-v1-base/",
-                    help="The path of huggingface cache")
+                    help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
@@ -79,15 +83,15 @@ parser.add_argument("--prompt_number", dest="prompt_number", type=int,
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
 parser.add_argument("--separator", dest="separator", type=str,
-                    default=" ", choices=[",", " "])
+                    default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                     default="normal", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
-parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
-                    default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
                     default=100)
+parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
+                    default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 ### optimization
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
@@ -201,7 +205,12 @@ def main(args):
     thistaskname = "cnn daily mail "
     thistaskfold = "cnndm"
     args.taskfold = thistaskfold
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path, local_files_only=True)
+
+    # load tokenizer 
+    if 'Bart' in args.model:
+        tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    else:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
@@ -212,18 +221,19 @@ def main(args):
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
     special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
+    tokenizer.add_tokens(['[SEP]'])
 
     promptnumber = args.prompt_number
 
-    # new way of loading
+    # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
     # sample multiple datasets (reproducible with fixed seeds)
-    few_shot_seeds = [0, 1, 2]
+    few_shot_seeds = range(args.num_seeds)
     # if files don't exist, subsample
-    if len(os.listdir(args.few_shot_save_dir)) != len(few_shot_seeds):
+    if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # read datasets
@@ -232,22 +242,34 @@ def main(args):
     result_dict_total = {}
     for k in keys:
         result_dict_total[k] = []
+
     for (train_dataset, valid_dataset) in datasets:
+        # base model
+        if 'Bart' in args.model:
+            basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        else:
+            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-        t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        if args.model == 'T5Finetune':
-            print('Finetuning')
-            model = T5Finetune(args, t5model, tokenizer)
-        elif args.model == 'T5SoftPrompt':
-            model = T5SoftPrompt(args, t5model, tokenizer)
+        if 'Finetune' in args.model:
+            print('\nFinetuning')
+            model = ModelFinetune(args, basemodel, tokenizer, args.model)
+        elif 'SoftPrompt' in args.model:
+            print('\nSoft prompt tuning')
+            model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif args.model == 'T5MixPrompt':
-            model = T5MixPrompt(args, t5model, tokenizer)
+        elif 'MixPrompt' in args.model and not('DID' in args.model):
+            print('\nMix prompt tuning')
+            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
+        elif 'MixPromptDID' in args.model:
+            print('\nMix prompt tuning with discrete prompt in decoder')
+            model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model.set_prompt_embedding(promptnumber, promptembedding)            
         else:
             raise Exception('Model not implemented yet')
         model.to(args.device)
@@ -255,7 +277,7 @@ def main(args):
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
 
-        result_dict = train(args, model, train_dataset, valid_dataset, logger)
+        result_dict = train(args, tokenizer, model, train_dataset, valid_dataset, logger)
         logger.info("Finish training")
         logger.info("The model has {} trainable parameters".format(n_params))
         for k in keys:
@@ -268,7 +290,7 @@ def main(args):
     # if args.local_rank in [0, -1]:
     #     logger.info("Start testing")
     #     logger.info("Testing...")
-    #     test(args, test_dataset)
+    #     test(args, tokenizer, test_dataset, logger)
     #     logger.info("Finish testing!")
 
     if args.local_rank != -1:
