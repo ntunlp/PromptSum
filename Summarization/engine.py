@@ -136,7 +136,7 @@ def train(args, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
-def get_dataloader(num_workers,dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         max_length=max_len,
         max_guidance_length=max_guidance_len,
@@ -235,7 +235,7 @@ def test(args, test_dataset, logger):
 
     test_sampler = SequentialSampler(test_dataset)
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
-                                    args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
+                                     args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     model = T5forSummarization(args, t5model, test_dataset.tokenizer)
