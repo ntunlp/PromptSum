@@ -77,6 +77,11 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
         "recall": 0.0,
         "f1": 0.0
     }
+
+    if args.zero_shot:
+        dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,0)
+        return result_dict
+
     global_step = 0
     for i in range(args.max_epoch):
         thisevalstep = args.eval_step
@@ -185,7 +190,6 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for j in range(len(allytrue)):

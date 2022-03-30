@@ -92,11 +92,14 @@ class T5SummarizationDataset(Dataset):
     def getalldata(self,filename):
         f = open(filename,'r')
         alldata = []
+        i = 0
         while True:
             oneline = f.readline().strip()
             if not oneline:
                 break
             linelist = oneline.split("\t")
+            print('{}: {}'.format(i, len(linelist)))
+            i += 1
             onedata = []
             onedata.append(linelist[0])
             onedata.append(linelist[1])
@@ -335,6 +338,7 @@ def convert_data_to_txt(train_data, new_train_path, args):
     all_train_texts, all_train_summaries = [], []
     for idx in range(len(train_data)):
         text = train_data[idx][args.text_key]
+        text = " ".join(text.split("\n"))
         summary = train_data[idx][args.summary_key]
         summary = " ".join(summary.split("\n"))
         all_train_texts.append(text)

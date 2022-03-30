@@ -48,11 +48,11 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
                     default="/data/qin/DATASETS/PromptSumm/")
-
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                    default="ccdv/cnn_dailymail")
+                    default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
                     default=10, help="number of data points for training AND validation")
+parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
@@ -73,7 +73,7 @@ parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-base/",
+                    default="/data/ruochen/hf_models/t5-v1-base/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -88,7 +88,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="oracle", choices=["nomral", "oracle"])
+                    default="nomral", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
