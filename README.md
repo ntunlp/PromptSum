@@ -1,12 +1,15 @@
-# PromptSumm
+# PromptSumms
 cool prompting for summarization!
 
 # Running command
 CNN soft prompt: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=?
 CNN finetune: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=? --model=T5Finetune --lr=5e-5
 
-## Contents
+BART finetuning: python main.py --model=BartFinetune --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base --lr=5e-5 
+BART soft prompt-tuning: python main.py --model=BartSoftPrompt --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base
+BART mixed prompt-tuning: python main.py --model=BartMixPrompt --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base
 
+## Contents
 - [PromptSumm](#PromptSumm)
   - [Methodology](#Method)
   - [Related Papers](#related-papers)

@@ -5,33 +5,34 @@ import pdb
 import torch
 import torch.nn as nn
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
 
-
-
-class T5Finetune(nn.Module):
-    def __init__(self, args, model, tokenizer):
-        super(T5Finetune, self).__init__()
+class ModelFinetune(nn.Module):
+    def __init__(self, args, model, tokenizer, model_name):
+        super(ModelFinetune, self).__init__()
         self.args = args
         self.model = model
+        self.model_name = model_name
         ### load ckpt
-        if args.use_lm_adapted == True:
-            print("use lm adapted model!")
-            t5ckpt = torch.load(args.lm_adapted_path)
-            if args.ifckpt_onlymodel == True:
+        if 'T5' in self.model_name: #only T5 has the option to load lm_adapted
+            if args.use_lm_adapted == True:
+                print("use lm adapted model!")
+                t5ckpt = torch.load(args.lm_adapted_path)
                 self.model.load_state_dict(t5ckpt)
-            else:
-                self.model.load_state_dict(t5ckpt['t5-base-prefixlm'])
-            ### for fine-tuning, set requires_grad True
-            for name, param in self.model.named_parameters():
-                #print(name)
-                param.requires_grad = True
+        ### for fine-tuning, set requires_grad True
+        for name, param in self.model.named_parameters():
+            #print(name)
+            param.requires_grad = True
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
-        input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
         
         return self.model(
             inputs_embeds=input_embed_part,
@@ -56,7 +57,10 @@ class T5Finetune(nn.Module):
         return loss
 
     def _generative_step(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -80,7 +84,10 @@ class T5Finetune(nn.Module):
         return input,target,preds
 
     def _generative_samples(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
