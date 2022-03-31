@@ -28,7 +28,7 @@ from utils import *
 
 
 
-def train(args, model, train_dataset, valid_dataset, logger):
+def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     # total step
     step_tot = (len(
         train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
@@ -37,9 +37,9 @@ def train(args, model, train_dataset, valid_dataset, logger):
         train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args, args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
+    train_dataloader = get_dataloader(args, tokenizer, args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
                                       args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler)
-    valid_dataloader = get_dataloader(args, args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
+    valid_dataloader = get_dataloader(args, tokenizer, args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
     base_optimizer_arguments = {
@@ -77,6 +77,11 @@ def train(args, model, train_dataset, valid_dataset, logger):
         "recall": 0.0,
         "f1": 0.0
     }
+
+    if args.zero_shot:
+        dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,0)
+        return result_dict
+
     global_step = 0
     for i in range(args.max_epoch):
         thisevalstep = args.eval_step
@@ -136,9 +141,10 @@ def train(args, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
-def get_dataloader(args, num_workers,dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         args = args,
+        tokenizer = tokenizer,
         max_length=max_len,
         max_guidance_length=max_guidance_len,
         pad_token_id=pad_id
@@ -183,7 +189,6 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
                 tarres, predres = target, preds
                 allytrue.extend(tarres)
                 allypred.extend(predres)
-
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for j in range(len(allytrue)):
@@ -232,10 +237,10 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
     return result_dict
 
 
-def test(args, test_dataset, logger):
+def test(args, tokenizer, test_dataset, logger):
 
     test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader(args, args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
+    test_dataloader = get_dataloader(args, tokenizer, args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
                                     args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 
     t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
