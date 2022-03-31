@@ -109,6 +109,16 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
                     scaler.step(optimizer)
                     scaler.update()
                 else:
+                    for name, param in model.named_parameters():
+                        if "shared" in name:
+                            ents = []
+                            for k in range(inputs["input_ents"].shape[0]):
+                                for l in range(inputs["input_ents"].shape[1]):
+                                    ent = inputs["input_ents"][k,l].item()
+                                    ents.append(ent)
+                            for k in range(param_grad.shape[1]):
+                                if not(k in ents):
+                                    param.grad[:,k] = 0
                     optimizer.step()
                 if scheduler != None:
                     scheduler.step()
