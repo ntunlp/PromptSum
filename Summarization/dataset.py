@@ -121,10 +121,24 @@ class T5SummarizationDataset(Dataset):
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
                     input_guidance = self.args.separator.join(ents_intersection)
                 elif self.args.guidance_mode == 'salient_sents':
-                    top_sents = self.find_salient_sents(inputdata)
+                    top_sents = self.find_salient_sents(inputdata, n)
                     ents = self.spacy_nlp(top_sents).ents
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents)
+                elif self.args.guidance_mode == "most_frequent_text":
+                    ents = self.spacy_nlp(inputdata).ents
+                    ents = [ent.text for ent in ents]
+                    counts = {}
+                    for ent in ents:
+                        if not(ent in counts.keys()):
+                            counts[ent] = 0
+                        counts[ent] += 1
+                    sorted_counts = dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
+                    top_ents = []
+                    for k in sorted_counts.keys():
+                        top_ents.append(k)
+                        if len(top_ents) >= 5:
+                            break
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
@@ -186,7 +200,9 @@ class T5SummarizationDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        
+        print("*"*50)
+        print(input_guidance)
+
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -230,7 +246,7 @@ class T5SummarizationDataset(Dataset):
         self.data = [(new_inputdata[i], new_targetdata[i]) for i in range(len(new_inputdata))]
         self.removed_ents = removed_ents
 
-    def find_salient_sents(self, text):
+    def find_salient_sents(self, text, n):
         sents = nltk.sent_tokenize(text)
         r1s = []
         scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
@@ -241,7 +257,7 @@ class T5SummarizationDataset(Dataset):
             r1 = rouge_scores["rouge1"].fmeasure
             r1s.append(r1)
         idx = np.argsort(np.array(r1s))[::-1]
-        top_idx = idx[:5]
+        top_idx = idx[:n]
         top_idx.sort()
         top_sents = [sents[i] for i in top_idx]
         top_sents = " ".join(top_sents)
