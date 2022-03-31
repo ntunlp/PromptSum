@@ -61,7 +61,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5MixPromptDID", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -85,11 +85,11 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal", choices=["nomral", "oracle"])
+                    default="oracle", choices=["nomral", "oracle"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
-                    default=100)
+                    default=50)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
