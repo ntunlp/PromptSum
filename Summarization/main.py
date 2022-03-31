@@ -99,7 +99,7 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-3, help='learning rate')
+                    default=5e-2, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
