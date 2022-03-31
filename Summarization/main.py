@@ -62,11 +62,11 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="BartMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
+                    default="facebook/bart-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                    default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
+                    default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
@@ -98,7 +98,7 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate')
+                    default=5e-5, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
