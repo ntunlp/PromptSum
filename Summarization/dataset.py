@@ -120,6 +120,10 @@ class T5SummarizationDataset(Dataset):
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
                     input_guidance = self.args.separator.join(ents_intersection)
+                elif self.args.guidance_mode == 'salient_sents':
+                    top_sents = self.find_salient_sents(inputdata)
+                    ents = self.spacy_nlp(top_sents).ents
+                    input_guidance = self.args.separator.join(ents)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
@@ -225,6 +229,23 @@ class T5SummarizationDataset(Dataset):
         self.data = [(new_inputdata[i], new_targetdata[i]) for i in range(len(new_inputdata))]
         self.removed_ents = removed_ents
 
+    def find_salient_sents(self, text):
+        sents = nltk.sent_tokenize(text)
+        r1s = []
+        scorer = rouge_scorer.RougeScorer(['rouge1', 'rouge2', 'rougeLsum'], use_stemmer=args.stemmer)
+        for j in range(len(sents)):
+            sent = sents[j]
+            rest = " ".join(sents[:j] + sents[(j+1):])
+            rouge_scores = scorer.score(rest, sent)
+            r1 = rouge_scores["rouge1"].fmeasure
+            r1s.append(r1)
+        idx = np.argsort(np.array(r1s))[::-1]
+        top_idx = idx[:3]
+        top_idx.sort()
+        top_sents = [sents[i] for i in idx]
+        top_sents = " ".join(top_sents)
+
+        return top_sents
 
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):

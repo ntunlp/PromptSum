@@ -62,7 +62,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="BartMixPromptUnfreeze", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", 
+                    default="BartMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="facebook/bart-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
@@ -87,7 +87,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="normal", choices=["nomral", "oracle"])
+                    default="salient_sents", choices=["normal", "oracle", "salient_sents"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -99,7 +99,7 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-2, help='learning rate')
+                    default=5e-1, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
