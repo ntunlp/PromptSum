@@ -180,7 +180,6 @@ class T5SummarizationDataset(Dataset):
                     # allentitylist.extend(allnum)
 
                     input_guidance = self.args.separator.join(list(set(allentitylist)))
-                    #print(input_guidance)
                     if input_guidance == []:
                         print("empty!")
                         ents = self.spacy_nlp(inputdata).ents

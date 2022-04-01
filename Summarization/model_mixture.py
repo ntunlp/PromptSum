@@ -52,10 +52,16 @@ class ModelMixPrompt(nn.Module):
             discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(ent_ids)
+
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
-        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        if self.args.concat_mode == "concat_right":
+            allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        else:
+            allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
