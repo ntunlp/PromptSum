@@ -112,7 +112,11 @@ class T5SummarizationDataset(Dataset):
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
             if not self.args.use_bert_tagger:
-                if self.args.guidance_mode == 'oracle':
+                if self.args.guidance_mode == "target":
+                    ents = self.spacy_nlp(targetdata).ents
+                    ents = [ent.text for ent in ents]
+                    input_guidance = self.args.separator.join(ents)
+                elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
                     ents_y = self.spacy_nlp(targetdata).ents
@@ -122,12 +126,12 @@ class T5SummarizationDataset(Dataset):
                     if ents_intersection == []:
                         ents_intersection = ents_x[:max(2,len(ents_y))]
                     input_guidance = self.args.separator.join(ents_intersection)
-                elif self.args.guidance_mode == 'salient_sents':
+                elif self.args.guidance_mode == "input_salient_sents":
                     top_sents = self.find_salient_sents(inputdata, 5)
                     ents = self.spacy_nlp(top_sents).ents
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents)
-                elif self.args.guidance_mode == "most_frequent_text":
+                elif self.args.guidance_mode == "input_most_frequent":
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
                     counts = {}
