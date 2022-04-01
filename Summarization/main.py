@@ -49,7 +49,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="number of data points for training AND validation")
+                    default=64, help="number of data points for training AND validation")
 parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
@@ -62,7 +62,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5SoftPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
@@ -87,7 +87,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="", choices=["normal", "oracle", "salient_sents", "most_frequent_text"])
+                    default="normal", choices=["normal", "oracle", "salient_sents", "most_frequent_text"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -109,7 +109,7 @@ parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
                     default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=2, help="max epoch number")
+                    default=30, help="max epoch number")
 parser.add_argument("--num_workers", dest="num_workers", type=int,
                     default=0, help="dataloader num_workers")
 parser.add_argument("--weight_decay", dest="weight_decay", type=float,
