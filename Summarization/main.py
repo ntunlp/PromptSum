@@ -49,7 +49,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="number of data points for training AND validation")
+                    default=64, help="number of data points for training AND validation")
 parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
@@ -62,7 +62,7 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5Finetune", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
                     default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
@@ -87,7 +87,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="", choices=["normal", "oracle", "salient_sents", "most_frequent_text"])
+                    default="oracle", choices=["normal", "oracle", "salient_sents", "most_frequent_text"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -99,7 +99,7 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
 parser.add_argument("--train_sample", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
 parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-5, help='learning rate')
+                    default=5e-1, help='learning rate')
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
@@ -131,7 +131,7 @@ parser.add_argument("--stemmer", dest="stemmer", type=bool,
 
 ##### generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
-                    default=48, help="max summary length")
+                    default=64, help="max summary length")
 parser.add_argument("--num_beams", dest="num_beams", type=int,
                     default=4, help="number of beams in beam search")
 parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
