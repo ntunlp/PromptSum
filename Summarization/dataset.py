@@ -94,7 +94,6 @@ class T5SummarizationDataset(Dataset):
             if not oneline:
                 break
             linelist = oneline.split("\t")
-            print('{}: {}'.format(i, len(linelist)))
             i += 1
             onedata = []
             onedata.append(linelist[0])
