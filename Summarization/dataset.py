@@ -11,6 +11,7 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
 
 
+
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, counterfactual_removal = False):
         super(T5SummarizationDataset, self).__init__()
@@ -119,9 +120,11 @@ class T5SummarizationDataset(Dataset):
                     ents_y = [ent.text for ent in ents_y]
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
+                    if ents_intersection == []:
+                        ents_intersection = ents_x[:max(2,len(ents_y))]
                     input_guidance = self.args.separator.join(ents_intersection)
                 elif self.args.guidance_mode == 'salient_sents':
-                    top_sents = self.find_salient_sents(inputdata, n)
+                    top_sents = self.find_salient_sents(inputdata, 5)
                     ents = self.spacy_nlp(top_sents).ents
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents)
@@ -137,8 +140,9 @@ class T5SummarizationDataset(Dataset):
                     top_ents = []
                     for k in sorted_counts.keys():
                         top_ents.append(k)
-                        if len(top_ents) >= 5:
+                        if len(top_ents) >= 20:
                             break
+                    input_guidance = self.args.separator.join(top_ents)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
@@ -194,14 +198,12 @@ class T5SummarizationDataset(Dataset):
 
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
-            salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
-            input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
+            salient_sents = self.find_salient_sents(inputdata, 1)
+            input_guidance = salient_sents
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        print("*"*50)
-        print(input_guidance)
 
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 

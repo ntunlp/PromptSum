@@ -22,7 +22,6 @@ class ModelMixPrompt(nn.Module):
                 t5ckpt = torch.load(args.lm_adapted_path)
                 self.model.load_state_dict(t5ckpt)
         for name, param in self.model.named_parameters():
-            print(name)
             if args.model == 'BartMixPromptUnfreeze':
                 if not("shared" in name):
                     param.requires_grad = False
