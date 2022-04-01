@@ -1,16 +1,15 @@
-# PromptSumm
+# PromptSumms
 cool prompting for summarization!
 
 # Running command
-To train with LM adapted: 
-   python main.py --use_lm_adapted=True --model=T5MixPrompt --lr=5e-1 --max_epoch=30 --batch_size_per_gpu=1 --few_shot=64
-To train with fine-tuned dataset:
-   python main.py --model=T5Finetune --max_epoch=30 --few_shot=64
-To train on dataset cnndm with few shot 100 (as an example): 
-   python main.py --dataset_name='ccdv/cnn_dailymail' --few_shot=100
+CNN soft prompt: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=?
+CNN finetune: CUDA_VISIBLE_DEVICES=? python main.py --few_shot=? --model=T5Finetune --lr=5e-5
+
+BART finetuning: python main.py --model=BartFinetune --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base --lr=5e-5 
+BART soft prompt-tuning: python main.py --model=BartSoftPrompt --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base
+BART mixed prompt-tuning: python main.py --model=BartMixPrompt --model_name=facebook/bart-base --use_lm_adapted=0 --cache_path=/data/ruochen/hf_models/bart-base
 
 ## Contents
-
 - [PromptSumm](#PromptSumm)
   - [Methodology](#Method)
   - [Related Papers](#related-papers)
