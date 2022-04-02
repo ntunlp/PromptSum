@@ -153,16 +153,20 @@ class T5SummarizationDataset(Dataset):
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
                     else:
-                        tempdata = re.sub(' +', ' ', inputdata)
-                        inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
-                        input_ids = inputres["input_ids"].to(self.args.device)
-                        attention_mask = inputres["attention_mask"].to(self.args.device)
-                        input = {"input_ids": input_ids, "attention_mask":attention_mask}
-                        taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
-                        allentitylist = tagpreds[0].split(',')
-                        input_guidance = self.args.separator.join(list(set(allentitylist)))
+                        if not self.args.if_spacy:
+                            tempdata = re.sub(' +', ' ', inputdata)
+                            inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
+                            input_ids = inputres["input_ids"].to(self.args.device)
+                            attention_mask = inputres["attention_mask"].to(self.args.device)
+                            input = {"input_ids": input_ids, "attention_mask":attention_mask}
+                            taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
+                            allentitylist = tagpreds[0].split(',')
+                            input_guidance = self.args.separator.join(list(set(allentitylist)))
+                        else:
+                            allentitylist = []
+
                         if allentitylist == []:
-                            print("empty")
+                            #print("empty")
                             ents = self.spacy_nlp(inputdata).ents
                             ents = [ent.text for ent in ents]
                             input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first

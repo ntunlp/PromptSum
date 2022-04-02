@@ -43,27 +43,6 @@ def getfilewithlabel(file, filewithfakelabel):
     fo.close()
     return alldata
 
-# def getdocandent(docfile,sum_y_pred):
-#
-#     f = open(docfile,'r')
-#     alldoc = []
-#     while True:
-#         oneline = f.readline().strip()
-#         if not oneline:
-#             break
-#         alldoc.append(oneline)
-#     f.close()
-#     resfortrain = []
-#     trainsize = len(alldoc) // 2
-#     allrestrain = []
-#     allresvalid = []
-#     for i in range(len(alldoc)):
-#         if i < trainsize:
-#             resfortrain.append(alldoc[i] + "\t" + sum_y_pred[i])
-#             allrestrain.append(alldoc[i] + "\t" + sum_y_pred[i])
-#         else:
-#             allresvalid.append(alldoc[i] + "\t" + sum_y_pred[i])
-#     return allrestrain, allresvalid, resfortrain
 
 def getdocandent(docfile,sum_y_pred):
 
@@ -127,52 +106,6 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath):
     #print(allpreds)
     return allpreds
 
-# def get_doc_label(sum_y_pred, docfile):
-#
-#     alldocrestrain, alldocresvalid, resfortrain = getdocandent(docfile, sum_y_pred)
-#
-#     allentityfortrain = []
-#     for i in range(len(resfortrain)):
-#         oneentityfortrain = []
-#         onedata = resfortrain[i].split('\t')
-#         onedoc = onedata[0]
-#         oneent = onedata[1].split(',')
-#         for j in range(len(oneent)):
-#             enttouse = oneent[j]
-#             # if enttouse.lower() in onedoc.lower():
-#             #     oneentityfortrain.append(enttouse)
-#             oneentityfortrain.append(enttouse)
-#         allentityfortrain.append([onedoc, ','.join(oneentityfortrain)])
-#
-#     alldocandlabeltrain = []
-#     for i in range(len(alldocrestrain)):
-#         oneentitylist = []
-#         onedata = alldocrestrain[i].split('\t')
-#         onedoc = onedata[0]
-#         oneent = onedata[1].split(',')
-#         for j in range(len(oneent)):
-#             enttouse = oneent[j]
-#             # if enttouse.lower() in onedoc.lower():
-#             #     oneentitylist.append(enttouse)
-#             oneentitylist.append(enttouse)
-#         alldocandlabeltrain.append([onedoc, ','.join(oneentitylist)])
-#
-#     alldocandlabelvalid = []
-#     for i in range(len(alldocresvalid)):
-#         oneentitylist = []
-#         onedata = alldocresvalid[i].split('\t')
-#         onedoc = onedata[0]
-#         oneent = onedata[1].split(',')
-#         for j in range(len(oneent)):
-#             enttouse = oneent[j]
-#             # if enttouse.lower() in onedoc.lower():
-#             #     oneentitylist.append(enttouse)
-#             oneentitylist.append(enttouse)
-#         alldocandlabelvalid.append([onedoc, ','.join(oneentitylist)])
-#
-#     return alldocandlabeltrain,alldocandlabelvalid,allentityfortrain
-
-
 def get_doc_label(sum_y_pred, docfile):
 
     alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred)
@@ -185,8 +118,8 @@ def get_doc_label(sum_y_pred, docfile):
         oneent = onedata[1].split(',')
         for j in range(len(oneent)):
             enttouse = oneent[j]
-            if enttouse.lower() in onedoc.lower():      #######do we need this filter?
-                oneentityfortrain.append(enttouse)
+            # if enttouse.lower() in onedoc.lower():      #######do we need this filter?
+            #     oneentityfortrain.append(enttouse)
             oneentityfortrain.append(enttouse)
         allentityfortrain.append([onedoc, ','.join(oneentityfortrain)])
 
@@ -198,8 +131,8 @@ def get_doc_label(sum_y_pred, docfile):
         oneent = onedata[1].split(',')
         for j in range(len(oneent)):
             enttouse = oneent[j]
-            if enttouse.lower() in onedoc.lower():      #######do we need this filter?
-                oneentityforvalid.append(enttouse)
+            # if enttouse.lower() in onedoc.lower():      #######do we need this filter?
+            #     oneentityforvalid.append(enttouse)
             oneentityforvalid.append(enttouse)
         allentityforvalid.append([onedoc, ','.join(oneentityforvalid)])
 
@@ -219,34 +152,6 @@ def get_doc_label(sum_y_pred, docfile):
 
     return alldocandlabel,allentityfortrain,allentityforvalid
 
-# def get_train_valid(alldocandlabeltrain, alldocandlabelvalid, doc_sum_path, allentityfortrain):
-#
-#     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
-#     docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
-#
-#     fout = open(docwithlabel_train, 'w')
-#     for aa in range(len(alldocandlabeltrain)):
-#         onedata = alldocandlabeltrain[aa]
-#         fout.write(onedata[0] + "\t" + onedata[1] + "\n")
-#     fout.close()
-#
-#     fout_1 = open(docwithlabel_vaid, 'w')
-#     for aa in range(len(alldocandlabelvalid)):
-#         onedata = alldocandlabelvalid[aa]
-#         fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
-#     fout_1.close()
-#
-#     ####save train ent
-#     train_ent = doc_sum_path + "trainent.txt"
-#     fe = open(train_ent, 'w')
-#     for i in range(len(allentityfortrain)):
-#         if allentityfortrain[i][1] != []:
-#             fe.write(allentityfortrain[i][0] + "\t" + allentityfortrain[i][1] + '\n')
-#         else:
-#             fe.write(allentityfortrain[i][0] + "\tnone\n")
-#     fe.close()
-#     return docwithlabel_train, docwithlabel_vaid
-
 def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid):
 
     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
@@ -255,13 +160,18 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     fout = open(docwithlabel_train, 'w')
     fout_1 = open(docwithlabel_vaid, 'w')
 
+    halfsize = len(alldocandlabel) // 2
+    # print(halfsize)
     for aa in range(len(alldocandlabel)):
         onedata = alldocandlabel[aa]
         if aa % 2 == 0:
             fout.write(onedata[0] + "\t" + onedata[1] + "\n")
         else:
             fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
-
+        # if aa < halfsize:
+        #     fout.write(onedata[0] + "\t" + onedata[1] + "\n")
+        # else:
+        #     fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
     fout.close()
     fout_1.close()
 
@@ -292,7 +202,8 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     else:
         model = modeltoeval
     model.eval()
-    allentnum = 0
+    allentnumintar = 0
+    allentnuminpre = 0
     hasentnum = 0
     with torch.no_grad():
         logger.info(len(valid_dataloader))
@@ -309,11 +220,20 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
                 allentintar = thistar.lower().split(',')
                 alleninpred = thispred.lower().split(',')
 
-                allentnum += len(allentintar)
+                allentnumintar += len(allentintar)
+                allentnuminpre += len(alleninpred)
                 for j in range(len(allentintar)):
                     if allentintar[j] in alleninpred:
                         hasentnum += 1
-    f1score = float(hasentnum) / float(allentnum)
+    if allentnuminpre!=0 and allentnumintar!=0:
+        p = float(hasentnum) / float(allentnuminpre)
+        r = float(hasentnum) / float(allentnumintar)
+        if p + r != 0.0:
+            f1score = 2 * p * r / (p + r)
+        else:
+            f1score = 0.0
+    else:
+        f1score = 0.0
     logger.info('----Validation Results Summary----')
     logger.info(f1score)
 
@@ -337,7 +257,7 @@ def finetune_model(trainfile, validfile, args):
     ###train
     gradient_accumulation_steps = 1
     train_batch_size = 4
-    eval_batch_size = 8
+    eval_batch_size = 4
     num_train_epochs = 30
     learning_rate = 5e-1
     weight_decay = 1e-5

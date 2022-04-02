@@ -51,7 +51,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=10, help="number of data points for training AND validation")
+                    default=64, help="number of data points for training AND validation")
 parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
@@ -73,7 +73,7 @@ parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                     default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/ruochen/hf_models/t5-v1-base/",
+                    default="/data/qin/hf_models/t5-v1-base/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -104,7 +104,7 @@ parser.add_argument("--lr", dest="lr", type=float,
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=8, help="valid size per gpu")
+                    default=4, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=8, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
@@ -132,7 +132,7 @@ parser.add_argument("--stemmer", dest="stemmer", type=bool,
 
 ##### generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
-                    default=128, help="max summary length")
+                    default=64, help="max summary length")
 parser.add_argument("--num_beams", dest="num_beams", type=int,
                     default=4, help="number of beams in beam search")
 parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -152,7 +152,9 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
 parser.add_argument("--train_t5_tagger", dest="train_t5_tagger", type=bool,
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger", dest="use_t5_tagger", type=bool,
-                    default=False, help="whether use a t5 tagger")
+                    default=True, help="whether use a t5 tagger")
+parser.add_argument("--if_spacy", dest="if_spacy", type=bool,
+                    default=False, help="whether use spacy to generate entities during val/test")
 
 args = parser.parse_args()
 
@@ -251,6 +253,7 @@ def main(args):
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         #exit -1
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+    #exit -1
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
     keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
