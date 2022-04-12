@@ -250,12 +250,11 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
-    print(args.if_spacy)
     if args.train_t5_tagger:
         print("train tagger")
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        #train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
         return
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)

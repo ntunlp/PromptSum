@@ -123,16 +123,9 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
                 break
             ents = spacy_nlp(oneline).ents
             allents = [ent.text for ent in ents]
+            if allents == []:
+                allents = ["none"]
             input_guidance = ','.join(allents)
-            # ents_intersection = list(dict.fromkeys(allents))
-            # input_guidance = ','.join(ents_intersection)
-            if input_guidance == "":
-                #print("use ent from doc")
-                ents = spacy_nlp(alldocs[index]).ents
-                allents = [ent.text for ent in ents][0:2]
-                input_guidance = ','.join(allents)
-                # ents_intersection = list(dict.fromkeys(allents))
-                # input_guidance = ','.join(ents_intersection)
             allpreds.append(input_guidance)
             index += 1
         fin.close()

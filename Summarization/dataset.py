@@ -49,7 +49,7 @@ class T5SummarizationDataset(Dataset):
                 self.allent = self.handleentfile(entpath)
 
             else:
-                if self.args.guidance_mode == 'oracle':
+                if self.args.guidance_mode == 'target':
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
                     self.allent = self.handleentfile(entpath)
 
@@ -109,10 +109,12 @@ class T5SummarizationDataset(Dataset):
         input_guidance = "None"
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
-            if not self.args.use_bert_tagger:
+            if not self.args.use_t5_tagger:
                 if self.args.guidance_mode == "target":
                     ents = self.spacy_nlp(targetdata).ents
                     ents = [ent.text for ent in ents]
+                    if ents == []:
+                        ents = ["none"]
                     input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
