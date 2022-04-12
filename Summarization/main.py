@@ -49,7 +49,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=64, help="number of data points for training AND validation")
+                    default=10, help="number of data points for training AND validation")
 parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
@@ -87,7 +87,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
+                    default="target", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -178,6 +178,7 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
+#time.sleep(7000)
 
 
 def main(args):
