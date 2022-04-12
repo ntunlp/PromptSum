@@ -9,7 +9,7 @@ import numpy as np
 import nltk
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
-
+import random
 
 
 class T5SummarizationDataset(Dataset):
@@ -117,6 +117,25 @@ class T5SummarizationDataset(Dataset):
                     ents = [ent.text for ent in ents]
                     if ents == []:
                         ents = ["none"]
+                    input_guidance = self.args.separator.join(ents)
+                if self.args.guidance_mode == "target_unique" or self.args.guidance_mode == "target_unique_shuffle":
+                    old_ents = self.spacy_nlp(targetdata).ents
+                    old_ents = [ent.text for ent in old_ents]
+                    # remove entities case-insensitively
+                    marker = set()
+                    ents=[]
+                    for l in old_ents:
+                        ll = l.lower()
+                        if ll not in marker:   # test presence
+                            marker.add(ll)
+                            ents.append(l)
+                    if len(ents) == 0:
+                        ents_x = self.spacy_nlp(inputdata).ents
+                        ents_x = [ent.text for ent in ents_x]
+                        ents = ents_x[:2]
+                    if self.args.guidance_mode == "target_unique_shuffle":
+                        # shuffle ents
+                        random.shuffle(ents, random.random)
                     input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
