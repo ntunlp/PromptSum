@@ -11,6 +11,7 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
 
 
+
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, counterfactual_removal = False):
         super(T5SummarizationDataset, self).__init__()
@@ -93,7 +94,6 @@ class T5SummarizationDataset(Dataset):
             if not oneline:
                 break
             linelist = oneline.split("\t")
-            print('{}: {}'.format(i, len(linelist)))
             i += 1
             onedata = []
             onedata.append(linelist[0])
@@ -112,14 +112,40 @@ class T5SummarizationDataset(Dataset):
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
             if not self.args.use_bert_tagger:
-                if self.args.guidance_mode == 'oracle':
+                if self.args.guidance_mode == "target":
+                    ents = self.spacy_nlp(targetdata).ents
+                    ents = [ent.text for ent in ents]
+                    input_guidance = self.args.separator.join(ents)
+                elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
                     ents_y = self.spacy_nlp(targetdata).ents
                     ents_y = [ent.text for ent in ents_y]
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
+                    if ents_intersection == []:
+                        ents_intersection = ents_x[:max(2,len(ents_y))]
                     input_guidance = self.args.separator.join(ents_intersection)
+                elif self.args.guidance_mode == "input_salient_sents":
+                    top_sents = self.find_salient_sents(inputdata, 5)
+                    ents = self.spacy_nlp(top_sents).ents
+                    ents = [ent.text for ent in ents]
+                    input_guidance = self.args.separator.join(ents)
+                elif self.args.guidance_mode == "input_most_frequent":
+                    ents = self.spacy_nlp(inputdata).ents
+                    ents = [ent.text for ent in ents]
+                    counts = {}
+                    for ent in ents:
+                        if not(ent in counts.keys()):
+                            counts[ent] = 0
+                        counts[ent] += 1
+                    sorted_counts = dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
+                    top_ents = []
+                    for k in sorted_counts.keys():
+                        top_ents.append(k)
+                        if len(top_ents) >= 20:
+                            break
+                    input_guidance = self.args.separator.join(top_ents)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
@@ -157,7 +183,6 @@ class T5SummarizationDataset(Dataset):
                     # allentitylist.extend(allnum)
 
                     input_guidance = self.args.separator.join(list(set(allentitylist)))
-                    #print(input_guidance)
                     if input_guidance == []:
                         print("empty!")
                         ents = self.spacy_nlp(inputdata).ents
@@ -175,13 +200,13 @@ class T5SummarizationDataset(Dataset):
 
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
-            salient_sents = build_salient_sents(inputdata, targetdata, self.rouge_scorer, self.args)
-            input_guidance = ' '.join(salient_sents)  # can decide which delimiter works the best, just pick comma first
+            salient_sents = self.find_salient_sents(inputdata, 1)
+            input_guidance = salient_sents
 
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        
+
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
 
     def __len__(self):
@@ -225,6 +250,23 @@ class T5SummarizationDataset(Dataset):
         self.data = [(new_inputdata[i], new_targetdata[i]) for i in range(len(new_inputdata))]
         self.removed_ents = removed_ents
 
+    def find_salient_sents(self, text, n):
+        sents = nltk.sent_tokenize(text)
+        r1s = []
+        scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
+        for j in range(len(sents)):
+            sent = sents[j]
+            rest = " ".join(sents[:j] + sents[(j+1):])
+            rouge_scores = scorer.score(rest, sent)
+            r1 = rouge_scores["rouge1"].fmeasure
+            r1s.append(r1)
+        idx = np.argsort(np.array(r1s))[::-1]
+        top_idx = idx[:n]
+        top_idx.sort()
+        top_sents = [sents[i] for i in top_idx]
+        top_sents = " ".join(top_sents)
+
+        return top_sents
 
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
