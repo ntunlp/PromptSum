@@ -51,7 +51,7 @@ parser.add_argument("--data_dir", dest="data_dir", type=str,
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
-                    default=64, help="number of data points for training AND validation")
+                    default=10, help="number of data points for training AND validation")
 parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
@@ -189,6 +189,7 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(messa
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
 
+#time.sleep(7000)
 
 
 def main(args):
