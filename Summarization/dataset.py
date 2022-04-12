@@ -115,6 +115,8 @@ class T5SummarizationDataset(Dataset):
                 if self.args.guidance_mode == "target":
                     ents = self.spacy_nlp(targetdata).ents
                     ents = [ent.text for ent in ents]
+                    if ents == []:
+                        ents = ["none"]
                     input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
