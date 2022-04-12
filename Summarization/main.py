@@ -87,7 +87,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="target", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
+                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
