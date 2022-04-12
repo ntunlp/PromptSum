@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import pickle
 import argparse
 import gc
@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="2", help="gpu id")
+                    default="1", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
@@ -66,14 +66,14 @@ parser.add_argument("--max_length", dest="max_length", type=int,
 parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
+                    default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/qin/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/qin/hf_models/t5-v1-base/",
+                    default="/data/qin/hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -149,12 +149,13 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
 ##### T5 tagger
-parser.add_argument("--train_t5_tagger", dest="train_t5_tagger", type=bool,
+parser.add_argument("--train_t5_tagger", action='store_true',
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger", dest="use_t5_tagger", type=bool,
                     default=True, help="whether use a t5 tagger")
-parser.add_argument("--if_spacy", dest="if_spacy", type=bool,
-                    default=False, help="whether use spacy to generate entities during val/test")
+parser.add_argument("--if_spacy", action='store_true',
+                    default=False, help="whether use spacy to supervise the training of T5 tagger")
+
 
 args = parser.parse_args()
 
@@ -248,12 +249,13 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
+    print(args.if_spacy)
     if args.train_t5_tagger:
+        print("train tagger")
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-        #exit -1
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
-    #exit -1
+        return
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
     keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']

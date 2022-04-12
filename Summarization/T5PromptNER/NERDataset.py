@@ -1,5 +1,7 @@
 import sys
 import torch
+import random
+import pickle5
 from torch.utils.data import Sampler, Dataset, DataLoader
 
 class T5NERDatasetConll(Dataset):
@@ -15,19 +17,22 @@ class T5NERDatasetConll(Dataset):
     def getalldata(self,filename):
         f = open(filename,'r')
         alldata = []
+        errnum = 0
         while True:
             oneline = f.readline().strip()
             if not oneline:
                 break
             linelist = oneline.split("\t")
             if len(linelist) != 2:
-                print(oneline)
-                print(linelist)
+                #print(oneline)
+                errnum += 1
+                continue
             onedata = []
             onedata.append(linelist[0])
             onedata.append(linelist[1])
             alldata.append(onedata)
         f.close()
+        #print(errnum)
         return alldata
 
     def __getitem__(self, idx):
@@ -126,3 +131,40 @@ def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler
         pin_memory=True
     )
     return dataloader
+
+
+def getpromptembedding(model, tokenizer, promptnumber, taskname):
+    t5_embedding = model.model.get_input_embeddings()
+    promptinitembedding = torch.FloatTensor(promptnumber, t5_embedding.weight.size(1))
+    startindex = 0
+    alllabel = ["summarization"]
+    alllabel.append(taskname)
+    for one in alllabel:
+        encoderes = tokenizer.batch_encode_plus([one], padding=False, truncation=False, return_tensors="pt")
+        touse = encoderes["input_ids"].squeeze()[:-1]
+        embeddingres = t5_embedding(touse).clone().detach()
+        if embeddingres.shape[0] > 1:
+            embeddingres = torch.mean(embeddingres, 0, keepdim=True)
+        promptinitembedding[startindex] = embeddingres
+        startindex += 1
+    fr = open('allnumber.pickle', 'rb')
+    alltokens = pickle5.load(fr)
+    sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
+    top5000 = []
+    for one in sortedalltoken:
+        if one[0] == 2:
+            continue
+        else:
+            if len(top5000) < 5000:
+                top5000.append(one)
+            else:
+                break
+    vocab = tokenizer.get_vocab()
+    randomtokennum = promptnumber - len(alllabel)
+    touse = random.sample(top5000, randomtokennum)
+    # print(touse)
+    for one in touse:
+        promptinitembedding[startindex] = t5_embedding.weight[one[0]].clone().detach()
+        startindex += 1
+
+    return promptinitembedding

@@ -45,49 +45,38 @@ class T5SummarizationDataset(Dataset):
             if self.split.startswith("train"):
                 ####load entity file for training data
                 entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/trainent.txt'
-                fe = open(entpath,'r')
-                while True:
-                    oneline = fe.readline().strip()
-                    if not oneline:
-                        break
-                    content = oneline.split("\t")
-                    if len(content) != 2:
-                        print("train data entity error!!!!")
-                        continue
-                    doc = content[0]
+                self.allent = self.handleentfile(entpath)
 
-                    templist = content[1].split(' ')
-
-                    entlist = self.args.separator.join(templist)
-                    #print(entlist)
-                    self.allent[doc] = entlist
-                fe.close()
             else:
                 if self.args.guidance_mode == 'oracle':
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
-                    fe = open(entpath, 'r')
-                    while True:
-                        oneline = fe.readline().strip()
-                        if not oneline:
-                            break
-                        content = oneline.split("\t")
-                        if len(content) != 2:
-                            print("valid data entity error!!!!")
-                            continue
-                        doc = content[0]
-
-                        templist = content[1].split(' ')
-
-                        entlist = self.args.separator.join(templist)
-                        # print(entlist)
-                        self.allent[doc] = entlist
-                    fe.close()
+                    self.allent = self.handleentfile(entpath)
 
         # counterfactual training
         self.counterfactual_removal = args.counterfactual_removal
         if self.counterfactual_removal:
             self.counterfactual_remove()
             print("# After augmenting, Data points in this split: {}".format(len(self.data)))
+
+    def handleentfile(self, entpath):
+        fe = open(entpath, 'r')
+        allres = {}
+        while True:
+            oneline = fe.readline().strip()
+            if not oneline:
+                break
+            content = oneline.split("\t")
+            if len(content) != 2:
+                print("train data entity error!!!!")
+                continue
+            doc = content[0]
+
+            templist = content[1].split(' ')
+
+            entlist = self.args.separator.join(templist)
+            allres[doc] = entlist
+        fe.close()
+        return allres
 
     def getalldata(self,filename):
         f = open(filename,'r')
@@ -153,17 +142,14 @@ class T5SummarizationDataset(Dataset):
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
                     else:
-                        if not self.args.if_spacy:
-                            tempdata = re.sub(' +', ' ', inputdata)
-                            inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
-                            input_ids = inputres["input_ids"].to(self.args.device)
-                            attention_mask = inputres["attention_mask"].to(self.args.device)
-                            input = {"input_ids": input_ids, "attention_mask":attention_mask}
-                            taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
-                            allentitylist = tagpreds[0].split(',')
-                            input_guidance = self.args.separator.join(list(set(allentitylist)))
-                        else:
-                            allentitylist = []
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(self.args.device)
+                        attention_mask = inputres["attention_mask"].to(self.args.device)
+                        input = {"input_ids": input_ids, "attention_mask":attention_mask}
+                        taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        input_guidance = self.args.separator.join(list(set(allentitylist)))
 
                         if allentitylist == []:
                             #print("empty")
@@ -386,6 +372,7 @@ def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
 
     usetrain = True
     usevalid = True
+    spacy_nlp = spacy.load("en_core_web_sm")
     alltrainfile = []
     allvalidfile = []
     for seed in few_shot_seeds:
@@ -442,7 +429,7 @@ def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
         f.close()
 
         ####get train and valid data for bert tagger
-        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path)
+        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp)
         #print(docwithlabel_train, docwithlabel_vaid)
         alltrainfile.append(docwithlabel_train)
         allvalidfile.append(docwithlabel_vaid)
@@ -450,6 +437,5 @@ def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
 
 
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
-    print("train tagger")
     for i in range(len(alltrainfile)):
         train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)

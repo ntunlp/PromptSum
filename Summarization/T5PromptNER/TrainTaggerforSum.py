@@ -66,44 +66,76 @@ def getdocandent(docfile,sum_y_pred):
         allres.append(alldoc[i] + "\t" + sum_y_pred[i])
     return allres, resfortrain, resforvalid
 
-def get_predict_label_for_sum(args, doc_sum_path, sumpath):
+def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
 
     #####handle sumfile to fake conll format and use NER model to label it
-    sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
-    allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
-    #print(len(allsumwithfakelabeldata))
-
-    model_name = "google/t5-v1_1-base"
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/cache/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/cache/")
-    model = T5forNER(args, t5model, tokenizer)
-    test_dataset = T5NERDatasetConll(sumwithfakelabel, 512, tokenizer)
-    test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = get_dataloader_tag(4, test_dataset, 8, 512, test_dataset.tokenizer.pad_token_id, test_sampler)
-
-    allckpt = torch.load("./T5PromptNER/bestckpt")
-    model.promptnumber = allckpt["promptnumber"]
-    model.promptembedding = allckpt["promptembedding"]
-    #print(model.promptnumber)
-    #print(model.promptembedding.shape)
-
-    model.to(args.device)
-    model.eval()
-
     allpreds = []
-    with torch.no_grad():
-        for step, batch in enumerate(test_dataloader):
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            sen, target, preds = model._generative_step(inputs)
-            allpreds.extend(preds)
+    if not args.if_spacy:
+        sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
+        allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
+        model_name = "google/t5-v1_1-large"
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/cache/")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/cache/")
+        model = T5forNER(args, t5model, tokenizer)
+        test_dataset = T5NERDatasetConll(sumwithfakelabel, 512, tokenizer)
+        test_sampler = SequentialSampler(test_dataset)
+        test_dataloader = get_dataloader_tag(4, test_dataset, 8, 512, test_dataset.tokenizer.pad_token_id, test_sampler)
 
-    torch.cuda.empty_cache()
-    del model, tokenizer, test_dataloader
-    gc.collect()
+        allckpt = torch.load("./T5PromptNER/bestckpt")
+        model.promptnumber = allckpt["promptnumber"]
+        model.promptembedding = allckpt["promptembedding"]
+        #print(model.promptnumber)
+        #print(model.promptembedding.shape)
 
-    assert len(allpreds) == len(allsumwithfakelabeldata)
-    #print(allpreds)
+        model.to(args.device)
+        model.eval()
+
+        with torch.no_grad():
+            for step, batch in enumerate(test_dataloader):
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                          "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                sen, target, preds = model._generative_step(inputs)
+                allpreds.extend(preds)
+
+        torch.cuda.empty_cache()
+        del model, tokenizer, test_dataloader
+        gc.collect()
+
+        assert len(allpreds) == len(allsumwithfakelabeldata)
+    else:
+        docpath = doc_sum_path + "doc.txt"
+
+        alldocs = []
+        fin = open(docpath, 'r')
+        while True:
+            oneline = fin.readline().strip()
+            if not oneline:
+                break
+            alldocs.append(oneline)
+        fin.close()
+
+        allpreds = [] ##should be separated by ','
+        fin = open(sumpath, 'r')
+        index = 0
+        while True:
+            oneline = fin.readline().strip()
+            if not oneline:
+                break
+            ents = spacy_nlp(oneline).ents
+            allents = [ent.text for ent in ents]
+            ents_intersection = list(dict.fromkeys(allents))
+            input_guidance = ','.join(ents_intersection)
+            #print(input_guidance)
+            if input_guidance == "":
+                #print("use ent from doc")
+                ents = spacy_nlp(alldocs[index]).ents
+                allents = [ent.text for ent in ents][0:2]
+                ents_intersection = list(dict.fromkeys(allents))
+                input_guidance = ','.join(ents_intersection)
+                #print(input_guidance)
+            allpreds.append(input_guidance)
+            index += 1
+        fin.close()
     return allpreds
 
 def get_doc_label(sum_y_pred, docfile):
@@ -164,14 +196,14 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     # print(halfsize)
     for aa in range(len(alldocandlabel)):
         onedata = alldocandlabel[aa]
-        if aa % 2 == 0:
-            fout.write(onedata[0] + "\t" + onedata[1] + "\n")
-        else:
-            fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
-        # if aa < halfsize:
+        # if aa % 2 == 0:
         #     fout.write(onedata[0] + "\t" + onedata[1] + "\n")
         # else:
         #     fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
+        if aa < halfsize:
+            fout.write(onedata[0] + "\t" + onedata[1] + "\n")
+        else:
+            fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
     fout.close()
     fout_1.close()
 
@@ -255,24 +287,34 @@ def finetune_model(trainfile, validfile, args):
     print(trainfile, validfile)
 
     ###train
-    gradient_accumulation_steps = 1
-    train_batch_size = 4
+    gradient_accumulation_steps = 2
+    train_batch_size = 2
     eval_batch_size = 4
-    num_train_epochs = 30
+    num_train_epochs = 60 ### epochs for training tagger
     learning_rate = 5e-1
     weight_decay = 1e-5
     max_seq_length = 512
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 1
-    model_name = "google/t5-v1_1-base"
+    model_name = "google/t5-v1_1-large"
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/cache/")
     tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/cache/")
     model = T5forNER(args, t5model, tokenizer)
-    allckpt = torch.load("./T5PromptNER/bestckpt")
-    model.promptnumber = allckpt["promptnumber"]
-    model.promptembedding = allckpt["promptembedding"]
+
+    ##### load from conll ckpt or simply initializing?
+    ifuseconll = False
+    if ifuseconll:
+        allckpt = torch.load("./T5PromptNER/bestckpt")
+        model.promptnumber = allckpt["promptnumber"]
+        model.promptembedding = allckpt["promptembedding"]
+    else:
+        promptnumber = 300
+        taskname = "name entity recognition"
+        promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
+        model.set_prompt_embedding(promptnumber, promptembedding)
+
     model.to(args.device)
 
     train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
