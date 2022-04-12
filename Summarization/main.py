@@ -64,9 +64,10 @@ parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
 # base model
 parser.add_argument("--model", dest="model", type=str,
-                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID", "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                    default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
+                        "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base,google/t5-v1_1-base, facebook/bart-base}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -79,7 +80,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
-                    default="right_concat")
+                    default="concat_left", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
 # discrete prompt
@@ -88,7 +89,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="nomral", choices=["nomral", "oracle"])
+                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -262,7 +263,10 @@ def main(args):
     result_dict_total = {}
     for k in keys:
         result_dict_total[k] = []
+
+    count = 0
     for (train_dataset, valid_dataset, seed) in datasets:
+        count += 1
         # base model
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
@@ -304,7 +308,7 @@ def main(args):
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
-
+        
         result_dict = train(args, tokenizer, model, train_dataset, valid_dataset, logger)
         logger.info("Finish training")
         logger.info("The model has {} trainable parameters".format(n_params))
@@ -312,7 +316,8 @@ def main(args):
             result_dict_total[k].append(result_dict[k])
     print('final results:')
     for k in keys:
-        print('{}: {}'.format(k, np.mean(result_dict_total[k])))
+        easy_results = ["{:.2f}".format(x) for x in result_dict_total[k]]
+        print('{}: {:.4f} (all: {})'.format(k, np.mean(result_dict_total[k]), easy_results))
 
     # don't test for now, as it takes too long
     # if args.local_rank in [0, -1]:
