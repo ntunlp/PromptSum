@@ -80,7 +80,7 @@ parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
-                    default="concat_left", choices = ["concat_right", "concat_left"])
+                    default="concat_right", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
 # discrete prompt
@@ -152,8 +152,8 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
 ##### T5 tagger
 parser.add_argument("--train_t5_tagger", action='store_true',
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
-parser.add_argument("--use_t5_tagger", dest="use_t5_tagger", type=bool,
-                    default=True, help="whether use a t5 tagger")
+parser.add_argument("--use_t5_tagger",  action='store_true',
+                    default=False, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
                     default=False, help="whether use spacy to supervise the training of T5 tagger")
 
@@ -255,8 +255,9 @@ def main(args):
         print("train tagger")
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-        #train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
         return
+    print(args.use_t5_tagger)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
     keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']

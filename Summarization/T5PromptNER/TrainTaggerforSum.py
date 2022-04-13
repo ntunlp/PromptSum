@@ -103,16 +103,6 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
 
         assert len(allpreds) == len(allsumwithfakelabeldata)
     else:
-        docpath = doc_sum_path + "doc.txt"
-
-        alldocs = []
-        fin = open(docpath, 'r')
-        while True:
-            oneline = fin.readline().strip()
-            if not oneline:
-                break
-            alldocs.append(oneline)
-        fin.close()
 
         allpreds = [] ##should be separated by ','
         fin = open(sumpath, 'r')
@@ -137,43 +127,25 @@ def get_doc_label(sum_y_pred, docfile):
 
     allentityfortrain = []
     for i in range(len(resfortrain)):
-        oneentityfortrain = []
         onedata = resfortrain[i].split('\t')
         onedoc = onedata[0]
-        oneent = onedata[1].split(',')
-        for j in range(len(oneent)):
-            enttouse = oneent[j]
-            # if enttouse.lower() in onedoc.lower():      #######do we need this filter?
-            #     oneentityfortrain.append(enttouse)
-            oneentityfortrain.append(enttouse)
-        allentityfortrain.append([onedoc, ','.join(oneentityfortrain)])
+        oneent = onedata[1]
+        allentityfortrain.append([onedoc, oneent])
 
     allentityforvalid = []
     for i in range(len(resforvalid)):
-        oneentityforvalid = []
         onedata = resforvalid[i].split('\t')
         onedoc = onedata[0]
-        oneent = onedata[1].split(',')
-        for j in range(len(oneent)):
-            enttouse = oneent[j]
-            # if enttouse.lower() in onedoc.lower():      #######do we need this filter?
-            #     oneentityforvalid.append(enttouse)
-            oneentityforvalid.append(enttouse)
-        allentityforvalid.append([onedoc, ','.join(oneentityforvalid)])
+        oneent = onedata[1]
+        allentityforvalid.append([onedoc, oneent])
 
 
     alldocandlabel = []
     for i in range(len(alldocres)):
-        oneentitylist = []
         onedata = alldocres[i].split('\t')
         onedoc = onedata[0]
-        oneent = onedata[1].split(',')
-        for j in range(len(oneent)):
-            enttouse = oneent[j]
-            # if enttouse.lower() in onedoc.lower():
-            #     oneentitylist.append(enttouse)
-            oneentitylist.append(enttouse)
-        alldocandlabel.append([onedoc, ','.join(oneentitylist)])
+        oneent = onedata[1]
+        alldocandlabel.append([onedoc, oneent])
 
     return alldocandlabel,allentityfortrain,allentityforvalid
 

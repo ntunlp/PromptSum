@@ -72,10 +72,7 @@ class T5SummarizationDataset(Dataset):
                 print("train data entity error!!!!")
                 continue
             doc = content[0]
-
-            templist = content[1].split(' ')
-
-            entlist = self.args.separator.join(templist)
+            entlist = content[1]
             allres[doc] = entlist
         fe.close()
         return allres
@@ -117,7 +114,7 @@ class T5SummarizationDataset(Dataset):
                     if ents == []:
                         ents = ["none"]
                     input_guidance = self.args.separator.join(ents)
-                if self.args.guidance_mode == "target_unique" or self.args.guidance_mode == "target_unique_shuffle":
+                elif self.args.guidance_mode == "target_unique" or self.args.guidance_mode == "target_unique_shuffle":
                     old_ents = self.spacy_nlp(targetdata).ents
                     old_ents = [ent.text for ent in old_ents]
                     # remove entities case-insensitively
@@ -215,7 +212,7 @@ class T5SummarizationDataset(Dataset):
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
             input_guidance = salient_sents
-
+        #print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
