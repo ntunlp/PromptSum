@@ -12,6 +12,7 @@ from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler,
                               TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
+from rouge_score import rouge_scorer
 
 import sys
 sys.path.append("./T5PromptNER/")
@@ -369,7 +370,8 @@ def pretrain_model(dataset_args, args):
     gradient_accumulation_steps = 2
     train_batch_size = 2
     eval_batch_size = 4
-    num_train_epochs = 60 ### epochs for training tagger
+    num_train_epochs = 5 ### epochs for training tagger
+    eval_every = 500
     learning_rate = 5e-1
     weight_decay = 1e-5
     max_seq_length = 512
@@ -397,89 +399,88 @@ def pretrain_model(dataset_args, args):
 
     model.to(args.device)
 
+    scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
+    spacy_nlp = spacy.load("en_core_web_sm")
+
+    # data
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
     train_data = data['train']
     valid_data = data['validation']
-    for i in rang(len(train_data)):
-        print(train_data[i])
-        raise Exception
 
-    
+    train_texts = [x[args.text_key] for x in train_data]
+    val_texts = [x[args.text_key] for x in valid_data]
+    p = np.random.permutation(len(val_texts))
+    val_texts = [val_texts[x] for x in p]
+    val_texts = val_texts[:1000]
+    print(len(train_texts), len(val_texts))
+    train_texts = train_texts[:100]
+    val_texts = val_texts[:100]
+
+    if args.build_salient_entities:
+        train_texts, train_ents = find_salient_sentences_and_entities(train_texts, scorer, spacy_nlp, args)
+        print("*"*50)
+        print(train_texts[0])
+        print(train_ents[0])
+        train_data = train_texts, train_ents
+        train_path = "../t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], len(train_texts))
+        with open(train_path, "wb") as f:
+            pickle.dump(train_data, f)
+            print("saved the pre-training train data")
+        val_texts, val_ents = find_salient_sentences_and_entities(val_texts, scorer, spacy_nlp, args)
+        print("*"*50)
+        print(val_texts[0])
+        print(val_ents[0])
+        val_data = val_texts, val_ents
+        val_path = "../t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], len(val_texts))
+        with open(val_path, "wb") as f:
+            pickle.dump(val_data, f)
+            print("saved the pre-training val data")
+    else:
+        train_path = "../t5_tagger_pretraining_data/{}_train_100.pkl".format(dataset_args[0])
+        with open(train_path, "rb") as f:
+            train_data = pickle.load(f)
+        print("load the pre-training train data")
+        train_texts, train_ents = train_data
+        print(len(train_texts))
+        val_path = "../t5_tagger_pretraining_data/{}_val_100.pkl".format(dataset_args[0])
+        with open(val_path, "rb") as f:
+            val_data = pickle.load(f)
+        print("load the pre-training val data")
+        val_texts, val_ents = val_data
+        print(len(val_texts))
 
 
-    train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
-    valid_dataset = T5NERDatasetConll(validfile, max_seq_length, tokenizer)
+def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
+    print("finding the salient entities...")
+    n = 3
+    all_texts, all_ents = [], []
+    for i in tqdm(range(len(texts))):
+        text = texts[i]
+        sents = nltk.sent_tokenize(text)
+        sents = sents[:40]
+        r1s = []
+        for j in range(len(sents)):
+            sent = sents[j]
+            rest = " ".join(sents[:j] + sents[(j+1):])
+            rouge_scores = scorer.score(rest, sent)
+            r1 = rouge_scores["rouge1"].fmeasure
+            r1s.append(r1)
+        idx = np.argsort(np.array(r1s))[::-1]
+        # top sents
+        top_idx = idx[:n]
+        top_idx.sort()
+        top_sents = [sents[i] for i in top_idx]
+        top_sents = " ".join(top_sents)
+        # top entities
+        ents = spacy_nlp(oneline).ents
+        allents = [ent.text for ent in ents]
+        if allents == []:
+            allents = ["none"]
+        all_ents.append(allents)
+        # text
+        bottom_idx = idx[n:]
+        rest_sents = [sents[i] for i in bottom_idx]
+        rest = " ".join(rest_sents)
+        all_texts.append(rest)
 
-    if args.local_rank != -1:
-        torch.distributed.barrier()
-
-    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
-    valid_sampler = SequentialSampler(valid_dataset)
-
-    train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length, train_dataset.tokenizer.pad_token_id, train_sampler)
-    valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
-
-    #####the path of tuned model
-    pos = trainfile.find("docwithlabel_train")
-    foldername = trainfile[0:pos]
-    print(foldername)
-    output_dir = foldername + "tagger"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    base_optimizer_arguments = {"lr": learning_rate, "clip_threshold": max_grad_norm, "decay_rate": -0.8,
-                                "weight_decay": weight_decay,
-                                "scale_parameter": False, "relative_step": False}
-    optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-    # distributed training
-    model.train()
-
-    startepoch = 0
-    Best_F1 = 0.0
-
-    logger.info("Begin train...")
-
-    result_dict = {
-        'epoch': [],
-        'val_F1': [],
-        'best_val_F1': Best_F1
-    }
-    global_step = 0
-    for i in range(startepoch, startepoch + num_train_epochs):
-        thisevalstep = 1000000
-        logger.info(i)
-        model.train()
-        result_dict['epoch'] = i
-        allloss = []
-        for step, batch in enumerate(train_dataloader):
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            loss = model(inputs)
-            if gradient_accumulation_steps > 1:
-                loss = loss / gradient_accumulation_steps
-
-            loss.backward()
-            allloss.append(loss.item())
-
-            if step % gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
-                optimizer.step()
-                optimizer.zero_grad()
-                global_step += 1
-
-                if args.local_rank in [0, -1] and global_step % log_step == 0:
-                    logger.info("step: %d,  loss: %.6f" % (global_step,  np.average(allloss)))
-
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
-                    print("only eval after every epoch")
-                    model.train()
-
-        logger.info("finish one epoch")
-        if args.local_rank in [0, -1]:
-            dooneeval(model, valid_dataloader, args, result_dict, i, output_dir)
-
-    torch.cuda.empty_cache()
-    del model, tokenizer
-    gc.collect()
-
-    if args.local_rank != -1:
-        torch.distributed.destroy_process_group()
+    return all_texts, all_ents
