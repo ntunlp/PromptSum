@@ -32,11 +32,16 @@ class ModelMixPrompt(nn.Module):
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
         self.promptembedding = None
+        self.tagger_embedding = None
         self.softmax = Softmax(dim=2)
 
     def set_prompt_embedding(self, promptnumber, promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
+
+    def set_tagger_embedding(self, embedding):
+        self.tagger_embedding = embedding
+        self.tagger_embedding.requires_grad = False
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None, ent_ids=None, ent_mask=None
@@ -123,6 +128,32 @@ class ModelMixPrompt(nn.Module):
         input = self.ids_to_clean_text(batch["input_ids"])
         
         return input,target,preds
+
+    def _generative_step_for_tagger(self, batch):
+        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        soft_prompt_embed = self.tagger_embedding.repeat(input_embed_part.size(0), 1, 1)
+        allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], soft_prompt_embed.shape[1]), 1).to(self.args.device)
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        decoder_input_ids = (
+            torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        )
+        generated_ids = self.model.generate(
+            inputs_embeds=allembedding,
+            decoder_input_ids=decoder_input_ids,
+            attention_mask=all_attention_mask,
+            use_cache=True,
+            max_length=128,
+            num_beams=self.args.num_beams,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
+            early_stopping=True
+        )
+
+        preds = self.ids_to_clean_text(generated_ids)
+        input = self.ids_to_clean_text(batch["input_ids"])
+
+        return input,preds
 
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:

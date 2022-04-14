@@ -153,6 +153,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
+
 def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         args = args,
@@ -252,6 +253,7 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
 def test(args, tokenizer, test_dataset, logger):
 
     test_sampler = SequentialSampler(test_dataset)
+
     test_dataloader = get_dataloader(args, tokenizer, args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
                                     args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
 

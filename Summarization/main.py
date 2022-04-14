@@ -1,3 +1,5 @@
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import pickle
 import argparse
 import gc
@@ -39,13 +41,13 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="2", help="gpu id")
+                    default="1", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/mathieu/DATASETS/PromptSumm/")
+                    default="/data/qin/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -69,16 +71,16 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-large/",
+                    default="/data/qin/hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
-                    default="concat_left", choices = ["concat_right", "concat_left"])
+                    default="concat_right", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
 # discrete prompt
@@ -103,7 +105,7 @@ parser.add_argument("--lr", dest="lr", type=float,
 parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
 parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=8, help="valid size per gpu")
+                    default=4, help="valid size per gpu")
 parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
                     default=8, help="test size per gpu")
 parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
@@ -146,6 +148,15 @@ parser.add_argument("--save_model", dest="save_model", type=bool,
                     default=False, help="whether to save the model or not")
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
+
+##### T5 tagger
+parser.add_argument("--train_t5_tagger", action='store_true',
+                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+parser.add_argument("--use_t5_tagger",  action='store_true',
+                    default=False, help="whether use a t5 tagger")
+parser.add_argument("--if_spacy", action='store_true',
+                    default=False, help="whether use spacy to supervise the training of T5 tagger")
+
 
 args = parser.parse_args()
 
@@ -205,7 +216,7 @@ def main(args):
             f.write("----------------------------------------------------------------------------\n")
 
     allgentasktokens = ["summerizationcnndm"]
-    thistaskname = "cnn daily mail "
+    thistaskname = "cnn daily mail"
     thistaskfold = "cnndm"
     args.taskfold = thistaskfold
 
@@ -239,6 +250,14 @@ def main(args):
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
+    # handle few-shot data for BERT tagger
+    if args.train_t5_tagger:
+        print("train tagger")
+        #####get data
+        alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        return
+    print(args.use_t5_tagger)
     # read datasets
     datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
     keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
@@ -247,7 +266,7 @@ def main(args):
         result_dict_total[k] = []
 
     count = 0
-    for (train_dataset, valid_dataset) in datasets:
+    for (train_dataset, valid_dataset, seed) in datasets:
         count += 1
         # base model
         if 'Bart' in args.model:
@@ -277,7 +296,16 @@ def main(args):
             model.set_prompt_embedding(promptnumber, promptembedding)            
         else:
             raise Exception('Model not implemented yet')
+        ####add t5 tagger
+        if args.use_t5_tagger and args.model == "T5MixPrompt":
+            ####add tagger embeddings to t5 model
+            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt'
+            oneckpt = torch.load(onepath)
+            model.set_tagger_embedding(oneckpt["promptembedding"])
+
         model.to(args.device)
+        if args.use_t5_tagger and args.model == "T5MixPrompt":
+            valid_dataset.set_tagger_tokenizer(model, tokenizer)
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
