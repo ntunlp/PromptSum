@@ -14,6 +14,7 @@ from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 
 import sys
+import datasets
 sys.path.append("./T5PromptNER/")
 from NERDataset import *
 from NERModel import *
@@ -400,7 +401,7 @@ def pretrain_model(dataset_args, args):
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
     train_data = data['train']
     valid_data = data['validation']
-    for i in rang(len(train_data)):
+    for i in range(len(train_data)):
         print(train_data[i])
         raise Exception
 
