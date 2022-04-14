@@ -74,8 +74,8 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
         sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
         allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
         model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/cache/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/cache/")
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
         model = T5forNER(args, t5model, tokenizer)
         test_dataset = T5NERDatasetConll(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
@@ -262,14 +262,14 @@ def finetune_model(trainfile, validfile, args):
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 1
-    model_name = "google/t5-v1_1-large"
+    model_name = "google/t5-v1_1-base"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/cache/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
     model = T5forNER(args, t5model, tokenizer)
 
     ##### load from conll ckpt or simply initializing?
-    ifuseconll = True
+    ifuseconll = False
     if ifuseconll:
         allckpt = torch.load("./T5PromptNER/bestckpt")
         model.promptnumber = allckpt["promptnumber"]
@@ -278,6 +278,7 @@ def finetune_model(trainfile, validfile, args):
         promptnumber = 300
         taskname = "name entity recognition"
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
+        print("prompt", promptembedding.shape)
         model.set_prompt_embedding(promptnumber, promptembedding)
 
     model.to(args.device)
