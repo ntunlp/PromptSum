@@ -32,6 +32,7 @@ from model_mixture_discrete_in_decoder import *
 from dataset import *
 from utils import *
 from engine import *
+from T5PromptNER.TrainTaggerforSum import *
 
 
 
@@ -150,6 +151,8 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
 ##### T5 tagger
+parser.add_argument("--pretrain_t5_tagger", action='store_true',
+                    default=True, help="whether pretrain a T5 tagger")
 parser.add_argument("--train_t5_tagger", action='store_true',
                     default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
@@ -251,12 +254,13 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
+    if args.pretrain_t5_tagger:
+        print("\npre-train tagger")
+        pretrain_model(dataset_args, args)
     if args.train_t5_tagger:
-        print("train tagger")
+        print("\ntrain tagger")
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
-        print(alltrainfile)
-        
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
         raise Exception
         return
