@@ -408,9 +408,9 @@ def pretrain_model(dataset_args, args):
     spacy_nlp = spacy.load("en_core_web_sm")
 
     # data
-    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    train_data = data['train']
-    valid_data = data['validation']
+    full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    train_data = full_data['train']
+    valid_data = full_data['validation']
     train_texts = [x[args.text_key] for x in train_data]
     val_texts = [x[args.text_key] for x in valid_data]
     p = np.random.permutation(len(val_texts))
@@ -464,7 +464,7 @@ def pretrain_model(dataset_args, args):
     train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length, train_dataset.tokenizer.pad_token_id, train_sampler)
     valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
-    logger.info("Begin train...")
+    logger.info("Begin pre-train...")
 
     result_dict = {
         'epoch': [],
