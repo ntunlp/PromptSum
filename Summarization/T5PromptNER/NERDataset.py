@@ -61,11 +61,12 @@ class T5NERDataset(Dataset):
         self.num_entries = len(self.texts)
 
     def __getitem__(self, idx):
-        inputdata = self.texts
-        targetdata = self.ents
+        inputdata = self.texts[idx]
+        targetdata = self.ents[idx]
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        print("target",targetdata)
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-
+        print("inputres",inputres["input_ids"].shape)
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
 
     def __len__(self):

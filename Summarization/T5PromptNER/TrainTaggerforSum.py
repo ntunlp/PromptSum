@@ -466,6 +466,7 @@ def pretrain_model(dataset_args, args):
 
     logger.info("Begin pre-train...")
 
+    Best_F1 = -1
     result_dict = {
         'epoch': [],
         'val_F1': [],
