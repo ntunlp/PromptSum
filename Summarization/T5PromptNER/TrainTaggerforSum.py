@@ -375,14 +375,13 @@ def pretrain_model(dataset_args, args):
     train_batch_size = 2
     eval_batch_size = 4
     num_train_epochs = 5 ### epochs for training tagger
-    eval_every = 500
     learning_rate = 5e-1
     weight_decay = 1e-5
     max_seq_length = 512
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 1
-    eval_stop = 10
+    eval_step = 10
     model_name = "google/t5-v1_1-base"
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
@@ -450,8 +449,8 @@ def pretrain_model(dataset_args, args):
         print(len(val_texts))
 
     # datasets
-    train_dataset = T5NERDataset(train_texts, train_ents, max_seq_length, tokenizer)
-    valid_dataset = T5NERDataset(val_texts, val_ents, max_seq_length, tokenizer)
+    train_dataset = T5NERDataset(train_texts, train_ents, max_seq_length, tokenizer, args)
+    valid_dataset = T5NERDataset(val_texts, val_ents, max_seq_length, tokenizer, args)
 
     if args.local_rank != -1:
         torch.distributed.barrier()
