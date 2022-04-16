@@ -309,9 +309,14 @@ def finetune_model(trainfile, validfile, args):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    base_optimizer_arguments = {"lr": learning_rate, "clip_threshold": max_grad_norm, "decay_rate": -0.8,
-                                "weight_decay": weight_decay,
-                                "scale_parameter": False, "relative_step": False}
+    base_optimizer_arguments = {
+        "lr": learning_rate,
+        "clip_threshold": max_grad_norm,
+        "decay_rate": -0.8,
+        "weight_decay": weight_decay,
+        "scale_parameter": False,
+        "relative_step": False
+    }
     optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
     # distributed training
     model.train()
@@ -464,6 +469,16 @@ def pretrain_model(dataset_args, args):
     valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
     logger.info("Begin pre-train...")
+
+    base_optimizer_arguments = {
+        "lr": learning_rate,
+        "clip_threshold": max_grad_norm,
+        "decay_rate": -0.8,
+        "weight_decay": weight_decay,
+        "scale_parameter": False,
+        "relative_step": False
+    }
+    optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
 
     Best_F1 = -1
     result_dict = {
