@@ -378,6 +378,7 @@ def pretrain_model(dataset_args, args):
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 1
+    eval_stop = 10
     model_name = "google/t5-v1_1-base"
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
@@ -406,7 +407,6 @@ def pretrain_model(dataset_args, args):
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
     train_data = data['train']
     valid_data = data['validation']
-
     train_texts = [x[args.text_key] for x in train_data]
     val_texts = [x[args.text_key] for x in valid_data]
     p = np.random.permutation(len(val_texts))
@@ -416,6 +416,7 @@ def pretrain_model(dataset_args, args):
     train_texts = train_texts[:100]
     val_texts = val_texts[:100]
 
+    # build data
     if args.build_salient_entities:
         train_texts, train_ents = find_salient_sentences_and_entities(train_texts, scorer, spacy_nlp, args)
         print("*"*50)
@@ -448,6 +449,68 @@ def pretrain_model(dataset_args, args):
         print("load the pre-training val data")
         val_texts, val_ents = val_data
         print(len(val_texts))
+
+    # datasets
+    train_dataset = T5NERDataset(train_texts, train_ents, max_seq_length, tokenizer)
+    valid_dataset = T5NERDataset(val_texts, val_ents, max_seq_length, tokenizer)
+
+    if args.local_rank != -1:
+        torch.distributed.barrier()
+
+    # samplers
+    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
+    valid_sampler = SequentialSampler(valid_dataset)
+
+    # loaders
+    train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length, train_dataset.tokenizer.pad_token_id, train_sampler)
+    valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
+
+    logger.info("Begin train...")
+
+    result_dict = {
+        'epoch': [],
+        'val_F1': [],
+        'best_val_F1': Best_F1
+    }
+    global_step = 0
+    for i in range(num_train_epochs):
+        logger.info(i)
+        model.train()
+        result_dict['epoch'] = i
+        allloss = []
+        for step, batch in enumerate(train_dataloader):
+            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+            loss = model(inputs)
+            if gradient_accumulation_steps > 1:
+                loss = loss / gradient_accumulation_steps
+
+            loss.backward()
+            allloss.append(loss.item())
+
+            if step % gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+                optimizer.step()
+                optimizer.zero_grad()
+                global_step += 1
+
+                if args.local_rank in [0, -1] and global_step % log_step == 0:
+                    logger.info("step: %d,  loss: %.6f" % (global_step,  np.average(allloss)))
+
+                if args.local_rank in [0, -1] and global_step % eval_step == 0:
+                    dooneeval(model, valid_dataloader, args, result_dict, i, output_dir)
+                    model.train()
+
+        logger.info("finish one epoch")
+        if args.local_rank in [0, -1]:
+            dooneeval(model, valid_dataloader, args, result_dict, i, output_dir)
+            model.train()
+
+    torch.cuda.empty_cache()
+    del model, tokenizer
+    gc.collect()
+
+    if args.local_rank != -1:
+        torch.distributed.destroy_process_group()
 
 
 def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
