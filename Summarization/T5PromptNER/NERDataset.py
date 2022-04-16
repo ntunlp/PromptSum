@@ -63,11 +63,15 @@ class T5NERDataset(Dataset):
 
     def __getitem__(self, idx):
         inputdata = self.texts[idx]
+        if len(inputdata) == 0:
+            inputdata = "empty"
         targetdata = self.ents[idx]
+        if len(targetdata) == 0:
+            targetdata = ["none"]
         targetdata = self.args.separator.join(targetdata)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-
+        
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
 
     def __len__(self):

@@ -207,6 +207,7 @@ def main(args):
         device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
+    print("device", args.device)
     args.n_gpu = len(args.cuda.split(","))
     initialseed = args.seed
     seed_everything(args)
