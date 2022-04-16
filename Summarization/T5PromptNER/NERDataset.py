@@ -66,9 +66,8 @@ class T5NERDataset(Dataset):
         targetdata = self.ents[idx]
         targetdata = self.args.separator.join(targetdata)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        print("target",targetdata)
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        print("inputres",inputres["input_ids"].shape)
+
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
 
     def __len__(self):
