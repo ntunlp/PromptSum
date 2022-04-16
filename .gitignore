@@ -16,3 +16,4 @@ Summarization/tagger/sumdata
 Summarization/tagger/out_base
 Summarization/tagger/output
 Summarization/T5PromptNER/__pycache__
+Summarization/t5_tagger_pretraining_data/*
