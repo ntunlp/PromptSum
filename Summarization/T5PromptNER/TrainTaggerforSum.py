@@ -15,9 +15,13 @@ from tqdm import tqdm, trange
 from rouge_score import rouge_scorer
 
 import sys
+import datasets
 sys.path.append("./T5PromptNER/")
 from NERDataset import *
 from NERModel import *
+import spacy
+import nltk
+import pickle
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
@@ -413,37 +417,32 @@ def pretrain_model(dataset_args, args):
     val_texts = [val_texts[x] for x in p]
     val_texts = val_texts[:1000]
     print(len(train_texts), len(val_texts))
-    train_texts = train_texts[:100]
-    val_texts = val_texts[:100]
+    #train_texts = train_texts[:100]
+    #val_texts = val_texts[:100]
 
     # build data
     if args.build_salient_entities:
         train_texts, train_ents = find_salient_sentences_and_entities(train_texts, scorer, spacy_nlp, args)
-        print("*"*50)
-        print(train_texts[0])
-        print(train_ents[0])
         train_data = train_texts, train_ents
-        train_path = "../t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], len(train_texts))
+        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], len(train_texts))
         with open(train_path, "wb") as f:
             pickle.dump(train_data, f)
             print("saved the pre-training train data")
         val_texts, val_ents = find_salient_sentences_and_entities(val_texts, scorer, spacy_nlp, args)
-        print("*"*50)
-        print(val_texts[0])
-        print(val_ents[0])
         val_data = val_texts, val_ents
-        val_path = "../t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], len(val_texts))
+        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], len(val_texts))
         with open(val_path, "wb") as f:
             pickle.dump(val_data, f)
             print("saved the pre-training val data")
+        raise Exception
     else:
-        train_path = "../t5_tagger_pretraining_data/{}_train_100.pkl".format(dataset_args[0])
+        train_path = "t5_tagger_pretraining_data/{}_train_100.pkl".format(dataset_args[0])
         with open(train_path, "rb") as f:
             train_data = pickle.load(f)
         print("load the pre-training train data")
         train_texts, train_ents = train_data
         print(len(train_texts))
-        val_path = "../t5_tagger_pretraining_data/{}_val_100.pkl".format(dataset_args[0])
+        val_path = "t5_tagger_pretraining_data/{}_val_100.pkl".format(dataset_args[0])
         with open(val_path, "rb") as f:
             val_data = pickle.load(f)
         print("load the pre-training val data")
@@ -535,13 +534,14 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
         top_sents = [sents[i] for i in top_idx]
         top_sents = " ".join(top_sents)
         # top entities
-        ents = spacy_nlp(oneline).ents
+        ents = spacy_nlp(top_sents).ents
         allents = [ent.text for ent in ents]
         if allents == []:
             allents = ["none"]
         all_ents.append(allents)
         # text
         bottom_idx = idx[n:]
+        bottom_idx.sort()
         rest_sents = [sents[i] for i in bottom_idx]
         rest = " ".join(rest_sents)
         all_texts.append(rest)
