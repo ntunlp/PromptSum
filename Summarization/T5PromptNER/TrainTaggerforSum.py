@@ -487,6 +487,7 @@ def pretrain_model(dataset_args, args):
         'best_val_F1': Best_F1
     }
     global_step = 0
+    output_dir = "t5_tagger_pretrained_ckpt/"
     for i in range(num_train_epochs):
         logger.info(i)
         model.train()
