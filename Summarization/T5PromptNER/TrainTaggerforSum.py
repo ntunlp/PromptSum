@@ -241,9 +241,9 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     else:
         f1score = 0.0
     r1s, r2s, rls = [], [], []
-    for i in range(len(alltar)):
-        tar = alltar[i]
-        pred = allpred[i]
+    for j in range(len(alltar)):
+        tar = alltar[j]
+        pred = allpred[j]
         rouge_score = scorer.score(tar, pred)
         r1s.append(rouge_score["rouge1"].fmeasure)
         r2s.append(rouge_score["rouge2"].fmeasure)
@@ -271,7 +271,8 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
             "promptnumber": model_to_save.promptnumber,
             "promptembedding": model_to_save.promptembedding
         }
-        torch.save(ckpt, os.path.join(path, "bestckpt"))
+        torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
+        torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
 
 def finetune_model(trainfile, validfile, args):
     print("Fine-tuning entity tagger...")
@@ -402,23 +403,23 @@ def pretrain_model(dataset_args, args):
     print("Pre-training entity tagger...")
 
     ###train
-    gradient_accumulation_steps = 2
-    train_batch_size = 2
+    gradient_accumulation_steps = 4
+    train_batch_size = 1
     eval_batch_size = 4
     num_train_epochs = 5 ### epochs for training tagger
     learning_rate = 5e-1
-    if args.pretrain_full_weights:
+    if args.pretrain_all_weights:
         learning_rate = 5e-5
     weight_decay = 1e-5
     max_seq_length = 512
     num_workers = 4
     max_grad_norm = 1.0
-    log_step = 1
-    eval_step = 10
-    model_name = "google/t5-v1_1-base"
+    log_step = 50
+    eval_step = 1000
+    model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
     model = T5forNER(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
@@ -521,6 +522,8 @@ def pretrain_model(dataset_args, args):
     }
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"
+    print("\nEpoch 0 validation:")
+    dooneeval(model, valid_dataloader, args, result_dict, 0, output_dir)
     for i in range(num_train_epochs):
         logger.info(i)
         model.train()
@@ -543,6 +546,7 @@ def pretrain_model(dataset_args, args):
 
                 if args.local_rank in [0, -1] and global_step % log_step == 0:
                     logger.info("step: %d,  loss: %.6f" % (global_step,  np.average(allloss)))
+                    allloss = []
 
                 if args.local_rank in [0, -1] and global_step % eval_step == 0:
                     dooneeval(model, valid_dataloader, args, result_dict, i, output_dir)
