@@ -199,6 +199,7 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     return docwithlabel_train, docwithlabel_vaid
 
 def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -207,6 +208,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     allentnumintar = 0
     allentnuminpre = 0
     hasentnum = 0
+    alltar, all_pred = [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
@@ -227,6 +229,8 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
                 for j in range(len(allentintar)):
                     if allentintar[j] in alleninpred:
                         hasentnum += 1
+                alltar.append(thistar)
+                all_pred.append(thispred)
     if allentnuminpre!=0 and allentnumintar!=0:
         p = float(hasentnum) / float(allentnuminpre)
         r = float(hasentnum) / float(allentnumintar)
@@ -236,10 +240,27 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
             f1score = 0.0
     else:
         f1score = 0.0
+    r1s, r2s, rls = [], [], []
+    for i in range(len(alltar)):
+        tar = alltar[i]
+        pred = allpred[i]
+        rouge_score = scorer.score(tar, pred)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+    r1 = np.mean(r1s)
+    r2 = np.mean(r2s)
+    rl = np.mean(rls)
     logger.info('----Validation Results Summary----')
     logger.info(f1score)
+    logger.info(r1)
+    logger.info(r2)
+    logger.info(rl)
 
     result_dict['val_F1'].append(f1score)
+    result_dict['val_r1'].append(r1)
+    result_dict['val_r2'].append(r2)
+    result_dict['val_rl'].append(rl)
     if result_dict['val_F1'][-1] > result_dict['best_val_F1']:
         logger.info("{} epoch, best epoch was updated! valid_F1: {: >4.5f}".format(i,result_dict['val_F1'][-1]))
         result_dict["best_val_F1"] = result_dict['val_F1'][-1]
@@ -484,7 +505,10 @@ def pretrain_model(dataset_args, args):
     result_dict = {
         'epoch': [],
         'val_F1': [],
-        'best_val_F1': Best_F1
+        'best_val_F1': Best_F1,
+        'val_r1': [],
+        'val_r2': [],
+        'val_rl': []
     }
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"
