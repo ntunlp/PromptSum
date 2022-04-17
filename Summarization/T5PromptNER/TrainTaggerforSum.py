@@ -407,6 +407,8 @@ def pretrain_model(dataset_args, args):
     eval_batch_size = 4
     num_train_epochs = 5 ### epochs for training tagger
     learning_rate = 5e-1
+    if args.pretrain_full_weights:
+        learning_rate = 5e-5
     weight_decay = 1e-5
     max_seq_length = 512
     num_workers = 4
@@ -468,13 +470,13 @@ def pretrain_model(dataset_args, args):
             print("saved the pre-training val data")
         raise Exception
     else:
-        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_size)
+        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_train_size)
         with open(train_path, "rb") as f:
             train_data = pickle.load(f)
         print("load the pre-training train data")
         train_texts, train_ents = train_data
         print(len(train_texts))
-        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_size)
+        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_val_size)
         with open(val_path, "rb") as f:
             val_data = pickle.load(f)
         print("load the pre-training val data")
