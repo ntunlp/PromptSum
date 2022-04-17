@@ -208,11 +208,11 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     allentnumintar = 0
     allentnuminpre = 0
     hasentnum = 0
-    alltar, all_pred = [], []
+    alltar, allpred = [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
-        for step, batch in enumerate(valid_dataloader):
-            logger.info(step)
+        for step, batch in tqdm(enumerate(valid_dataloader)):
+            #logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
             sen, target, preds = model._generative_step(inputs)
@@ -230,7 +230,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
                     if allentintar[j] in alleninpred:
                         hasentnum += 1
                 alltar.append(thistar)
-                all_pred.append(thispred)
+                allpred.append(thispred)
     if allentnuminpre!=0 and allentnumintar!=0:
         p = float(hasentnum) / float(allentnuminpre)
         r = float(hasentnum) / float(allentnumintar)
