@@ -294,6 +294,8 @@ def finetune_model(trainfile, validfile, args):
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
     tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
     model = T5forNER(args, t5model, tokenizer)
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info("The model has {} trainable parameters".format(n_params))
 
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
@@ -350,7 +352,10 @@ def finetune_model(trainfile, validfile, args):
     result_dict = {
         'epoch': [],
         'val_F1': [],
-        'best_val_F1': Best_F1
+        'best_val_F1': Best_F1,
+        'val_r1': [],
+        'val_r2': [],
+        'val_rl': []
     }
     global_step = 0
     for i in range(startepoch, startepoch + num_train_epochs):
@@ -413,6 +418,8 @@ def pretrain_model(dataset_args, args):
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
     tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
     model = T5forNER(args, t5model, tokenizer)
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info("The model has {} trainable parameters".format(n_params))
 
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
@@ -461,13 +468,13 @@ def pretrain_model(dataset_args, args):
             print("saved the pre-training val data")
         raise Exception
     else:
-        train_path = "t5_tagger_pretraining_data/{}_train_100.pkl".format(dataset_args[0])
+        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_size)
         with open(train_path, "rb") as f:
             train_data = pickle.load(f)
         print("load the pre-training train data")
         train_texts, train_ents = train_data
         print(len(train_texts))
-        val_path = "t5_tagger_pretraining_data/{}_val_100.pkl".format(dataset_args[0])
+        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_size)
         with open(val_path, "rb") as f:
             val_data = pickle.load(f)
         print("load the pre-training val data")

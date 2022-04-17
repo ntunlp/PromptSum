@@ -13,8 +13,9 @@ class T5forNER(nn.Module):
         ### load ckpt
         t5ckpt = torch.load(args.lm_adapted_path)
         self.model.load_state_dict(t5ckpt)
-        for name, param in self.model.named_parameters():
-            param.requires_grad = False
+        if not(args.pretrain_t5_tagger and args.pretrain_all_weights):
+            for name, param in self.model.named_parameters():
+                param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
