@@ -190,14 +190,19 @@ class T5SummarizationDataset(Dataset):
                         input = {"input_ids": input_ids, "attention_mask":attention_mask}
                         taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
                         allentitylist = tagpreds[0].split(',')
-                        input_guidance = self.args.separator.join(list(set(allentitylist)))
-
                         if allentitylist == []:
-                            #print("empty")
-                            ents = self.spacy_nlp(inputdata).ents
-                            ents = [ent.text for ent in ents]
-                            input_guidance = self.args.separator.join(ents)  # can decide which delimiter works the best, just pick comma first
-                            #print(input_guidance)
+                           allentitylist = ["none"]
+
+                        #input_guidance = self.args.separator.join(list(set(allentitylist)))
+                        input_guidance = self.args.separator.join(list(dict.fromkeys(allentitylist)))
+                        #input_guidance = self.args.separator.join(allentitylist)
+
+                        # inputents = self.spacy_nlp(inputdata).ents
+                        # inputents = [ent.text for ent in inputents]
+                        # inputents.extend(allentitylist)
+                        # input_guidance = self.args.separator.join(inputents)
+
+
             # if counterfactual_removed, remove removed_ents in the input_guidance
             if self.counterfactual_removal:
                 if self.removed_ents[idx] != None:

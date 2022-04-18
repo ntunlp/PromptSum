@@ -30,17 +30,11 @@ class T5forNER(nn.Module):
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
-        ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        #print(input_embed_part.shape)
-        #print(self.promptembedding)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        #print(prompt_embed_repeat.shape)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        #print(allembedding.shape)
-        #print(attention_mask.shape)
         mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
-        all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -48,21 +42,11 @@ class T5forNER(nn.Module):
             decoder_attention_mask=decoder_attention_mask,
             labels=labels
         )
-        # return self.model(
-        #     input_ids,
-        #     attention_mask=attention_mask,
-        #     decoder_input_ids=decoder_input_ids,
-        #     decoder_attention_mask=decoder_attention_mask,
-        #     labels=labels
-        # )
 
     def forward(self, batch):
         lm_labels = batch["target_ids"]
-        #print(self.tokenizer.pad_token_id)
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
 
-        #print(self.model.config.decoder_start_token_id)
-        #print(self.model.config.bos_token_id)
         outputs = self._step(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
@@ -76,16 +60,10 @@ class T5forNER(nn.Module):
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        #print(input_embed_part.shape)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        #print(prompt_embed_repeat.shape)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        #print(allembedding.shape)
-        #print(batch["attention_mask"].shape)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
-        #print(mask_prompt.shape)
-        all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
-        #print(all_attention_mask.shape)
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
