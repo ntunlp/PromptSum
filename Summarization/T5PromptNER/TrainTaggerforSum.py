@@ -301,9 +301,19 @@ def finetune_model(trainfile, validfile, args):
     ##### load from conll ckpt, from pre-training ckpt, or simply initializing?
     if args.use_pretrain_ckpt:
         print("Loading the pre-trained NER model!")
+        
+        # full model
+        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model")
+        dic = {}
+        for x in ckpt.keys():
+            if not(x in ["promptnumber", "promptembedding"]):
+                dic[x] = ckpt[x]
+        model.load_state_dict(dic)
+        
+        # just prompt
         ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt")
-        # ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model")
-        model.load_state_dict(ckpt)
+        model.promptnumber = ckpt["promptnumber"]
+        model.promptembedding = ckpt["promptembedding"]
     else:
         ifuseconll = True
         if ifuseconll:
