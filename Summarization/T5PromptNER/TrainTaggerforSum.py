@@ -198,6 +198,7 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
 
     return docwithlabel_train, docwithlabel_vaid
 
+
 def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -264,6 +265,8 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
     if result_dict['val_F1'][-1] > result_dict['best_val_F1']:
         logger.info("{} epoch, best epoch was updated! valid_F1: {: >4.5f}".format(i,result_dict['val_F1'][-1]))
         result_dict["best_val_F1"] = result_dict['val_F1'][-1]
+        meanR = (r1 + r2 + rl) / 3
+        result_dict["best_val_meanR"] = meanR
         if not os.path.exists(path):
             os.mkdir(path)
         model_to_save = model.module if hasattr(model, 'module') else model
@@ -274,6 +277,7 @@ def dooneeval(modeltoeval,valid_dataloader,args,result_dict,i,path):
         torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
         torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
 
+
 def finetune_model(trainfile, validfile, args):
     print("Fine-tuning entity tagger...")
 
@@ -283,7 +287,7 @@ def finetune_model(trainfile, validfile, args):
     gradient_accumulation_steps = 2
     train_batch_size = 2
     eval_batch_size = 4
-    num_train_epochs = 60 ### epochs for training tagger
+    num_train_epochs = 3 ### epochs for training tagger
     learning_rate = 5e-1
     weight_decay = 1e-5
     max_seq_length = 512
@@ -365,6 +369,7 @@ def finetune_model(trainfile, validfile, args):
 
     startepoch = 0
     Best_F1 = 0.0
+    Best_val_meanR = 0.0
 
     logger.info("Begin train...")
 
@@ -374,7 +379,8 @@ def finetune_model(trainfile, validfile, args):
         'best_val_F1': Best_F1,
         'val_r1': [],
         'val_r2': [],
-        'val_rl': []
+        'val_rl': [],
+        'best_val_meanR': Best_val_meanR
     }
     global_step = 0
     for i in range(startepoch, startepoch + num_train_epochs):
@@ -415,6 +421,8 @@ def finetune_model(trainfile, validfile, args):
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
+
+    return result_dict
 
 
 def pretrain_model(dataset_args, args):
@@ -530,13 +538,15 @@ def pretrain_model(dataset_args, args):
     optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
 
     Best_F1 = -1
+    Best_val_meanR = 0.0
     result_dict = {
         'epoch': [],
         'val_F1': [],
         'best_val_F1': Best_F1,
         'val_r1': [],
         'val_r2': [],
-        'val_rl': []
+        'val_rl': [],
+        'best_val_meanR': Best_val_meanR
     }
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"

@@ -169,4 +169,6 @@ def get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp):
     return docwithlabel_train, docwithlabel_vaid
 
 def train_tagger_for_one_seed(trainfile, validfile, args):
-    finetune_model(trainfile, validfile, args)
+    result_dict = finetune_model(trainfile, validfile, args)
+
+    return result_dict

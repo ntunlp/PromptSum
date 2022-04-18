@@ -495,5 +495,17 @@ def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
 
 
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
+    all_f1s, all_meanRs = [], []
     for i in range(len(alltrainfile)):
-        train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)
+        result_dict = train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)
+        f1 = result_dict["best_val_F1"]
+        meanR = result_dict["best_val_meanR"]
+        all_f1s.append(f1)
+        all_meanRs.append(meanR)
+    f1 = np.mean(all_f1s)
+    clean_f1s = ["{:.4f}".format(x) for x in all_f1s]
+    print("Mean F1: {:.4f} (over all seeds: {})".format(f1, clean_f1s))
+    meanR = np.mean(all_meanRs)
+    clean_meanRs = ["{:.4f}".format(x) for x in all_meanRs]
+    print("Mean mean ROUGE: {:.4f} (over all seeds: {})".format(meanR, clean_meanRs))
+
