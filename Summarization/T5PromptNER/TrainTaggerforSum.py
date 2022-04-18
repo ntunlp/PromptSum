@@ -287,7 +287,7 @@ def finetune_model(trainfile, validfile, args):
     gradient_accumulation_steps = 2
     train_batch_size = 2
     eval_batch_size = 4
-    num_train_epochs = 3 ### epochs for training tagger
+    num_train_epochs = 60 ### epochs for training tagger
     learning_rate = 5e-1
     weight_decay = 1e-5
     max_seq_length = 512
