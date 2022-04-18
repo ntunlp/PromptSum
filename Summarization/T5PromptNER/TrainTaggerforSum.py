@@ -410,7 +410,7 @@ def pretrain_model(dataset_args, args):
     learning_rate = 5e-1
     if args.pretrain_all_weights:
         learning_rate = 5e-5
-    weight_decay = 1e-5
+    weight_decay = 0
     max_seq_length = 512
     num_workers = 4
     max_grad_norm = 1.0
