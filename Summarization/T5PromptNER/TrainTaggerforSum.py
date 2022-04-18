@@ -290,10 +290,10 @@ def finetune_model(trainfile, validfile, args):
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 1
-    model_name = "google/t5-v1_1-base"
+    model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-base/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
     model = T5forNER(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
@@ -305,7 +305,7 @@ def finetune_model(trainfile, validfile, args):
         # ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model")
         model.load_state_dict(ckpt)
     else:
-        ifuseconll = False
+        ifuseconll = True
         if ifuseconll:
             print("Loading the the CONLL NER model!")
             allckpt = torch.load("./T5PromptNER/bestckpt")
