@@ -298,18 +298,26 @@ def finetune_model(trainfile, validfile, args):
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
-    ##### load from conll ckpt or simply initializing?
-    ifuseconll = False
-    if ifuseconll:
-        allckpt = torch.load("./T5PromptNER/bestckpt")
-        model.promptnumber = allckpt["promptnumber"]
-        model.promptembedding = allckpt["promptembedding"]
+    ##### load from conll ckpt, from pre-training ckpt, or simply initializing?
+    if args.use_pretrain_ckpt:
+        print("Loading the pre-trained NER model!")
+        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt")
+        # ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model")
+        model.load_state_dict(ckpt)
     else:
-        promptnumber = 300
-        taskname = "name entity recognition"
-        promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
-        print("prompt", promptembedding.shape)
-        model.set_prompt_embedding(promptnumber, promptembedding)
+        ifuseconll = False
+        if ifuseconll:
+            print("Loading the the CONLL NER model!")
+            allckpt = torch.load("./T5PromptNER/bestckpt")
+            model.promptnumber = allckpt["promptnumber"]
+            model.promptembedding = allckpt["promptembedding"]
+        else:
+            print("Initializing from scratch!")
+            promptnumber = 300
+            taskname = "name entity recognition"
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
+            print("prompt", promptembedding.shape)
+            model.set_prompt_embedding(promptnumber, promptembedding)
 
     model.to(args.device)
 

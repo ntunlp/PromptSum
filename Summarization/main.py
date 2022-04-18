@@ -151,8 +151,9 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
 ##### T5 tagger
+# pre-training
 parser.add_argument("--pretrain_t5_tagger", action='store_true',
-                    default=True, help="whether pretrain a T5 tagger")
+                    default=False, help="whether pretrain a T5 tagger")
 parser.add_argument("--build_salient_entities", action='store_true',
                     default=False, help="whether to build the pseudo-labels for pre-training")
 parser.add_argument("--pretraining_train_size", type=int,
@@ -161,6 +162,9 @@ parser.add_argument("--pretraining_val_size", type=int,
                     default=1000, help="pre-training train size")
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
+# fine-tuning
+parser.add_argument("--use_pretrain_ckpt", action='store_true',
+                    default=False, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--train_t5_tagger", action='store_true',
                     default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
