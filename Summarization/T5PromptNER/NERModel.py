@@ -28,7 +28,6 @@ class T5forNER(nn.Module):
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
-        ##### handle prompt, cal input_embed
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
@@ -42,13 +41,6 @@ class T5forNER(nn.Module):
             decoder_attention_mask=decoder_attention_mask,
             labels=labels
         )
-        # return self.model(
-        #     input_ids,
-        #     attention_mask=attention_mask,
-        #     decoder_input_ids=decoder_input_ids,
-        #     decoder_attention_mask=decoder_attention_mask,
-        #     labels=labels
-        # )
 
     def forward(self, batch):
         lm_labels = batch["target_ids"]

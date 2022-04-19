@@ -108,7 +108,6 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
 
         assert len(allpreds) == len(allsumwithfakelabeldata)
     else:
-
         allpreds = [] ##should be separated by ','
         fin = open(sumpath, 'r')
         index = 0
@@ -120,7 +119,9 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
             allents = [ent.text for ent in ents]
             if allents == []:
                 allents = ["none"]
-            input_guidance = ','.join(allents)
+
+            input_guidance = ','.join(list(dict.fromkeys(allents)))     ##### unique
+            #input_guidance = ','.join(allents)  ##### not unique
             allpreds.append(input_guidance)
             index += 1
         fin.close()
