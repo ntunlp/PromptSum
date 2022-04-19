@@ -308,7 +308,7 @@ def finetune_model(trainfile, validfile, args):
         print("Loading the pre-trained NER model!")
         
         # full model
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model")
+        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
         dic = {}
         for x in ckpt.keys():
             if not(x in ["promptnumber", "promptembedding"]):
@@ -316,7 +316,7 @@ def finetune_model(trainfile, validfile, args):
         model.load_state_dict(dic)
         
         # just prompt
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt")
+        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt_39k")
         model.promptnumber = ckpt["promptnumber"]
         model.promptembedding = ckpt["promptembedding"]
     else:
@@ -352,7 +352,7 @@ def finetune_model(trainfile, validfile, args):
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
     print(foldername)
-    raise Exception
+    #raise Exception
     output_dir = foldername + "tagger"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

@@ -48,7 +48,7 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/mathieu/DATASETS/PromptSumm/")
+                    default="/data/qin/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -72,10 +72,10 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-large/",
+                    default="/data/qin/hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -163,14 +163,14 @@ parser.add_argument("--pretraining_val_size", type=int,
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
 # fine-tuning
-parser.add_argument("--use_pretrain_ckpt", action='store_true',
+parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--train_t5_tagger", action='store_true',
-                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=False, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
-                    default=True, help="whether use spacy to supervise the training of T5 tagger")
+                    default=False, help="whether use spacy to supervise the training of T5 tagger")
 
 
 args = parser.parse_args()
