@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 import pickle
 import argparse
 import gc
@@ -32,6 +32,7 @@ from model_mixture_discrete_in_decoder import *
 from dataset import *
 from utils import *
 from engine import *
+from T5PromptNER.TrainTaggerforSum import *
 
 
 
@@ -41,13 +42,13 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="1", help="gpu id")
+                    default="0", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/qin/DATASETS/PromptSumm/")
+                    default="/data/mathieu/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -71,10 +72,10 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/qin/hf_models/t5-v1-large/",
+                    default="/data/mathieu/hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -89,7 +90,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
+                    default="target", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -150,12 +151,26 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
 ##### T5 tagger
+# pre-training
+parser.add_argument("--pretrain_t5_tagger", action='store_true',
+                    default=False, help="whether pretrain a T5 tagger")
+parser.add_argument("--build_salient_entities", action='store_true',
+                    default=False, help="whether to build the pseudo-labels for pre-training")
+parser.add_argument("--pretraining_train_size", type=int,
+                    default=204045, help="pre-training val size")
+parser.add_argument("--pretraining_val_size", type=int,
+                    default=1000, help="pre-training train size")
+parser.add_argument("--pretrain_all_weights", action='store_true',
+                    default=True, help="whether pretrain a T5 tagger")
+# fine-tuning
+parser.add_argument("--use_pretrain_ckpt", action='store_true',
+                    default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--train_t5_tagger", action='store_true',
-                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=False, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
-                    default=False, help="whether use spacy to supervise the training of T5 tagger")
+                    default=True, help="whether use spacy to supervise the training of T5 tagger")
 
 
 args = parser.parse_args()
@@ -202,6 +217,7 @@ def main(args):
         device = torch.device("cuda", args.local_rank)
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
+    print("device", args.device)
     args.n_gpu = len(args.cuda.split(","))
     initialseed = args.seed
     seed_everything(args)
@@ -251,11 +267,15 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
+    if args.pretrain_t5_tagger:
+        print("\npre-train tagger")
+        pretrain_model(dataset_args, args)
     if args.train_t5_tagger:
-        print("train tagger")
+        print("\ntrain tagger")
         #####get data
         alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        raise Exception
         return
     print(args.use_t5_tagger)
     # read datasets

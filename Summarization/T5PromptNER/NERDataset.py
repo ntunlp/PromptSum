@@ -50,6 +50,33 @@ class T5NERDatasetConll(Dataset):
         return self.num_entries
 
 
+class T5NERDataset(Dataset):
+    def __init__(self, texts, ents, maxlen, tokenizer, args):
+        super(T5NERDataset, self).__init__()
+        self.texts = texts
+        self.ents = ents
+        self.maxlen = maxlen
+        self.tokenizer = tokenizer
+        self.args = args
+
+        self.num_entries = len(self.texts)
+
+    def __getitem__(self, idx):
+        inputdata = self.texts[idx]
+        if len(inputdata) == 0:
+            inputdata = "empty"
+        targetdata = self.ents[idx]
+        if len(targetdata) == 0:
+            targetdata = ["none"]
+        targetdata = self.args.separator.join(targetdata)
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
+
+    def __len__(self):
+        return self.num_entries
+
 class SmartBatchingCollateTag:
     def __init__(self, max_length, pad_token_id):
         self._max_length = max_length

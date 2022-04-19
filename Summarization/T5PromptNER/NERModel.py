@@ -13,8 +13,9 @@ class T5forNER(nn.Module):
         ### load ckpt
         t5ckpt = torch.load(args.lm_adapted_path)
         self.model.load_state_dict(t5ckpt)
-        for name, param in self.model.named_parameters():
-            param.requires_grad = False
+        if not(args.pretrain_t5_tagger and args.pretrain_all_weights):
+            for name, param in self.model.named_parameters():
+                param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
@@ -23,9 +24,6 @@ class T5forNER(nn.Module):
     def set_prompt_embedding(self,promptnumber,promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
-        # print(self.promptnumber)
-        # print(self.promptembedding.shape)
-        # print(self.promptembedding.requires_grad)
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
@@ -33,8 +31,9 @@ class T5forNER(nn.Module):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        mask_prompt = torch.full((attention_mask.shape[0],self.promptnumber),1).to(self.args.device)
+        mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,
@@ -53,7 +52,6 @@ class T5forNER(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask']
         )
-
         loss = outputs[0]
 
         return loss
@@ -79,10 +77,10 @@ class T5forNER(nn.Module):
             length_penalty=1.0,
             early_stopping=True
         )
-
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
+
         return input,target,preds
 
     def ids_to_clean_text(self, generated_ids):
