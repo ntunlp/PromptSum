@@ -514,3 +514,86 @@ def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     clean_meanRs = ["{:.4f}".format(x) for x in all_meanRs]
     print("Mean mean ROUGE: {:.4f} (over all seeds: {})".format(meanR, clean_meanRs))
 
+
+def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    for i in range(len(alltrainfile)):
+        # model
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        model = T5forNER(args, t5model, tokenizer)
+        n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info("The model has {} trainable parameters".format(n_params))
+
+        # load the correct model
+        pos = alltrainfile[i].find("docwithlabel_train")
+        foldername = alltrainfile[i][0:pos]
+        path = foldername + "tagger"
+        print(path)
+        raise Exception
+        model_path = os.path.join(path, "bestckpt_full_model")
+        model.load_state_dict(torch.load(model_path))
+
+        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+            model = model.module
+        else:
+            model = model
+
+        # prepare training data
+        trainfile = alltrainfile[i]
+        train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
+        train_sampler = SequentialSampler(train_dataset)
+        train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length, train_dataset.tokenizer.pad_token_id, train_sampler)
+
+        # training inference
+        alltar, allpred = [], []
+        with torch.no_grad():
+            logger.info(len(train_dataloader))
+            for step, batch in tqdm(enumerate(train_dataloader)):
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                          "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                sen, target, preds = model._generative_step(inputs)
+                sennum = len(sen)
+                for ii in range(sennum):
+                    thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
+                    if thistar == 'end':
+                        continue
+                    alltar.append(thistar)
+                    allpred.append(thispred)
+
+        # prepare valid data
+        validfile = allvalidfile[i]
+        valid_dataset = T5NERDatasetConll(validfile, max_seq_length, tokenizer)
+        valid_sampler = SequentialSampler(valid_dataset)
+        valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
+
+        # valid inference
+        alltar, allpred = [], []
+        with torch.no_grad():
+            logger.info(len(valid_dataloader))
+            for step, batch in tqdm(enumerate(valid_dataloader)):
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                          "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                sen, target, preds = model._generative_step(inputs)
+                sennum = len(sen)
+                for ii in range(sennum):
+                    thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
+                    if thistar == 'end':
+                        continue
+                    alltar.append(thistar)
+                    allpred.append(thispred)
+
+        # validation performance
+        r1s, r2s, rls = [], [], []
+        for j in range(len(alltar)):
+            tar = alltar[j]
+            pred = allpred[j]
+            rouge_score = scorer.score(tar, pred)
+            r1s.append(rouge_score["rouge1"].fmeasure)
+            r2s.append(rouge_score["rouge2"].fmeasure)
+            rls.append(rouge_score["rougeLsum"].fmeasure)
+        r1 = np.mean(r1s)
+        r2 = np.mean(r2s)
+        rl = np.mean(rls)
+        mean_r = (r1 + r2 + rl) / 3
+        print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
