@@ -352,7 +352,6 @@ def finetune_model(trainfile, validfile, args):
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
     print(foldername)
-    raise Exception
     output_dir = foldername + "tagger"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

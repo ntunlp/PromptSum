@@ -166,9 +166,9 @@ parser.add_argument("--pretrain_all_weights", action='store_true',
 parser.add_argument("--use_pretrain_ckpt", action='store_true',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--train_t5_tagger", action='store_true',
-                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
-                    default=False, help="whether use a t5 tagger")
+                    default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
                     default=True, help="whether use spacy to supervise the training of T5 tagger")
 
