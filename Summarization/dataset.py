@@ -531,9 +531,22 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         foldername = alltrainfile[i][0:pos]
         path = foldername + "tagger"
         print("Loading from: {}".format(path))
-        model_path = os.path.join(path, "bestckpt_full_model")
-        model.load_state_dict(torch.load(model_path))
 
+        prompt_path = os.path.join(path, "bestckpt_prompt")
+        oneckpt = torch.load(prompt_path)
+        model.set_tagger_embedding(oneckpt["promptembedding"])
+
+        weights_path = os.path.join(path, "bestckpt_full_model")
+        ckpt = torch.load(weights_path)
+        dic = {}
+        for x in ckpt.keys():
+           if not(x in ["promptembedding"]):
+               dic[x] = ckpt[x]
+           if x == "promptembedding":
+               dic["tagger_embedding"] = ckpt[x]
+        dic["promptembedding"] = model.state_dict()["promptembedding"]
+        model.load_state_dict(dic)
+    
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             model = model.module
         else:
