@@ -519,6 +519,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     for i in range(len(alltrainfile)):
         # model
+        model_name = "google/t5-v1_1-large"
         t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
         tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
         model = T5forNER(args, t5model, tokenizer)
