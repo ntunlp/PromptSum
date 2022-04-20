@@ -530,8 +530,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         pos = alltrainfile[i].find("docwithlabel_train")
         foldername = alltrainfile[i][0:pos]
         path = foldername + "tagger"
-        print(path)
-        raise Exception
+        print("Loading from: {}".format(path))
         model_path = os.path.join(path, "bestckpt_full_model")
         model.load_state_dict(torch.load(model_path))
 
