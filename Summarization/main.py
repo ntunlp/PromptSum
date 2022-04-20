@@ -282,6 +282,9 @@ def main(args):
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
         return
     if args.infer_t5_tagger:
+        # get data
+        print("\nprepare data..")
+        alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
         # inference
         print("\ninfer predictions...")
         infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
