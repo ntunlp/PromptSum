@@ -349,13 +349,17 @@ class SmartBatchingCollate:
         return padded_sequences,attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right = True):
-        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_batch_len = max(len(sequence) if sequence.dim()!=0 else 1 for sequence in sequence_batch)
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
         attend, no_attend = 1, 0
         for sequence in sequence_batch:
-            new_sequence = list(sequence[:max_len])
+            if sequence.dim()==0:
+                # if it's one item only
+                new_sequence = [sequence.item()]
+            else:
+                new_sequence = list(sequence[:max_len])
 
             attention_mask = [attend] * len(new_sequence)
             pad_length = max_len - len(new_sequence)
