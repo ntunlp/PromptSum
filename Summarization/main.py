@@ -90,7 +90,7 @@ parser.add_argument("--guidance_type", dest="guidance_type", type=str,
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="target", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
+                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
 parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
                     default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -168,7 +168,7 @@ parser.add_argument("--use_pretrain_ckpt", action='store_true',
 parser.add_argument("--train_t5_tagger", action='store_true',
                     default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
-                    default=False, help="whether use a t5 tagger")
+                    default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
                     default=True, help="whether use spacy to supervise the training of T5 tagger")
 
@@ -319,10 +319,22 @@ def main(args):
         ####add t5 tagger
         if args.use_t5_tagger and args.model == "T5MixPrompt":
             ####add tagger embeddings to t5 model
-            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt'
+            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt'
+            print(onepath)
             oneckpt = torch.load(onepath)
             model.set_tagger_embedding(oneckpt["promptembedding"])
 
+            #path = onepath[:-6] + "full_model"
+            #ckpt = torch.load(path)
+            #dic = {}
+            #for x in ckpt.keys():
+            #    if not(x in ["promptembedding"]):
+            #        dic[x] = ckpt[x]
+            #    if x == "promptembedding":
+            #        dic["tagger_embedding"] = ckpt[x]
+            #dic["promptembedding"] = model.state_dict()["promptembedding"]
+            #model.load_state_dict(dic)
+        
         model.to(args.device)
         if args.use_t5_tagger and args.model == "T5MixPrompt":
             valid_dataset.set_tagger_tokenizer(model, tokenizer)
