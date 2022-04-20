@@ -54,6 +54,7 @@ class T5SummarizationDataset(Dataset):
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
                     self.allent = self.handleentfile(entpath)
 
+
         # counterfactual training
         self.counterfactual_removal = args.counterfactual_removal
         if self.counterfactual_removal:
@@ -76,6 +77,11 @@ class T5SummarizationDataset(Dataset):
             allres[doc] = entlist
         fe.close()
         return allres
+
+    def set_allent_for_valid(self):
+        entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/T5valident.pkl'
+        with open(entpath, "rb") as f:
+            self.allent = pickle.load(f)
 
     def getalldata(self,filename):
         f = open(filename,'r')
@@ -183,24 +189,30 @@ class T5SummarizationDataset(Dataset):
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
                     else:
+                        # tempdata = re.sub(' +', ' ', inputdata)
+                        # inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
+                        # input_ids = inputres["input_ids"].to(self.args.device)
+                        # attention_mask = inputres["attention_mask"].to(self.args.device)
+                        # input = {"input_ids": input_ids, "attention_mask":attention_mask}
+                        # taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
+                        # allentitylist = tagpreds[0].split(',')
+                        # if allentitylist == []:
+                        #    allentitylist = ["none"]
+                        #
+                        # #input_guidance = self.args.separator.join(list(set(allentitylist)))
+                        # input_guidance = self.args.separator.join(list(dict.fromkeys(allentitylist)))
+                        # #input_guidance = self.args.separator.join(allentitylist)
+                        #
+                        # # inputents = self.spacy_nlp(inputdata).ents
+                        # # inputents = [ent.text for ent in inputents]
+                        # # inputents.extend(allentitylist)
+                        # # input_guidance = self.args.separator.join(inputents)
+
                         tempdata = re.sub(' +', ' ', inputdata)
-                        inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
-                        input_ids = inputres["input_ids"].to(self.args.device)
-                        attention_mask = inputres["attention_mask"].to(self.args.device)
-                        input = {"input_ids": input_ids, "attention_mask":attention_mask}
-                        taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
-                        allentitylist = tagpreds[0].split(',')
-                        if allentitylist == []:
-                           allentitylist = ["none"]
-
-                        #input_guidance = self.args.separator.join(list(set(allentitylist)))
-                        input_guidance = self.args.separator.join(list(dict.fromkeys(allentitylist)))
-                        #input_guidance = self.args.separator.join(allentitylist)
-
-                        # inputents = self.spacy_nlp(inputdata).ents
-                        # inputents = [ent.text for ent in inputents]
-                        # inputents.extend(allentitylist)
-                        # input_guidance = self.args.separator.join(inputents)
+                        if tempdata in self.allent.keys():
+                            input_guidance = self.allent[tempdata]
+                        else:
+                            print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
 
 
             # if counterfactual_removed, remove removed_ents in the input_guidance

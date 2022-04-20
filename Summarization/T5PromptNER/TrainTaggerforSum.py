@@ -79,8 +79,8 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
         sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
         allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
         model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
         model = T5forNER(args, t5model, tokenizer)
         test_dataset = T5NERDatasetConll(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
@@ -297,8 +297,8 @@ def finetune_model(trainfile, validfile, args):
     log_step = 1
     model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
     model = T5forNER(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
@@ -334,6 +334,8 @@ def finetune_model(trainfile, validfile, args):
             print("prompt", promptembedding.shape)
             model.set_prompt_embedding(promptnumber, promptembedding)
 
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
     train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
@@ -446,8 +448,8 @@ def pretrain_model(dataset_args, args):
     eval_step = 1000
     model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
     model = T5forNER(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))

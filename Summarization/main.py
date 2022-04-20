@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 import pickle
 import argparse
 import gc
@@ -33,7 +33,7 @@ from dataset import *
 from utils import *
 from engine import *
 from T5PromptNER.TrainTaggerforSum import *
-
+from T5PromptNER.NERModel import *
 
 
 parser = argparse.ArgumentParser(description="latentRE")
@@ -42,7 +42,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="0", help="gpu id")
+                    default="1", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
@@ -317,15 +317,58 @@ def main(args):
         else:
             raise Exception('Model not implemented yet')
         ####add t5 tagger
-        if args.use_t5_tagger and args.model == "T5MixPrompt":
-            ####add tagger embeddings to t5 model
-            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt'
+        if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+            entmodel = T5forNER(args, entbasemodel, enttokenizer)
+            print("Loading the pre-trained NER model!")
+            # full model
+            ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
+            dic = {}
+            for x in ckpt.keys():
+                if not (x in ["promptnumber", "promptembedding"]):
+                    dic[x] = ckpt[x]
+            entmodel.load_state_dict(dic)
+            # just prompt
+            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
             oneckpt = torch.load(onepath)
-            model.set_tagger_embedding(oneckpt["promptembedding"])
+            entmodel.promptnumber = oneckpt["promptnumber"]
+            entmodel.promptembedding = oneckpt["promptembedding"]
+            n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
+            logger.info("The ent model has {} trainable parameters".format(n_params))
+            entmodel.to(args.device)
+            print("move to device!")
+            model.eval()
+
+            alldata = valid_dataset.data
+            print("valid size: ", len(alldata))
+            allresofvalid = {}
+            with torch.no_grad():
+                for step in range(len(alldata)):
+                    onedata = alldata[step]
+                    inputdata = onedata[0]
+                    tempdata = re.sub(' +', ' ', inputdata)
+                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                    input_ids = inputres["input_ids"].to(args.device)
+                    attention_mask = inputres["attention_mask"].to(args.device)
+                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                    tagpreds = entmodel._generative_step_for_tagger(input)
+                    allentitylist = tagpreds[0].split(',')
+                    if allentitylist == []:
+                        allentitylist = ["none"]
+                    input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                    allresofvalid[tempdata] = input_guidance
+            print(len(allresofvalid))
+            respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+            with open(respath, "wb") as f:
+                pickle.dump(allresofvalid, f)
+                print("saved the T5 valid entities")
+            valid_dataset.set_allent_for_valid()
+            torch.cuda.empty_cache()
+            del entmodel, enttokenizer
+            gc.collect()
 
         model.to(args.device)
-        if args.use_t5_tagger and args.model == "T5MixPrompt":
-            valid_dataset.set_tagger_tokenizer(model, tokenizer)
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))

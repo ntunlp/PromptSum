@@ -13,7 +13,7 @@ class T5forNER(nn.Module):
         ### load ckpt
         t5ckpt = torch.load(args.lm_adapted_path)
         self.model.load_state_dict(t5ckpt)
-        if not(args.pretrain_t5_tagger and args.pretrain_all_weights):
+        if not (args.pretrain_t5_tagger and args.pretrain_all_weights):
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
         self.tokenizer = tokenizer
@@ -56,6 +56,31 @@ class T5forNER(nn.Module):
 
         return loss
 
+    def _generative_step_for_tagger(self, batch):
+        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        decoder_input_ids = (
+            torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        )
+        generated_ids = self.model.generate(
+            inputs_embeds=allembedding,
+            decoder_input_ids=decoder_input_ids,
+            attention_mask=all_attention_mask,
+            use_cache=True,
+            max_length=128,
+            num_beams=self.args.num_beams,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
+            early_stopping=True
+        )
+
+        preds = self.ids_to_clean_text(generated_ids)
+
+        return preds
+
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
@@ -70,7 +95,6 @@ class T5forNER(nn.Module):
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
             use_cache=True,
-            decoder_attention_mask=batch['target_mask'],
             max_length=128,
             num_beams=4,
             repetition_penalty=2.5,
