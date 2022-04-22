@@ -335,17 +335,6 @@ def main(args):
             print(onepath)
             oneckpt = torch.load(onepath)
             model.set_tagger_embedding(oneckpt["promptembedding"])
-
-            #path = onepath[:-6] + "full_model"
-            #ckpt = torch.load(path)
-            #dic = {}
-            #for x in ckpt.keys():
-            #    if not(x in ["promptembedding"]):
-            #        dic[x] = ckpt[x]
-            #    if x == "promptembedding":
-            #        dic["tagger_embedding"] = ckpt[x]
-            #dic["promptembedding"] = model.state_dict()["promptembedding"]
-            #model.load_state_dict(dic)
         
         model.to(args.device)
         if args.use_t5_tagger and args.model == "T5MixPrompt":

@@ -534,7 +534,8 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
 
         prompt_path = os.path.join(path, "bestckpt_prompt")
         oneckpt = torch.load(prompt_path)
-        model.set_tagger_embedding(oneckpt["promptembedding"])
+        promptnumber = oneckpt["promptnumber"]
+        model.set_prompt_embedding(promptnumber, oneckpt["promptembedding"])
 
         weights_path = os.path.join(path, "bestckpt_full_model")
         ckpt = torch.load(weights_path)
@@ -552,6 +553,11 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         else:
             model = model
 
+        max_seq_length = 512
+        num_workers = 4
+        train_batch_size = 4
+        eval_batch_size = 4
+
         # prepare training data
         trainfile = alltrainfile[i]
         train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
@@ -559,7 +565,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length, train_dataset.tokenizer.pad_token_id, train_sampler)
 
         # training inference
-        alltar, allpred = [], []
+        alltartrain, allpredtrain = [], []
         with torch.no_grad():
             logger.info(len(train_dataloader))
             for step, batch in tqdm(enumerate(train_dataloader)):
@@ -571,8 +577,19 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                     thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
                     if thistar == 'end':
                         continue
-                    alltar.append(thistar)
-                    allpred.append(thispred)
+                    alltartrain.append(thistar)
+                    allpredtrain.append(thispred)
+
+        # train export
+        print(allpredtrain)
+        with open(trainfile, 'r') as f:
+            while True:
+                oneline = f.readline().strip()
+                if not oneline:
+                    break
+                linelist = oneline.split("\t")
+                print(linelist)
+        raise Exception
 
         # prepare valid data
         validfile = allvalidfile[i]
@@ -581,7 +598,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
         # valid inference
-        alltar, allpred = [], []
+        alltarvalid, allpredvalid = [], []
         with torch.no_grad():
             logger.info(len(valid_dataloader))
             for step, batch in tqdm(enumerate(valid_dataloader)):
@@ -593,8 +610,8 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                     thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
                     if thistar == 'end':
                         continue
-                    alltar.append(thistar)
-                    allpred.append(thispred)
+                    alltarvalid.append(thistar)
+                    allpredvalid.append(thispred)
 
         # validation performance
         r1s, r2s, rls = [], [], []
@@ -610,3 +627,6 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         rl = np.mean(rls)
         mean_r = (r1 + r2 + rl) / 3
         print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
+
+
+
