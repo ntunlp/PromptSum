@@ -546,7 +546,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                dic["tagger_embedding"] = ckpt[x]
         dic["promptembedding"] = model.state_dict()["promptembedding"]
         model.load_state_dict(dic)
-    
+
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             model = model.module
         else:
