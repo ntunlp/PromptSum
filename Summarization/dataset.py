@@ -384,7 +384,7 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     datasets = []
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(seed)
         train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed, counterfactual_removal = args.counterfactual_removal)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
@@ -629,9 +629,9 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
 
         # validation performance
         r1s, r2s, rls = [], [], []
-        for j in range(len(alltar)):
-            tar = alltar[j]
-            pred = allpred[j]
+        for j in range(len(alltarvalid)):
+            tar = alltarvalid[j]
+            pred = allpredvalid[j]
             rouge_score = scorer.score(tar, pred)
             r1s.append(rouge_score["rouge1"].fmeasure)
             r2s.append(rouge_score["rouge2"].fmeasure)
@@ -642,5 +642,25 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         mean_r = (r1 + r2 + rl) / 3
         print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
 
-
+        # valid export
+        validfile = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(i)
+        all_lists = []
+        with open(validfile, 'r') as f:
+            count = 0
+            while True:
+                oneline = f.readline().strip()
+                if not oneline:
+                    break
+                linelist = oneline.split("\t")
+                linelist.append(allpredvalid[count])
+                count += 1
+                all_lists.append(linelist)
+        newvalidfile = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(i)
+        count = 0
+        with open(newvalidfile, 'w') as f:
+            for l in all_lists:
+                if count > 0:
+                    f.write("\n")
+                f.write(l[0] + "\t" + l[1] + "\t" + l[2])
+                count += 1
 
