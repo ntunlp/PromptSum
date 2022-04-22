@@ -581,14 +581,18 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                     allpredtrain.append(thispred)
 
         # train export
-        print(allpredtrain)
+        trainfile = args.few_shot_save_dir + 'seed_{}/train.txt'.format(i)
         with open(trainfile, 'r') as f:
+            count = 0
             while True:
                 oneline = f.readline().strip()
                 if not oneline:
                     break
                 linelist = oneline.split("\t")
+                print("*"*10)
                 print(linelist)
+                print(allpredtrain[count])
+                count += 1
         raise Exception
 
         # prepare valid data
