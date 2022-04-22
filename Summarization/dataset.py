@@ -534,23 +534,31 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
 
         prompt_path = os.path.join(path, "bestckpt_prompt")
         oneckpt = torch.load(prompt_path)
-        model.set_tagger_embedding(oneckpt["promptembedding"])
+        promptnumber = oneckpt["promptnumber"]
+        model.set_prompt_embedding(promptnumber, oneckpt["promptembedding"])
 
         weights_path = os.path.join(path, "bestckpt_full_model")
         ckpt = torch.load(weights_path)
-        dic = {}
-        for x in ckpt.keys():
-           if not(x in ["promptembedding"]):
-               dic[x] = ckpt[x]
-           if x == "promptembedding":
-               dic["tagger_embedding"] = ckpt[x]
-        dic["promptembedding"] = model.state_dict()["promptembedding"]
-        model.load_state_dict(dic)
-    
+        #dic = {}
+        #for x in ckpt.keys():
+        #   if not(x in ["promptembedding"]):
+        #       dic[x] = ckpt[x]
+        #   if x == "promptembedding":
+        #       dic["tagger_embedding"] = ckpt[x]
+        #dic["promptembedding"] = model.state_dict()["promptembedding"]
+        model.load_state_dict(ckpt)
+
+        model.to(args.device)
+
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             model = model.module
         else:
             model = model
+
+        max_seq_length = 512
+        num_workers = 4
+        train_batch_size = 4
+        eval_batch_size = 4
 
         # prepare training data
         trainfile = alltrainfile[i]
