@@ -90,6 +90,10 @@ class T5SummarizationDataset(Dataset):
             onedata = []
             onedata.append(linelist[0])
             onedata.append(linelist[1])
+            if len(linelist) > 2:
+                onedata.append(linelist[2])
+            print(onedata)
+            raise Exception
             alldata.append(onedata)
         f.close()
         
@@ -379,7 +383,7 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
     '''
     datasets = []
     for seed in few_shot_seeds:
-        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        train_file_name = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed, counterfactual_removal = args.counterfactual_removal)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
@@ -581,7 +585,7 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
 
         # train export
         trainfile = args.few_shot_save_dir + 'seed_{}/train.txt'.format(i)
-        print(trainfile)
+        all_lists = []
         with open(trainfile, 'r') as f:
             count = 0
             while True:
@@ -589,12 +593,17 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                 if not oneline:
                     break
                 linelist = oneline.split("\t")
-                print("*"*10)
-                print(len(linelist))
-                print(linelist)
-                print(allpredtrain[count])
+                linelist.append(allpredtrain[count])
                 count += 1
-        raise Exception
+                all_lists.append(linelist)
+        newtrainfile = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(i)
+        count = 0
+        with open(newtrainfile, 'w') as f:
+            for l in all_lists:
+                if count > 0:
+                    f.write("\n")
+                f.write(l[0] + "\t" + l[1] + "\t" + l[2])
+                count += 1
 
         # prepare valid data
         validfile = allvalidfile[i]
