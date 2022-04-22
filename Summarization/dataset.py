@@ -541,13 +541,12 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         ckpt = torch.load(weights_path)
         dic = {}
         for x in ckpt.keys():
-           if not(x in ["promptembedding"]):
-               dic[x] = ckpt[x]
-           if x == "promptembedding":
-               dic["tagger_embedding"] = ckpt[x]
+            dic[x] = ckpt[x]
         dic["promptembedding"] = model.state_dict()["promptembedding"]
         model.load_state_dict(dic)
 
+        model.to(args.device)
+        
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             model = model.module
         else:
@@ -581,15 +580,14 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
                     allpredtrain.append(thispred)
 
         # train export
-        print(allpredtrain)
+        print(trainfile)
+        raise Exception
         with open(trainfile, 'r') as f:
             while True:
                 oneline = f.readline().strip()
                 if not oneline:
                     break
                 linelist = oneline.split("\t")
-                print(linelist)
-        raise Exception
 
         # prepare valid data
         validfile = allvalidfile[i]
