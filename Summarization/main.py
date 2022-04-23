@@ -300,6 +300,8 @@ def main(args):
     count = 0
     for (train_dataset, valid_dataset, seed) in datasets:
         count += 1
+        if count <=2:
+            continue
         # base model
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
