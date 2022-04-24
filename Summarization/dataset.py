@@ -171,12 +171,13 @@ class T5SummarizationDataset(Dataset):
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
             else: #use t5_tagger
-                print("*"*50)
-                print(inputdata)
+                #print("*"*50)
+                #print(inputdata)
                 ents = self.spacy_nlp(inputdata).ents
                 ents = [ent.text for ent in ents]
-                input_guidance = ents + ["PRED"] + entsdata
-                print(input_guidance)
+                #input_guidance = self.args.separator.join(ents)
+                input_guidance = entsdata + ",PRED." + self.args.separator.join(ents) 
+                #print(input_guidance)
 
                 #####for train
                 #if self.split.startswith("train"):

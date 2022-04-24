@@ -300,7 +300,7 @@ def main(args):
     count = 0
     for (train_dataset, valid_dataset, seed) in datasets:
         count += 1
-        if count <=2:
+        if count <=0:
             continue
         # base model
         if 'Bart' in args.model:
