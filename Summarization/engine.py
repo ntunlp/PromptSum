@@ -93,10 +93,11 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
-            for k in range(inputs["input_ents"].shape[0]):
-                for l in range(inputs["input_ents"].shape[1]):
-                    ent = inputs["input_ents"][k,l].item()
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
+                      "predents_ids": batch[4].to(args.device), "predents_mask": batch[5].to(args.device)}
+            for k in range(inputs["ents_ids"].shape[0]):
+                for l in range(inputs["ents_ids"].shape[1]):
+                    ent = inputs["ents_ids"][k,l].item()
                     ents.append(ent)
             if scaler is not None:
                 with autocast():

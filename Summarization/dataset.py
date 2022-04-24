@@ -171,13 +171,10 @@ class T5SummarizationDataset(Dataset):
                     ents = [ent.text for ent in ents]
                     input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
             else: #use t5_tagger
-                #print("*"*50)
-                #print(inputdata)
                 ents = self.spacy_nlp(inputdata).ents
                 ents = [ent.text for ent in ents]
-                #input_guidance = self.args.separator.join(ents)
-                input_guidance = entsdata + ",PRED." + self.args.separator.join(ents) 
-                #print(input_guidance)
+                input_guidance = self.args.separator.join(ents)
+                pred_guidance = entsdata
 
                 #####for train
                 #if self.split.startswith("train"):
@@ -230,9 +227,10 @@ class T5SummarizationDataset(Dataset):
         #print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        predentsres = self.tokenizer.batch_encode_plus([pred_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
 
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze(), predentsres['input_ids'].squeeze()
 
     def __len__(self):
         
@@ -302,13 +300,21 @@ class SmartBatchingCollate:
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-        sequences, targets, ents = list(zip(*batch))
+        sequences, targets, ents, predents = list(zip(*batch))
 
+        # input
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
+        # target
+        target_ids, target_mask = self.pad_target(
+            targets,
+            max_sequence_length=self._max_length,
+            pad_token_id=self._pad_token_id
+        )
+        # guidance
         right = True
         if "DID" in self.args.model:
             right = False
@@ -323,13 +329,14 @@ class SmartBatchingCollate:
             ents_ids = torch.cat((ents_ids, sep_ids), 1)
             sep_mask = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device)
             ents_mask = torch.cat((ents_mask, sep_mask), 1)
-        target_ids, target_mask = self.pad_target(
-            targets, 
-            max_sequence_length=self._max_length, 
-            pad_token_id=self._pad_token_id
+        predents_ids, predents_mask = self.pad_sequence(
+            predents,
+            max_sequence_length=self._max_guidance_length,
+            pad_token_id=self._pad_token_id,
+            right = right
         )
 
-        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, predents_ids, predents_mask
         
         return output
 
