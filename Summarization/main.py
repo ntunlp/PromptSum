@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -270,6 +270,8 @@ def main(args):
     if args.pretrain_t5_tagger:
         print("\npre-train tagger")
         pretrain_model(dataset_args, args)
+        raise Exception
+        return
     if args.train_t5_tagger:
         print("\ntrain tagger")
         #####get data

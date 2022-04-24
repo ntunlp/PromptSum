@@ -51,10 +51,11 @@ class T5NERDatasetConll(Dataset):
 
 
 class T5NERDataset(Dataset):
-    def __init__(self, texts, ents, maxlen, tokenizer, args):
+    def __init__(self, texts, ents, target, maxlen, tokenizer, args):
         super(T5NERDataset, self).__init__()
         self.texts = texts
         self.ents = ents
+        self.target = target
         self.maxlen = maxlen
         self.tokenizer = tokenizer
         self.args = args
@@ -65,14 +66,21 @@ class T5NERDataset(Dataset):
         inputdata = self.texts[idx]
         if len(inputdata) == 0:
             inputdata = "empty"
-        targetdata = self.ents[idx]
+
+        targetdata = self.target[idx]
         if len(targetdata) == 0:
-            targetdata = ["none"]
-        targetdata = self.args.separator.join(targetdata)
+            targetdata = "empty"
+
+        entitydata = self.ents[idx]
+        if len(entitydata) == 0:
+            entitydata = ["none"]
+        entitydata = self.args.separator.join(entitydata)
+
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        entityres = self.tokenizer.batch_encode_plus([entitydata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), entityres["input_ids"].squeeze()
 
     def __len__(self):
         return self.num_entries
@@ -142,8 +150,94 @@ class SmartBatchingCollateTag:
         attention_masks = torch.tensor(attention_masks)
         return padded_sequences, attention_masks
 
+class SmartBatchingCollateTagPretrain:
+    def __init__(self, max_length, pad_token_id):
+        self._max_length = max_length
+        self._pad_token_id = pad_token_id
+
+    def __call__(self, batch):
+
+        sequences, targets, entities = list(zip(*batch))
+
+        input_ids, attention_mask = self.pad_sequence(
+            sequences,
+            max_sequence_length=self._max_length,
+            pad_token_id=self._pad_token_id
+        )
+
+        #target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
+        #entity_ids, entity_mask = self.pad_target(entities,max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
+        target_ids, target_mask = self.pad_target(targets, max_sequence_length=64,pad_token_id=self._pad_token_id)
+        entity_ids, entity_mask = self.pad_target(entities,max_sequence_length=64,pad_token_id=self._pad_token_id)
+
+        output = input_ids, attention_mask, target_ids, target_mask, entity_ids, entity_mask
+        return output
+
+    def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
+        ##tokenize sequence_batch
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_len = min(max_batch_len, max_sequence_length)    ####whether because max_length is not 512?
+        padded_sequences = []
+        attention_masks = []
+        attend, no_attend = 1, 0
+        for sequence in sequence_batch:
+            # As discussed above, truncate if exceeds max_len
+            new_sequence = list(sequence[:max_len])
+            attention_mask = [attend] * len(new_sequence)
+            pad_length = max_len - len(new_sequence)
+            new_sequence.extend([pad_token_id] * pad_length)
+            attention_mask.extend([no_attend] * pad_length)
+            padded_sequences.append(new_sequence)
+            attention_masks.append(attention_mask)
+        padded_sequences = torch.tensor(padded_sequences)
+        attention_masks = torch.tensor(attention_masks)
+        return padded_sequences,attention_masks
+
+
+    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
+        ##tokenize sequence_batch
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        max_len = min(max_batch_len, max_sequence_length)
+        padded_sequences = []
+        attention_masks = []
+        attend, no_attend = 1, 0
+        for sequence in sequence_batch:
+            # As discussed above, truncate if exceeds max_len
+            new_sequence = list(sequence[:max_len])
+
+            attention_mask = [attend] * len(new_sequence)
+            pad_length = max_len - len(new_sequence)
+
+            new_sequence.extend([pad_token_id] * pad_length)
+            attention_mask.extend([no_attend] * pad_length)
+
+            padded_sequences.append(new_sequence)
+            attention_masks.append(attention_mask)
+
+        padded_sequences = torch.tensor(padded_sequences)
+        attention_masks = torch.tensor(attention_masks)
+        return padded_sequences, attention_masks
+
 def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     collate_fn = SmartBatchingCollateTag(
+        max_length=max_len,
+        pad_token_id=pad_id
+    )
+    dataloader = DataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        sampler=sampler,
+        collate_fn=collate_fn,
+        #shuffle=True, #####?????
+        drop_last=False,
+        num_workers=num_workers,
+        pin_memory=True
+    )
+    return dataloader
+
+
+def get_dataloader_tag_pretrain(num_workers,dataset, batch_size, max_len, pad_id, sampler):
+    collate_fn = SmartBatchingCollateTagPretrain(
         max_length=max_len,
         pad_token_id=pad_id
     )
