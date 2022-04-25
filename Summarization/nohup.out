@@ -1,0 +1,56 @@
+Traceback (most recent call last):
+  File "main.py", line 13, in <module>
+    from rouge_score import rouge_scorer
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/rouge_score/rouge_scorer.py", line 41, in <module>
+    from nltk.stem import porter
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/nltk/__init__.py", line 128, in <module>
+    from nltk.collocations import *
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/nltk/collocations.py", line 39, in <module>
+    from nltk.metrics import (
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/nltk/metrics/__init__.py", line 16, in <module>
+    from nltk.metrics.scores import (
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/nltk/metrics/scores.py", line 15, in <module>
+    from scipy.stats.stats import betai
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/stats/__init__.py", line 388, in <module>
+    from .stats import *
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/stats/stats.py", line 180, in <module>
+    from . import distributions
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/stats/distributions.py", line 8, in <module>
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/stats/_distn_infrastructure.py", line 23, in <module>
+    from scipy import optimize
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/optimize/__init__.py", line 388, in <module>
+    from ._minimize import *
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/scipy/optimize/_minimize.py", line 23, in <module>
+Traceback (most recent call last):
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/subprocess.py", line 1019, in wait
+    return self._wait(timeout=timeout)
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/subprocess.py", line 1653, in _wait
+    (pid, sts) = self._try_wait(0)
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/subprocess.py", line 1611, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+KeyboardInterrupt
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/torch/distributed/launch.py", line 260, in <module>
+    main()
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/site-packages/torch/distributed/launch.py", line 253, in main
+    process.wait()
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/subprocess.py", line 1032, in wait
+    self._wait(timeout=sigint_timeout)
+  File "/data/qin/anaconda3/envs/promptsumm/lib/python3.7/subprocess.py", line 1647, in _wait
+    time.sleep(delay)
+KeyboardInterrupt
+    from ._trustregion_dogleg import _minimize_dogleg
+  File "<frozen importlib._bootstrap>", line 983, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 967, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 677, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 724, in exec_module
+  File "<frozen importlib._bootstrap_external>", line 818, in get_code
+  File "<frozen importlib._bootstrap_external>", line 917, in get_data
+KeyboardInterrupt
