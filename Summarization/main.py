@@ -25,11 +25,11 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model_finetune import *
-from model_soft import *
-from model_mixture import *
-from model_mixture_discrete_in_decoder import * 
-from model_mixture_double_discrete import *
+from models.model_finetune import *
+from models.model_soft import *
+from models.model_mixture import *
+from models.model_mixture_discrete_in_decoder import *
+from models.model_mixture_double_discrete import *
 from dataset import *
 from utils import *
 from engine import *
@@ -172,7 +172,6 @@ parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
                     default=False, help="whether use spacy to supervise the training of T5 tagger")
-
 
 args = parser.parse_args()
 
