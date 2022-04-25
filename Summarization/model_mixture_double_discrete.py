@@ -9,9 +9,9 @@ from torch.nn import Softmax
 
 
 
-class ModelMixPrompt(nn.Module):
+class ModelMixPromptDD(nn.Module):
     def __init__(self, args, model, tokenizer, model_name):
-        super(ModelMixPrompt, self).__init__()
+        super(ModelMixPromptDD, self).__init__()
         self.args = args
         self.model = model
         self.model_name = model_name
@@ -55,10 +55,12 @@ class ModelMixPrompt(nn.Module):
 
         if 'T5' in self.model_name:
             discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
+            preddiscrete_prompt_embed = self.model.encoder.embed_tokens(predent_ids)
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(ent_ids)
+            preddiscrete_prompt_embed = self.model.get_encoder().embed_tokens(predent_ids)
 
-        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed, preddiscrete_prompt_embed], 1)
         mask_prompt = torch.full((attention_mask.shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         if self.args.concat_mode == "concat_right":
             allembedding = torch.cat([input_embed_part, prompt_embed], 1)
@@ -103,10 +105,12 @@ class ModelMixPrompt(nn.Module):
 
         if 'T5' in self.model_name:
             discrete_prompt_embed = self.model.encoder.embed_tokens(batch["ents_ids"])
+            preddiscrete_prompt_embed = self.model.encoder.embed_tokens(batch["predents_ids"])
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["ents_ids"])
+            preddiscrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["predents_ids"])
 
-        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed, preddiscrete_prompt_embed], 1)
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)

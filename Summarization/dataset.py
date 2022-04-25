@@ -108,6 +108,7 @@ class T5SummarizationDataset(Dataset):
 
         # guidance
         input_guidance = "None"
+        pred_guidance = "None"
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
             if not self.args.use_t5_tagger:
@@ -175,40 +176,6 @@ class T5SummarizationDataset(Dataset):
                 ents = [ent.text for ent in ents]
                 input_guidance = self.args.separator.join(ents)
                 pred_guidance = entsdata
-
-                #####for train
-                #if self.split.startswith("train"):
-                #    tempdata = re.sub(' +', ' ', inputdata)
-                #    if tempdata in self.allent.keys():
-                #        input_guidance = self.allent[tempdata]
-                #    else:
-                #        print("we can not find inputdata in the dictionary!! There should be some errors!")
-                #else:
-                #    if self.args.guidance_mode == 'target':
-                #        tempdata = re.sub(' +', ' ', inputdata)
-                #        if tempdata in self.allent.keys():
-                #            input_guidance = self.allent[tempdata]
-                #        else:
-                #            print("we can not find inputdata in the dictionary!! There should be some errors!")
-                #    else:
-                #        tempdata = re.sub(' +', ' ', inputdata)
-                #        inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
-                #        input_ids = inputres["input_ids"].to(self.args.device)
-                #        attention_mask = inputres["attention_mask"].to(self.args.device)
-                #        input = {"input_ids": input_ids, "attention_mask":attention_mask}
-                #        taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
-                #        allentitylist = tagpreds[0].split(',')
-                #        if allentitylist == []:
-                #           allentitylist = ["none"]
-
-                #       #input_guidance = self.args.separator.join(list(set(allentitylist)))
-                #        input_guidance = self.args.separator.join(list(dict.fromkeys(allentitylist)))
-                #        #input_guidance = self.args.separator.join(allentitylist)
-
-                        # inputents = self.spacy_nlp(inputdata).ents
-                        # inputents = [ent.text for ent in inputents]
-                        # inputents.extend(allentitylist)
-                        # input_guidance = self.args.separator.join(inputents)
 
             # if counterfactual_removed, remove removed_ents in the input_guidance
             if self.counterfactual_removal:

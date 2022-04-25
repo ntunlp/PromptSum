@@ -26,9 +26,10 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from model_finetune import *
-from model import *
+from model_soft import *
 from model_mixture import *
 from model_mixture_discrete_in_decoder import * 
+from model_mixture_double_discrete import *
 from dataset import *
 from utils import *
 from engine import *
@@ -310,24 +311,29 @@ def main(args):
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-        if 'Finetune' in args.model:
+        if args.model == 'T5Finetune':
             print('\nFinetuning')
             model = ModelFinetune(args, basemodel, tokenizer, args.model)
-        elif 'SoftPrompt' in args.model:
+        elif args.model == 'T5SoftPrompt':
             print('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif 'MixPrompt' in args.model and not('DID' in args.model):
+        elif args.model == 'T5MixPrompt':
             print('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif 'MixPromptDID' in args.model:
+        elif args.model == 'T5MixPromptDID':
             print('\nMix prompt tuning with discrete prompt in decoder')
             model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-            model.set_prompt_embedding(promptnumber, promptembedding)            
+            model.set_prompt_embedding(promptnumber, promptembedding)
+        elif args.model == 'T5MixPromptDD':
+            print('\nMix prompt tuning with double discrete prompt')
+            model = ModelMixPromptDD(args, basemodel, tokenizer, args.model)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
         ####add t5 tagger
