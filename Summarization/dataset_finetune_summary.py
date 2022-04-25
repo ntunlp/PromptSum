@@ -7,14 +7,37 @@ import datasets
 import os
 import numpy as np
 import nltk
-from torch.utils.data import Sampler, Dataset, DataLoader
-from rouge_score import rouge_scorer
-
-import re
-from utils import *
-from transformers import BertTokenizer
 import nltk
 import random
+import re
+
+from torch.utils.data import Sampler, Dataset, DataLoader
+from rouge_score import rouge_scorer
+from utils import *
+from transformers import BertTokenizer
+
+
+
+def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
+    '''
+    This function reads in the few-shot datasets saved at save_path
+    returns:
+        list of tuples (train_dataset, valid_dataset)
+    '''
+    datasets = []
+    for seed in few_shot_seeds:
+        train_file_name = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(seed)
+        train_dataset = T5SummarizationDataset(
+            train_file_name, "train", args.max_length, tokenizer, allgentasktokens,answertoken, args, seed,
+            counterfactual_removal=args.counterfactual_removal
+        )
+        valid_dataset = T5SummarizationDataset(
+            valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed
+        )
+        datasets.append((train_dataset, valid_dataset, seed))
+
+    return datasets
 
 
 class T5SummarizationDataset(Dataset):
@@ -53,7 +76,6 @@ class T5SummarizationDataset(Dataset):
                 if self.args.guidance_mode == 'target':
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
                     self.allent = self.handleentfile(entpath)
-
 
         # counterfactual training
         self.counterfactual_removal = args.counterfactual_removal
@@ -299,6 +321,7 @@ class T5SummarizationDataset(Dataset):
 
         return top_sents
 
+
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
         self.args = args
@@ -396,21 +419,6 @@ class SmartBatchingCollate:
         
         return padded_sequences, attention_masks
 
-def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
-    '''
-    This function reads in the few-shot datasets saved at save_path
-    returns:
-        list of tuples (train_dataset, valid_dataset)
-    '''
-    datasets = []
-    for seed in few_shot_seeds:
-        train_file_name = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed, counterfactual_removal = args.counterfactual_removal)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
-        datasets.append((train_dataset, valid_dataset, seed))
-    
-    return datasets
 
 def convert_data_to_txt(train_data, new_train_path, args):
     all_train_texts, all_train_summaries = [], []
@@ -428,7 +436,8 @@ def convert_data_to_txt(train_data, new_train_path, args):
             if idx > 0:
                 to_write = "\n" + to_write
             f.write(to_write)
-            
+
+
 def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     '''
     Function that subsamples a dataset and saves the results for few-shot exps
@@ -456,88 +465,11 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     # convert to original seed
     np.random.seed(args.seed)
 
-def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
-
-    usetrain = True
-    usevalid = True
-    spacy_nlp = spacy.load("en_core_web_sm")
-    alltrainfile = []
-    allvalidfile = []
-    for seed in few_shot_seeds:
-        train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
-        valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
-        handler_train = open(train_file_name, "r")
-        handler_valid = open(valid_file_name, "r")
-
-        alldoc = []
-        allsum = []
-        if usetrain:
-            while True:
-                oneline = handler_train.readline().strip()
-                if not oneline:
-                    break
-                onedata = oneline.split('\t')
-                if len(onedata) != 2:
-                    print("train doc sum split error")
-                    continue
-                onedoc = re.sub(' +', ' ', onedata[0].replace("\n"," "))
-                alldoc.append(onedoc)
-                onesum = re.sub(' +', ' ', onedata[1].replace("\n"," "))
-                allsum.append(onesum)
-        if usevalid:
-            while True:
-                oneline = handler_valid.readline().strip()
-                if not oneline:
-                    break
-                onedata = oneline.split('\t')
-                if len(onedata) != 2:
-                    print("valid doc sum split error")
-                    continue
-                onedoc = re.sub(' +', ' ', onedata[0].replace("\n", " "))
-                alldoc.append(onedoc)
-                onesum = re.sub(' +', ' ', onedata[1].replace("\n", " "))
-                allsum.append(onesum)
-
-        handler_train.close()
-        handler_valid.close()
-        doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
-        if not os.path.exists(doc_sum_path):
-            os.makedirs(doc_sum_path, exist_ok=True)
-
-        #####seperate it to document + summary
-        docpath = doc_sum_path + "doc.txt"
-        sumpath = doc_sum_path + "sum.txt"
-        f = open(docpath, 'w')
-        for oned in alldoc:
-            f.write(oned + "\n")
-        f.close()
-        f = open(sumpath, 'w')
-        for ones in allsum:
-            f.write(ones + "\n")
-        f.close()
-
-        ####get train and valid data for bert tagger
-        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp)
-        #print(docwithlabel_train, docwithlabel_vaid)
-        alltrainfile.append(docwithlabel_train)
-        allvalidfile.append(docwithlabel_vaid)
-    return alltrainfile, allvalidfile
 
 
-def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
-    all_f1s, all_meanRs = [], []
-    for i in range(len(alltrainfile)):
-        result_dict = train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)
-        f1 = result_dict["best_val_F1"]
-        meanR = result_dict["best_val_meanR"]
-        all_f1s.append(f1)
-        all_meanRs.append(meanR)
-    f1 = np.mean(all_f1s)
-    clean_f1s = ["{:.4f}".format(x) for x in all_f1s]
-    print("Mean F1: {:.4f} (over all seeds: {})".format(f1, clean_f1s))
-    meanR = np.mean(all_meanRs)
-    clean_meanRs = ["{:.4f}".format(x) for x in all_meanRs]
-    print("Mean mean ROUGE: {:.4f} (over all seeds: {})".format(meanR, clean_meanRs))
+
+
+
 
 
 def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):

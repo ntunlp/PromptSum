@@ -22,8 +22,9 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from models.model_soft import *
-from dataset import *
+from models_summarization.model_soft import *
+from dataset_finetune import *
+from model_finetune import *
 from utils import *
 
 
@@ -154,7 +155,6 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
-
 def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
     collate_fn = SmartBatchingCollate(
         args = args,
@@ -250,52 +250,6 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
             torch.save(ckpt, args.save_model_path)
     
     return result_dict
-
-
-def test(args, tokenizer, test_dataset, logger):
-
-    test_sampler = SequentialSampler(test_dataset)
-
-    test_dataloader = get_dataloader(args, tokenizer, args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
-                                    args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
-
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = T5forSummarization(args, t5model, test_dataset.tokenizer)
-    allckpt = torch.load(args.save_model_path)
-    model.promptnumber = allckpt["promptnumber"]
-    model.promptembedding = allckpt["promptembedding"]
-    logger.info("load finished!")
-
-    model.to(args.device)
-    model.eval()
-    #scaler = ShardedGradScaler()
-    scaler = None
-    allytrue = []
-    allypred = []
-
-    with torch.no_grad():
-        for step, batch in enumerate(test_dataloader):
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            if scaler is not None:
-                with autocast():
-                    sen,target,preds = model._generative_step(inputs)
-                    tarres, predres = target, preds
-                    allytrue.extend(tarres)
-                    allypred.extend(predres)
-            else:
-                sen, target, preds = model._generative_step(inputs)
-                tarres, predres = target, preds
-                allytrue.extend(tarres)
-                allypred.extend(predres)
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
-    logger.info('----Test Results Summary----')
-    logger.info(len(allypred))
-    logger.info(rouge_score)
-    logger.info("test_rouge1: %f", rouge_score["rouge1"].mid.fmeasure)
-    logger.info("test_rouge2: %f", rouge_score["rouge2"].mid.fmeasure)
-    logger.info("test_rougeL: %f", rouge_score["rougeL"].mid.fmeasure)
 
 
 def entity_eval(ytrue, ypred):
