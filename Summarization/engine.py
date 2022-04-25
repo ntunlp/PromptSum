@@ -22,7 +22,7 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model_soft import *
+from models.model_soft import *
 from dataset import *
 from utils import *
 
