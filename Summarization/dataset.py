@@ -335,7 +335,7 @@ class SmartBatchingCollate:
             pad_token_id=self._pad_token_id,
             right = right
         )
-
+        #print(input_ids.shape, target_ids.shape, ents_ids.shape, predents_ids.shape)
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, predents_ids, predents_mask
         
         return output
