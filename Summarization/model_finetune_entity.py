@@ -16,7 +16,7 @@ class T5forFinetuneEntity(nn.Module):
         ### load ckpt
         t5ckpt = torch.load(args.lm_adapted_path)
         self.model.load_state_dict(t5ckpt)
-        if not (args.pretrain_t5_tagger and args.pretrain_all_weights):
+        if not (args.pretrain and args.pretrain_all_weights):
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
         self.tokenizer = tokenizer

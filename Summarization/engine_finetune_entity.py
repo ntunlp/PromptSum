@@ -24,7 +24,7 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
 from dataset_pretrain import *
-from dataset_finetune import *
+from dataset_finetune_entity import *
 from models_summarization.model_soft import *
 from model_finetune_entity import *
 from engine_pretrain import *
