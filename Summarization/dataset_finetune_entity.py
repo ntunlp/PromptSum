@@ -10,11 +10,12 @@ import nltk
 import nltk
 import random
 import re
+import gc
 
-from torch.utils.data import Sampler, Dataset, DataLoader
+from torch.utils.data import Sampler, Dataset, DataLoader, SequentialSampler
 from rouge_score import rouge_scorer
 from utils import *
-from transformers import BertTokenizer
+from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
 
 from dataset_pretrain import *
 from model_finetune_entity import T5forFinetuneEntity
@@ -107,9 +108,9 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
     if not args.if_spacy:
         sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
         allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
-        model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+        model_name = args.model_name
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
         model = T5forFinetuneEntity(t5model, tokenizer, args)
         test_dataset = T5DatasetPretrainConll(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
