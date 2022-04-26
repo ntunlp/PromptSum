@@ -380,7 +380,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     logger.info('----Validation Results Summary----')
     meanrent = (r1 + r2 + rl) / 3
     meanrsum = (r1forsum + r2forsum + rlforsum) / 3
-    message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+    message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
               "\nSUMMARY eval: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
         f1score, meanrent, r1, r2, rl, meanrsum, r1forsum, r2forsum, rlforsum
     )
