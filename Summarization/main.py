@@ -103,6 +103,29 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 # optimization
+##### entity prompt tuning
+parser.add_argument("--lr_entity", dest="lr_entity", type=float,
+                    default=5e-1, help='learning rate')
+parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
+                    default=2, help="batch size per gpu")
+parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
+                    default=4, help="valid size per gpu")
+parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
+                    default=8, help="test size per gpu")
+parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
+                    default=2, help="gradient accumulation steps")
+parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
+                    default=60, help="max epoch number")
+parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
+                    default=4, help="dataloader num_workers")
+parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
+                    default=1e-5, help="weight decay")
+parser.add_argument("--adam_epsilon_entity", dest="adam_epsilon_entity", type=float,
+                    default = 1e-8, help="adam epsilon")
+parser.add_argument("--warmup_steps_entity", dest="warmup_steps_entity", type=float,
+                    default=0.01, help="warmup steps")
+parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
+                    default=1.0, help="max grad norm")
 ##### summary prompt tuning
 parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                     default=True, help="dynamic sample or not")

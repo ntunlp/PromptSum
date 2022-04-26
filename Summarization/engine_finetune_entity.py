@@ -58,20 +58,20 @@ def finetune_model_tagger(trainfile, validfile, args):
     print(trainfile, validfile)
 
     ###train
-    gradient_accumulation_steps = 2
-    train_batch_size = 2
-    eval_batch_size = 4
-    num_train_epochs = 60  ### epochs for training tagger
-    learning_rate = 5e-1
-    weight_decay = 1e-5
-    max_seq_length = 512
-    num_workers = 4
-    max_grad_norm = 1.0
+    gradient_accumulation_steps = args.gradient_accumulation_steps_entity
+    train_batch_size = args.batch_size_per_gpu_entity
+    eval_batch_size = args.valid_size_per_gpu_entity
+    num_train_epochs = args.max_epoch_entity  ### epochs for training tagger
+    learning_rate = args.lr_entity
+    weight_decay = args.weight_decay_entity
+    max_seq_length = args.max_length
+    num_workers = args.num_workers_entity
+    max_grad_norm = args.max_grad_norm_entity
     log_step = 1
-    model_name = "google/t5-v1_1-large"
+    model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_dir)
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_dir)
     model = T5forFinetuneEntity(t5model, tokenizer, args)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
