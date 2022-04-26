@@ -351,21 +351,60 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
         f1score = 0.0
     # entity chain ROUGE
     r1s, r2s, rls = [], [], []
+    r1exs, r2exs, rlexs = [], [], []
+    r1abss, r2abss, rlabss = [], [], []
     for j in range(len(alltar)):
         sen = allsen[j]
         tar = alltar[j]
         pred = allpred[j]
-        print(sen)
-        print(tar)
-        print(pred)
-        raise Exception
+
+        ents = spacy_nlp(sen).ents
+        senents = [ent.text for ent in ents]
+        ents = spacy_nlp(tar).ents
+        tarents = [ent.text for ent in ents]
+        tarexents, tarabsents = [], []
+        for ent in tarents:
+            if ent in senents:
+                tarexents.append(ent)
+            else:
+                tarabsents.append(ent)
+        ents = spacy_nlp(pred).ents
+        predents = [ent.text for ent in ents]
+        predexents, predabsents = [], []
+        for ent in predents:
+            if ent in senents:
+                predexents.append(ent)
+            else:
+                predabsents.append(ent)
+
         rouge_score = scorer.score(tar, pred)
         r1s.append(rouge_score["rouge1"].fmeasure)
         r2s.append(rouge_score["rouge2"].fmeasure)
         rls.append(rouge_score["rougeLsum"].fmeasure)
+
+        tarex = ",".join(tarexents)
+        predex = ",".join(predexents)
+        rouge_score = scorer.score(tarex, predex)
+        r1exs.append(rouge_score["rouge1"].fmeasure)
+        r2exs.append(rouge_score["rouge2"].fmeasure)
+        rlexs.append(rouge_score["rougeLsum"].fmeasure)
+
+        tarabs = ",".join(tarabsents)
+        predabs = ",".join(predabsents)
+        rouge_score = scorer.score(tarabs, predabs)
+        r1abss.append(rouge_score["rouge1"].fmeasure)
+        r2abss.append(rouge_score["rouge2"].fmeasure)
+        rlabss.append(rouge_score["rougeLsum"].fmeasure)
+
     r1 = np.mean(r1s)
     r2 = np.mean(r2s)
     rl = np.mean(rls)
+    r1ex = np.mean(r1exs)
+    r2ex = np.mean(r2exs)
+    rlex = np.mean(rlexs)
+    r1abs = np.mean(r1abss)
+    r2abs = np.mean(r2abss)
+    rlabs = np.mean(rlabss)
 
     # summary ROUGE
     r1sforsum, r2sforsum, rlsforsum = [], [], []
@@ -385,10 +424,15 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
 
     logger.info('----Validation Results Summary----')
     meanrent = (r1 + r2 + rl) / 3
+    meanrentex = (r1ex + r2ex + rlex) / 3
+    meanrentabs = (r1abs + r2abs + rlabs) / 3
     meanrsum = (r1forsum + r2forsum + rlforsum) / 3
     message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+              "|| Extractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+              "|| Abstractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
               "\nSUMMARY eval: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
-        f1score, meanrent, r1, r2, rl, meanrsum, r1forsum, r2forsum, rlforsum
+        f1score, meanrent, r1, r2, rl, meanrentex, r1ex, r2ex, rlex, meanrentabs, r1abs, r2abs, rlabs,
+        meanrsum, r1forsum, r2forsum, rlforsum
     )
     logger.info(message)
 
