@@ -82,16 +82,16 @@ def get_data(few_shot_seeds, save_path, args):
         f.close()
 
         #### get train and valid data for bert tagger
-        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp)
+        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args)
         alltrainfile.append(docwithlabel_train)
         allvalidfile.append(docwithlabel_vaid)
 
     return alltrainfile, allvalidfile
 
 
-def get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp):
+def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
     #### get predict label of summarization
-    sum_y_pred = get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp)
+    sum_y_pred = get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args)
 
     #### get label for document
     alldocandlabel, allentityfortrain, allentityforvalid = get_doc_label(sum_y_pred, docpath)
@@ -102,7 +102,7 @@ def get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp):
     return docwithlabeltrain, docwithlabelvalid
 
 
-def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
+def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
     #####handle sumfile to fake conll format and use NER model to label it
     allpreds = []
     if not args.if_spacy:
@@ -201,7 +201,30 @@ def get_doc_label(sum_y_pred, docfile):
         oneent = onedata[1]
         alldocandlabel.append([onedoc, oneent])
 
-    return alldocandlabel,allentityfortrain,allentityforvalid
+    return alldocandlabel, allentityfortrain, allentityforvalid
+
+
+def getdocandent(docfile, sum_y_pred):
+    f = open(docfile,'r')
+    alldoc = []
+    while True:
+        oneline = f.readline().strip()
+        if not oneline:
+            break
+        alldoc.append(oneline)
+    f.close()
+    resfortrain = []
+    resforvalid = []
+    trainsize = len(alldoc) // 2
+    allres = []
+    for i in range(len(alldoc)):
+        if i < trainsize:
+            resfortrain.append(alldoc[i] + "\t" + sum_y_pred[i])
+        else:
+            resforvalid.append(alldoc[i] + "\t" + sum_y_pred[i])
+        allres.append(alldoc[i] + "\t" + sum_y_pred[i])
+
+    return allres, resfortrain, resforvalid
 
 
 def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid):
