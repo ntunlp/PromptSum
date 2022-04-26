@@ -70,8 +70,8 @@ def finetune_model_tagger(trainfile, validfile, args):
     log_step = args.log_step
     model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_dir)
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_dir)
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
     model = T5forFinetuneEntity(t5model, tokenizer, args)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
