@@ -156,6 +156,25 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
     return allpreds
 
 
+def getfilewithlabel(file, filewithfakelabel):
+    fin = open(file,'r')
+    alldata = []
+    while True:
+        oneline = fin.readline().strip()
+        if not oneline:
+            break
+        alldata.append(oneline)
+    fin.close()
+
+    fo = open(filewithfakelabel, 'w')
+
+    for onedata in alldata:
+        fo.write(onedata+"\tend\n")
+    fo.close()
+
+    return alldata
+
+
 def get_doc_label(sum_y_pred, docfile):
 
     alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred)
