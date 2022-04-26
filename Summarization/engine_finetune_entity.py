@@ -281,3 +281,153 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
         }
         torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
         torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
+
+
+def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    for i in range(len(alltrainfile)):
+        # model
+        model_name = "google/t5-v1_1-large"
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name,
+                                                             cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        model = T5forNER(args, t5model, tokenizer)
+        n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+        logger.info("The model has {} trainable parameters".format(n_params))
+
+        # load the correct model
+        pos = alltrainfile[i].find("docwithlabel_train")
+        foldername = alltrainfile[i][0:pos]
+        path = foldername + "tagger"
+        print("Loading from: {}".format(path))
+
+        prompt_path = os.path.join(path, "bestckpt_prompt")
+        oneckpt = torch.load(prompt_path)
+        promptnumber = oneckpt["promptnumber"]
+        model.set_prompt_embedding(promptnumber, oneckpt["promptembedding"])
+
+        weights_path = os.path.join(path, "bestckpt_full_model")
+        ckpt = torch.load(weights_path)
+        dic = {}
+        for x in ckpt.keys():
+            dic[x] = ckpt[x]
+        dic["promptembedding"] = model.state_dict()["promptembedding"]
+        model.load_state_dict(dic)
+
+        model.to(args.device)
+
+        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+            model = model.module
+        else:
+            model = model
+
+        max_seq_length = 512
+        num_workers = 4
+        train_batch_size = 4
+        eval_batch_size = 4
+
+        # prepare training data
+        trainfile = alltrainfile[i]
+        train_dataset = T5NERDatasetConll(trainfile, max_seq_length, tokenizer)
+        train_sampler = SequentialSampler(train_dataset)
+        train_dataloader = get_dataloader_tag(num_workers, train_dataset, train_batch_size, max_seq_length,
+                                              train_dataset.tokenizer.pad_token_id, train_sampler)
+
+        # training inference
+        alltartrain, allpredtrain = [], []
+        with torch.no_grad():
+            logger.info(len(train_dataloader))
+            for step, batch in tqdm(enumerate(train_dataloader)):
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                          "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                sen, target, preds = model._generative_step(inputs)
+                sennum = len(sen)
+                for ii in range(sennum):
+                    thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
+                    if thistar == 'end':
+                        continue
+                    alltartrain.append(thistar)
+                    allpredtrain.append(thispred)
+
+        # train export
+        trainfile = args.few_shot_save_dir + 'seed_{}/train.txt'.format(i)
+        all_lists = []
+        with open(trainfile, 'r') as f:
+            count = 0
+            while True:
+                oneline = f.readline().strip()
+                if not oneline:
+                    break
+                linelist = oneline.split("\t")
+                linelist.append(allpredtrain[count])
+                count += 1
+                all_lists.append(linelist)
+        newtrainfile = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(i)
+        count = 0
+        with open(newtrainfile, 'w') as f:
+            for l in all_lists:
+                if count > 0:
+                    f.write("\n")
+                f.write(l[0] + "\t" + l[1] + "\t" + l[2])
+                count += 1
+
+        # prepare valid data
+        validfile = allvalidfile[i]
+        valid_dataset = T5NERDatasetConll(validfile, max_seq_length, tokenizer)
+        valid_sampler = SequentialSampler(valid_dataset)
+        valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length,
+                                              valid_dataset.tokenizer.pad_token_id, valid_sampler)
+
+        # valid inference
+        alltarvalid, allpredvalid = [], []
+        with torch.no_grad():
+            logger.info(len(valid_dataloader))
+            for step, batch in tqdm(enumerate(valid_dataloader)):
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                          "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
+                sen, target, preds = model._generative_step(inputs)
+                sennum = len(sen)
+                for ii in range(sennum):
+                    thissen, thistar, thispred = sen[ii], target[ii], preds[ii]
+                    if thistar == 'end':
+                        continue
+                    alltarvalid.append(thistar)
+                    allpredvalid.append(thispred)
+
+        # validation performance
+        r1s, r2s, rls = [], [], []
+        for j in range(len(alltarvalid)):
+            tar = alltarvalid[j]
+            pred = allpredvalid[j]
+            rouge_score = scorer.score(tar, pred)
+            r1s.append(rouge_score["rouge1"].fmeasure)
+            r2s.append(rouge_score["rouge2"].fmeasure)
+            rls.append(rouge_score["rougeLsum"].fmeasure)
+        r1 = np.mean(r1s)
+        r2 = np.mean(r2s)
+        rl = np.mean(rls)
+        mean_r = (r1 + r2 + rl) / 3
+        print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
+
+        # valid export
+        validfile = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(i)
+        all_lists = []
+        with open(validfile, 'r') as f:
+            count = 0
+            while True:
+                oneline = f.readline().strip()
+                if not oneline:
+                    break
+                linelist = oneline.split("\t")
+                linelist.append(allpredvalid[count])
+                count += 1
+                all_lists.append(linelist)
+        newvalidfile = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(i)
+        count = 0
+        with open(newvalidfile, 'w') as f:
+            for l in all_lists:
+                if count > 0:
+                    f.write("\n")
+                f.write(l[0] + "\t" + l[1] + "\t" + l[2])
+                count += 1
+
