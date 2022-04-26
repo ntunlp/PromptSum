@@ -96,8 +96,9 @@ def pretrain_model(dataset_args, args):
     val_texts = val_texts[:1000]
     print(len(train_texts), len(val_texts))
     if args.debug_pretrain:
-        train_texts = train_texts[:100]
+        train_texts = train_texts[:10]
         val_texts = val_texts[:10]
+        print(len(train_texts), len(val_texts))
 
     # build data
     if args.build_salient_entities:
@@ -127,6 +128,14 @@ def pretrain_model(dataset_args, args):
         print("load the pre-training val data")
         val_texts, valid_target, val_ents = val_data
         print(len(val_texts))
+        if args.debug_pretrain:
+            train_texts = train_texts[:10]
+            train_target = train_target[:10]
+            train_ents = train_ents[:10]
+            val_texts = val_texts[:10]
+            valid_target = valid_target[:10]
+            val_ents = val_ents[:10]
+            print(len(train_texts), len(val_texts))
 
     # datasets
     train_dataset = T5DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
