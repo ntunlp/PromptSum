@@ -103,6 +103,28 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 # optimization
+parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
+                    default=5e-1, help='learning rate')
+parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
+                    default=1, help="batch size per gpu")
+parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
+                    default=4, help="valid size per gpu")
+parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
+                    default=8, help="test size per gpu")
+parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
+                    default=4, help="gradient accumulation steps")
+parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
+                    default=5, help="max epoch number")
+parser.add_argument("--num_workers_pretrain", dest="num_workers_pretrain", type=int,
+                    default=4, help="dataloader num_workers")
+parser.add_argument("--weight_decay_pretrain", dest="weight_decay_pretrain", type=float,
+                    default=0, help="weight decay")
+parser.add_argument("--adam_epsilon_pretrain", dest="adam_epsilon_pretrain", type=float,
+                    default = 1e-8, help="adam epsilon")
+parser.add_argument("--warmup_steps_pretrain", dest="warmup_steps_pretrain", type=float,
+                    default=0.01, help="warmup steps")
+parser.add_argument("--max_grad_norm_pretrain", dest="max_grad_norm_pretrain", type=float,
+                    default=1.0, help="max grad norm")
 ##### entity prompt tuning
 parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                     default=5e-1, help='learning rate')
@@ -153,6 +175,8 @@ parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", typ
                     default=1.0, help="max grad norm")
 
 # evaluation
+parser.add_argument("--log_step_pretrain", dest="log_step", type=int,
+                    default=50, help="how many steps to log")
 parser.add_argument("--log_step", dest="log_step", type=int,
                     default=1, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
@@ -181,7 +205,7 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
 # Overall pipeline
 ##### pre-training
 parser.add_argument("--pretrain", action='store_true',
-                    default=False, help="whether pretrain a T5 tagger")
+                    default=True, help="whether pretrain a T5 tagger")
 parser.add_argument("--build_salient_entities", action='store_true',
                     default=False, help="whether to build the pseudo-labels for pre-training")
 parser.add_argument("--pretraining_train_size", type=int,
@@ -194,7 +218,7 @@ parser.add_argument("--pretrain_all_weights", action='store_true',
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--finetune_entity", action='store_true',
-                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--infer_val_entities", action="store_true",
                     default=False, help="whether to run inference with the T5 entity chain prediction on val set")
 parser.add_argument("--finetune_summary", action='store_true',

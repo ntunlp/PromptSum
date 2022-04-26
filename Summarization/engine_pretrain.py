@@ -39,24 +39,24 @@ def pretrain_model(dataset_args, args):
     print("Pre-training entity tagger...")
 
     ### train
-    gradient_accumulation_steps = 4
-    train_batch_size = 1
-    eval_batch_size = 4
-    num_train_epochs = 5 ### epochs for training tagger
-    learning_rate = 5e-1
+    gradient_accumulation_steps = args.gradient_accumulation_steps_pretrain
+    train_batch_size = args.batch_size_per_gpu_pretrain
+    eval_batch_size = args.valid_size_per_gpu_pretrain
+    num_train_epochs = max_epoch_pretrain ### epochs for training tagger
+    learning_rate = args.lr_pretrain
     if args.pretrain_all_weights:
         print("pretrain_all_weights")
         learning_rate = 5e-5
-    weight_decay = 0
-    max_seq_length = 512
-    num_workers = 4
-    max_grad_norm = 1.0
-    log_step = 50
-    eval_step = 1000
-    model_name = "google/t5-v1_1-large"
+    weight_decay = weight_decay_pretrain
+    max_seq_length = args.max_length
+    num_workers = args.num_workers_pretrain
+    max_grad_norm = args.max_grad_norm_pretrain
+    log_step = args.log_step_pretrain
+    eval_step = args.eval_step
+    model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
     model = T5forPretrain(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
