@@ -104,29 +104,29 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
 
 # optimization
 ##### summary prompt tuning
-parser.add_argument("--train_sample_summary", dest="train_sample", type=bool,
+parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                     default=True, help="dynamic sample or not")
-parser.add_argument("--lr_summary", dest="lr", type=float,
+parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                     default=5e-1, help='learning rate')
-parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu", type=int,
+parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
                     default=1, help="batch size per gpu")
-parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu", type=int,
+parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
                     default=4, help="valid size per gpu")
-parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu", type=int,
+parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
                     default=8, help="test size per gpu")
-parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps", type=int,
+parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
                     default=8, help="gradient accumulation steps")
-parser.add_argument("--max_epoch_summary", dest="max_epoch", type=int,
+parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                     default=30, help="max epoch number")
-parser.add_argument("--num_workers_summary", dest="num_workers", type=int,
+parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                     default=0, help="dataloader num_workers")
-parser.add_argument("--weight_decay_summary", dest="weight_decay", type=float,
+parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--adam_epsilon_summary", dest="adam_epsilon", type=float,
+parser.add_argument("--adam_epsilon_summary", dest="adam_epsilon_summary", type=float,
                     default = 1e-8, help="adam epsilon")
-parser.add_argument("--warmup_steps_summary", dest="warmup_steps", type=float,
+parser.add_argument("--warmup_steps_summary", dest="warmup_steps_summary", type=float,
                     default=0.01, help="warmup steps")
-parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm", type=float,
+parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
                     default=1.0, help="max grad norm")
 
 # evaluation
