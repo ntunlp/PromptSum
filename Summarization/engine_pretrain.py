@@ -42,12 +42,12 @@ def pretrain_model(dataset_args, args):
     gradient_accumulation_steps = args.gradient_accumulation_steps_pretrain
     train_batch_size = args.batch_size_per_gpu_pretrain
     eval_batch_size = args.valid_size_per_gpu_pretrain
-    num_train_epochs = max_epoch_pretrain ### epochs for training tagger
+    num_train_epochs = args.max_epoch_pretrain ### epochs for training tagger
     learning_rate = args.lr_pretrain
     if args.pretrain_all_weights:
         print("pretrain_all_weights")
         learning_rate = 5e-5
-    weight_decay = weight_decay_pretrain
+    weight_decay = args.weight_decay_pretrain
     max_seq_length = args.max_length
     num_workers = args.num_workers_pretrain
     max_grad_norm = args.max_grad_norm_pretrain

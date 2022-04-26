@@ -175,7 +175,7 @@ parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", typ
                     default=1.0, help="max grad norm")
 
 # evaluation
-parser.add_argument("--log_step_pretrain", dest="log_step", type=int,
+parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                     default=50, help="how many steps to log")
 parser.add_argument("--log_step", dest="log_step", type=int,
                     default=1, help="how many steps to log")
