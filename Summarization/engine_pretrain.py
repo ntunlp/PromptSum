@@ -306,7 +306,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     allentnumintar = 0
     allentnuminpre = 0
     hasentnum = 0
-    alltar, allpred = [], []
+    allsen, alltar, allpred = [], [], []
     alltarsum, allpredsum = [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
@@ -337,6 +337,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
                 for j in range(len(allentintar)):
                     if allentintar[j] in alleninpred:
                         hasentnum += 1
+                allsen.append(thissen)
                 alltar.append(thistar)
                 allpred.append(thispred)
     if allentnuminpre!=0 and allentnumintar!=0:
@@ -351,8 +352,13 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     # entity chain ROUGE
     r1s, r2s, rls = [], [], []
     for j in range(len(alltar)):
+        sen = allsen[j]
         tar = alltar[j]
         pred = allpred[j]
+        print(sen)
+        print(tar)
+        print(pred)
+        raise Exception
         rouge_score = scorer.score(tar, pred)
         r1s.append(rouge_score["rouge1"].fmeasure)
         r2s.append(rouge_score["rouge2"].fmeasure)
