@@ -95,8 +95,9 @@ def pretrain_model(dataset_args, args):
     val_texts = [val_texts[x] for x in p]
     val_texts = val_texts[:1000]
     print(len(train_texts), len(val_texts))
-    #train_texts = train_texts[:100]
-    #val_texts = val_texts[:100]
+    if args.debug_pretrain:
+        train_texts = train_texts[:100]
+        val_texts = val_texts[:10]
 
     # build data
     if args.build_salient_entities:
@@ -179,7 +180,7 @@ def pretrain_model(dataset_args, args):
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"
     print("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, 0, output_dir)
+    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
@@ -228,12 +229,12 @@ def pretrain_model(dataset_args, args):
                     allloss = []
 
                 if args.local_rank in [0, -1] and global_step % eval_step == 0:
-                    dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, i, output_dir)
+                    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
                     model.train()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, i, output_dir)
+            dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
             model.train()
 
     torch.cuda.empty_cache()
@@ -286,7 +287,7 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
     return all_texts, all_top_sen, all_ents
 
 
-def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,path):
+def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
@@ -366,13 +367,11 @@ def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,
     rlforsum = np.mean(rlsforsum)
 
     logger.info('----Validation Results Summary----')
-    logger.info(f1score)
-    logger.info(r1)
-    logger.info(r2)
-    logger.info(rl)
-    logger.info(r1forsum)
-    logger.info(r2forsum)
-    logger.info(rlforsum)
+    message = "\nENTITY eval: F1: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+              "\nSUMMARY eval: R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
+        f1score, r1, r2, rl, r1forsum, r2forsum, rlforsum
+    )
+    logger.info(message)
 
     result_dict['val_F1'].append(f1score)
     result_dict['val_r1'].append(r1)

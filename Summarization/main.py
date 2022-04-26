@@ -214,6 +214,8 @@ parser.add_argument("--pretraining_val_size", type=int,
                     default=1000, help="pre-training train size")
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
+parser.add_argument("--debug_pretrain", action='store_true',
+                    default=True, help="whether to just use 100-10 data points")
 ##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
