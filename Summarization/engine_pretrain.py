@@ -348,6 +348,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
             f1score = 0.0
     else:
         f1score = 0.0
+    # entity chain ROUGE
     r1s, r2s, rls = [], [], []
     for j in range(len(alltar)):
         tar = alltar[j]
@@ -360,6 +361,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     r2 = np.mean(r2s)
     rl = np.mean(rls)
 
+    # summary ROUGE
     r1sforsum, r2sforsum, rlsforsum = [], [], []
     for j in range(len(alltarsum)):
         label = alltarsum[j]
@@ -376,9 +378,11 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     rlforsum = np.mean(rlsforsum)
 
     logger.info('----Validation Results Summary----')
-    message = "\nENTITY eval: F1: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
-              "\nSUMMARY eval: R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
-        f1score, r1, r2, rl, r1forsum, r2forsum, rlforsum
+    meanrent = (r1 + r2 + rl) / 3
+    meanrsum = (r1forsum + r2forsum + rlforsum) / 3
+    message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+              "\nSUMMARY eval: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
+        f1score, meanrent, r1, r2, rl, meanrsum, r1forsum, r2forsum, rlforsum
     )
     logger.info(message)
 
