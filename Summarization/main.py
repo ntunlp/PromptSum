@@ -72,14 +72,14 @@ parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-large/",
+                    default="/data/mathieu/hf_models/t5-v1-base/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -171,6 +171,8 @@ parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--finetune_entity", action='store_true',
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+parser.add_argument("--infer_val_entities", action="store_true",
+                    default=False, help="whether to run inference with the T5 entity chain prediction on val set")
 parser.add_argument("--finetune_summary", action='store_true',
                     default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
@@ -341,10 +343,10 @@ def main(args):
                 raise Exception('Model not implemented yet')
 
             ####add t5 tagger
-            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target" and args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
-                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_dir)
+                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_dir)
                 entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
                 print("Loading the pre-trained NER model!")
                 # full model
