@@ -28,25 +28,24 @@ from dataset_finetune_summary import *
 
 
 
-def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
+def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
     step_tot = (len(
-        train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
-    warmup_steps_total = step_tot * args.warmup_steps
+        train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
         train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args, tokenizer, args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
-                                      args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler)
-    valid_dataloader = get_dataloader(args, tokenizer, args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
-                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
+    train_dataloader = get_dataloader(tokenizer, args.num_workers_summary, train_dataset, args.batch_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler, args)
+    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
 
     base_optimizer_arguments = {
-        "lr": args.lr, 
-        "clip_threshold": args.max_grad_norm, 
+        "lr": args.lr_summary,
+        "clip_threshold": args.max_grad_norm_summary,
         "decay_rate": -0.8,
-        "weight_decay": args.weight_decay,
+        "weight_decay": args.weight_decay_summary,
         "scale_parameter": False, 
         "relative_step": False
     }
@@ -79,11 +78,11 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     }
 
     if args.zero_shot:
-        dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,0)
+        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
         return result_dict
 
     global_step = 0
-    for i in range(args.max_epoch):
+    for i in range(args.max_epoch_summary):
         thisevalstep = args.eval_step
         logger.info(i)
         model.train()
@@ -110,7 +109,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
                 loss.backward()
             allloss.append(loss.item())
 
-            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+            if step % args.gradient_accumulation_steps_summary == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
                     scaler.step(optimizer)
                     scaler.update()
@@ -140,7 +139,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
         if args.local_rank in [0, -1]:
             # if i >= 8:
             # do after every epoch
-            dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,i)
+            dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
 
         if args.train_sample:
@@ -154,7 +153,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
-def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler, args):
     collate_fn = SmartBatchingCollate(
         args = args,
         tokenizer = tokenizer,
@@ -175,7 +174,7 @@ def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, m
     return dataloader
 
 
-def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, i):
+def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, args):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:

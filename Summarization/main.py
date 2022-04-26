@@ -42,7 +42,7 @@ from models_summarization.model_mixture_double_discrete import *
 
 parser = argparse.ArgumentParser(description="latentRE")
 
-### general stuff
+# general stuff
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
@@ -50,7 +50,7 @@ parser.add_argument("--cuda", dest="cuda", type=str,
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
-### data
+# data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
                     default="/data/mathieu/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
@@ -61,13 +61,13 @@ parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
-### model
+# model
 parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
                     default=1, help="If ckpt only contains model. Default: True, only contains model")
-# input
+##### input
 parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
-# base model
+##### base model
 parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
@@ -83,12 +83,12 @@ parser.add_argument("--cache_path", dest="cache_path", type=str,
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
-# prompt
+##### prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                     default="concat_right", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
-# discrete prompt
+##### discrete prompt
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
 parser.add_argument("--separator", dest="separator", type=str,
@@ -102,30 +102,31 @@ parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=in
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
-### optimization
-parser.add_argument("--train_sample", dest="train_sample", type=bool,
+# optimization
+##### summary prompt tuning
+parser.add_argument("--train_sample_summary", dest="train_sample", type=bool,
                     default=True, help="dynamic sample or not")
-parser.add_argument("--lr", dest="lr", type=float,
+parser.add_argument("--lr_summary", dest="lr", type=float,
                     default=5e-1, help='learning rate')
-parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
+parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu", type=int,
                     default=1, help="batch size per gpu")
-parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
+parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu", type=int,
                     default=4, help="valid size per gpu")
-parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
+parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu", type=int,
                     default=8, help="test size per gpu")
-parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
+parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps", type=int,
                     default=8, help="gradient accumulation steps")
-parser.add_argument("--max_epoch", dest="max_epoch", type=int,
+parser.add_argument("--max_epoch_summary", dest="max_epoch", type=int,
                     default=30, help="max epoch number")
-parser.add_argument("--num_workers", dest="num_workers", type=int,
+parser.add_argument("--num_workers_summary", dest="num_workers", type=int,
                     default=0, help="dataloader num_workers")
-parser.add_argument("--weight_decay", dest="weight_decay", type=float,
+parser.add_argument("--weight_decay_summary", dest="weight_decay", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
+parser.add_argument("--adam_epsilon_summary", dest="adam_epsilon", type=float,
                     default = 1e-8, help="adam epsilon")
-parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
+parser.add_argument("--warmup_steps_summary", dest="warmup_steps", type=float,
                     default=0.01, help="warmup steps")
-parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
+parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm", type=float,
                     default=1.0, help="max grad norm")
 
 # evaluation
@@ -136,7 +137,7 @@ parser.add_argument("--eval_step", dest="eval_step", type=int,
 parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                     default=True)
 
-##### generation
+# generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
                     default=64, help="max summary length")
 parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -154,8 +155,8 @@ parser.add_argument("--save_model", dest="save_model", type=bool,
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
-##### T5 tagger
-# pre-training
+# Overall pipeline
+##### pre-training
 parser.add_argument("--pretrain", action='store_true',
                     default=False, help="whether pretrain a T5 tagger")
 parser.add_argument("--build_salient_entities", action='store_true',
@@ -166,7 +167,7 @@ parser.add_argument("--pretraining_val_size", type=int,
                     default=1000, help="pre-training train size")
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
-# fine-tuning
+##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
 parser.add_argument("--finetune_entity", action='store_true',
@@ -400,7 +401,7 @@ def main(args):
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             logger.info("The model has {} trainable parameters".format(n_params))
 
-            result_dict = train(args, tokenizer, model, train_dataset, valid_dataset, logger)
+            result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
             logger.info("Finish training")
             logger.info("The model has {} trainable parameters".format(n_params))
             for k in keys:
