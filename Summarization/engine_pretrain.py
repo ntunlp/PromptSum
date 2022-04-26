@@ -298,6 +298,7 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
 
 def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    spacy_nlp = spacy.load("en_core_web_sm")
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -428,7 +429,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     meanrentabs = (r1abs + r2abs + rlabs) / 3
     meanrsum = (r1forsum + r2forsum + rlforsum) / 3
     message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
-              "|| Extractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
+              "\n|| Extractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
               "|| Abstractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
               "\nSUMMARY eval: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
         f1score, meanrent, r1, r2, rl, meanrentex, r1ex, r2ex, rlex, meanrentabs, r1abs, r2abs, rlabs,
