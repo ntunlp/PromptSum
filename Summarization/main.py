@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -45,10 +45,14 @@ parser.add_argument("--cuda", dest="cuda", type=str,
                     default="1", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
+parser.add_argument("--exp_id", dest="exp_id", type=str,
+                    default='001', help="id for current exp")
+parser.add_argument("--debug", action='store_true',
+                    default=False, help="whether debug with breakpoint")
 
 ### data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/qin/DATASETS/PromptSumm/")
+                    default="/export/home/dataset/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -72,13 +76,13 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/qin/hf_models/t5-v1-large/",
+                    default="/export/home/cache",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                    default="../../hf_datasets/", help="dataset cache folder")
+                    default="/export/home/hf_datasets_v1/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                     default="concat_right", choices = ["concat_right", "concat_left"])
@@ -161,7 +165,10 @@ parser.add_argument("--pretraining_train_size", type=int,
 parser.add_argument("--pretraining_val_size", type=int,
                     default=1000, help="pre-training train size")
 parser.add_argument("--pretrain_all_weights", action='store_true',
-                    default=True, help="whether pretrain a T5 tagger")
+                    default=False, help="whether pretrain a T5 tagger")
+parser.add_argument("--pretrain_with_ent_chain", action='store_true',
+                    default=False, help="whether to input entity chain for summ output")
+                    
 # fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
@@ -264,6 +271,7 @@ def main(args):
     few_shot_seeds = range(args.num_seeds)
     # if files don't exist, subsample
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
+        import pdb;pdb.set_trace()
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     # handle few-shot data for BERT tagger
@@ -320,12 +328,12 @@ def main(args):
             raise Exception('Model not implemented yet')
         ####add t5 tagger
         if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
-            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache")
+            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir="/export/home/cache")
             entmodel = T5forNER(args, entbasemodel, enttokenizer)
             print("Loading the pre-trained NER model!")
             # full model
-            ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
+            ckpt = torch.load("/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
             dic = {}
             for x in ckpt.keys():
                 if not (x in ["promptnumber", "promptembedding"]):

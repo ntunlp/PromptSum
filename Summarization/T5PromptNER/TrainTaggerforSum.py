@@ -84,8 +84,8 @@ def get_predict_label_for_sum(args, doc_sum_path, sumpath, spacy_nlp):
         sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
         allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
         model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/export/home/cache")
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/export/home/cache")
         model = T5forNER(args, t5model, tokenizer)
         test_dataset = T5NERDatasetConll(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
@@ -302,8 +302,8 @@ def finetune_model(trainfile, validfile, args):
     log_step = 1
     model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/export/home/cache")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/export/home/cache")
     model = T5forNER(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
@@ -312,18 +312,19 @@ def finetune_model(trainfile, validfile, args):
     if args.use_pretrain_ckpt:
         print("Loading the pre-trained NER model!")
         
-        # full model
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
-        dic = {}
-        for x in ckpt.keys():
-            if not(x in ["promptnumber", "promptembedding", "promptnumberforsum", "promptembeddingforsum"]):
-                dic[x] = ckpt[x]
-        model.load_state_dict(dic)
-        
-        # just prompt
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt_39k")
-        model.promptnumber = ckpt["promptnumber"]
-        model.promptembedding = ckpt["promptembedding"]
+        if args.pretrain_all_weights:
+            # full model
+            ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
+            dic = {}
+            for x in ckpt.keys():
+                if not(x in ["promptnumber", "promptembedding", "promptnumberforsum", "promptembeddingforsum"]):
+                    dic[x] = ckpt[x]
+            model.load_state_dict(dic)
+        else:
+            # just prompt
+            ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt_39k")
+            model.promptnumber = ckpt["promptnumber"]
+            model.promptembedding = ckpt["promptembedding"]
     else:
         ifuseconll = True
         if ifuseconll:
@@ -434,7 +435,7 @@ def finetune_model(trainfile, validfile, args):
     return result_dict
 
 
-def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,path):
+def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,save_dir):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
@@ -536,8 +537,8 @@ def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,
         logger.info("{} epoch, best epoch was updated! valid_meanR of sum and ent: {: >4.5f}".format(i,result_dict['val_meanR'][-1]))
         result_dict["best_val_meanR"] = result_dict['val_meanR'][-1]
         #result_dict["best_val_F1"] = result_dict['val_F1'][-1]
-        if not os.path.exists(path):
-            os.mkdir(path)
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
         model_to_save = model.module if hasattr(model, 'module') else model
         promptembedding = model_to_save.promptembedding.detach().cpu()
         promptembeddingforsum = model_to_save.promptembeddingforsum.detach().cpu()
@@ -547,17 +548,18 @@ def dooneevalforpretrain(modeltoeval,valid_dataloader,args,scaler,result_dict,i,
             "promptnumberforsum": model_to_save.promptnumberforsum,
             "promptembeddingforsum":promptembeddingforsum,
         }
-        torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
-        torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
+        torch.save(ckpt, os.path.join(save_dir, f"{args.exp_id}_bestckpt_prompt"))
+        if args.pretrain_all_weights:
+            torch.save(model.state_dict(), os.path.join(save_dir, f"{args.exp_id}_bestckpt_full_model"))
 
 
 def pretrain_model(dataset_args, args):
     print("Pre-training entity tagger...")
 
     ###train
-    gradient_accumulation_steps = 4
-    train_batch_size = 1
-    eval_batch_size = 4
+    gradient_accumulation_steps = args.gradient_accumulation_steps # 4
+    train_batch_size = args.batch_size_per_gpu #1
+    eval_batch_size = args.valid_size_per_gpu #4
     num_train_epochs = 5 ### epochs for training tagger
     learning_rate = 5e-1
     if args.pretrain_all_weights:
@@ -568,14 +570,12 @@ def pretrain_model(dataset_args, args):
     num_workers = 4
     max_grad_norm = 1.0
     log_step = 50
-    eval_step = 1000
+    eval_step = 4000
     model_name = "google/t5-v1_1-large"
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/qin/hf_models/t5-v1-large/")
+    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir="/export/home/cache")
+    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/export/home/cache")
     model = T5forPretrain(args, t5model, tokenizer)
-    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
 
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
@@ -586,7 +586,7 @@ def pretrain_model(dataset_args, args):
         model.promptnumberforsum = allckpt["promptnumber"]
         model.promptembeddingforsum = allckpt["promptembedding"]
     else:
-        promptnumber = 300
+        promptnumber = args.prompt_number #300
         taskname = "name entity recognition"
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
         print("prompt", promptembedding.shape)
@@ -595,6 +595,9 @@ def pretrain_model(dataset_args, args):
         tasknamesum = "summarization"
         promptembeddingforsum = getpromptembedding(model, tokenizer, promptnumber, tasknamesum)
         model.set_prompt_embedding_sum(promptnumber, promptembeddingforsum)
+
+    n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    logger.info("The model has {} trainable parameters".format(n_params))
 
     model.to(args.device)
 
@@ -695,8 +698,10 @@ def pretrain_model(dataset_args, args):
     }
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"
-    print("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, 0, output_dir)
+    # print("\nEpoch 0 validation:")
+    # if args.local_rank in [0, -1]:
+    #     dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, 0, output_dir)
+    # torch.distributed.barrier()
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
@@ -747,11 +752,13 @@ def pretrain_model(dataset_args, args):
                 if args.local_rank in [0, -1] and global_step % eval_step == 0:
                     dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, i, output_dir)
                     model.train()
+                torch.distributed.barrier()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
             dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, i, output_dir)
             model.train()
+        torch.distributed.barrier()
 
     torch.cuda.empty_cache()
     del model, tokenizer

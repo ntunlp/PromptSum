@@ -1,0 +1,261 @@
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([300, 1024])
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=False, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/26/2022 09:56:38 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([300, 1024])
+04/26/2022 09:57:01 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 783764480 trainable parameters
+04/26/2022 09:57:03 - WARNING - datasets.builder -   Using custom data configuration default
+04/26/2022 09:57:03 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/26/2022 09:57:13 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/26/2022 09:57:13 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/26/2022 09:57:13 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.46M parameters
+04/26/2022 09:57:13 - INFO - T5PromptNER.TrainTaggerforSum -   0
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=100, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/26/2022 10:02:08 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([100, 1024])
+04/26/2022 10:02:32 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 783354880 trainable parameters
+04/26/2022 10:02:34 - WARNING - datasets.builder -   Using custom data configuration default
+04/26/2022 10:02:34 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/26/2022 10:02:44 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/26/2022 10:02:44 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/26/2022 10:02:44 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.07M parameters
+04/26/2022 10:02:44 - INFO - T5PromptNER.TrainTaggerforSum -   0
+Traceback (most recent call last):
+  File "main.py", line 407, in <module>
+    main(args)
+  File "main.py", line 278, in main
+    pretrain_model(dataset_args, args)
+  File "/export/home/PromptSumm/Summarization/T5PromptNER/TrainTaggerforSum.py", line 722, in pretrain_model
+    lossent, losssum = model(inputs_all)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/fairscale/nn/data_parallel/sharded_ddp.py", line 224, in forward
+    return self.module(*inputs, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "./T5PromptNER/NERModel.py", line 231, in forward
+    decoder_attention_mask=batch['target_mask']
+  File "./T5PromptNER/NERModel.py", line 209, in _step_sum
+    labels=labels
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 1565, in forward
+    return_dict=return_dict,
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 1006, in forward
+    output_attentions=output_attentions,
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 643, in forward
+    output_attentions=output_attentions,
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 550, in forward
+    output_attentions=output_attentions,
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/nn/modules/module.py", line 727, in _call_impl
+    result = self.forward(*input, **kwargs)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 492, in forward
+    position_bias = self.compute_bias(real_seq_length, key_length)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/transformers/models/t5/modeling_t5.py", line 404, in compute_bias
+    relative_position_bucket = relative_position_bucket.to(self.relative_attention_bias.weight.device)
+RuntimeError: CUDA error: device-side assert triggered
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  NCCL error in: /opt/conda/conda-bld/pytorch_1603729128610/work/torch/lib/c10d/../c10d/NCCLUtils.hpp:136, unhandled cuda error, NCCL version 2.7.8
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', debug=False, eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=100, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/26/2022 10:21:32 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([100, 1024])
+04/26/2022 10:21:55 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 783354880 trainable parameters
+04/26/2022 10:21:58 - WARNING - datasets.builder -   Using custom data configuration default
+04/26/2022 10:21:58 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/26/2022 10:22:08 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/26/2022 10:22:08 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/26/2022 10:22:08 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.07M parameters
+04/26/2022 10:22:08 - INFO - T5PromptNER.TrainTaggerforSum -   0
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', debug=False, eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/26/2022 10:24:32 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([300, 1024])
+04/26/2022 10:24:54 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 783764480 trainable parameters
+04/26/2022 10:24:58 - WARNING - datasets.builder -   Using custom data configuration default
+04/26/2022 10:24:58 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/26/2022 10:25:07 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/26/2022 10:25:07 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/26/2022 10:25:07 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.46M parameters
+04/26/2022 10:25:07 - INFO - T5PromptNER.TrainTaggerforSum -   0
+04/26/2022 10:27:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 50,  lossent: 3.057090, losssum: 2.510636
+04/26/2022 10:30:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 100,  lossent: 2.912222, losssum: 2.467349
+04/26/2022 10:33:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 150,  lossent: 2.807385, losssum: 2.433007
+04/26/2022 10:35:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 200,  lossent: 2.747582, losssum: 2.411457
+04/26/2022 10:38:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 250,  lossent: 2.720992, losssum: 2.394758
+04/26/2022 10:41:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 300,  lossent: 2.704376, losssum: 2.401923
+04/26/2022 10:44:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 350,  lossent: 2.680739, losssum: 2.387738
+04/26/2022 10:47:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 400,  lossent: 2.669049, losssum: 2.380274
+04/26/2022 10:49:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 450,  lossent: 2.648351, losssum: 2.369931
+04/26/2022 10:52:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 500,  lossent: 2.633945, losssum: 2.362889
+04/26/2022 10:55:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 550,  lossent: 2.627223, losssum: 2.355488
+04/26/2022 10:58:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 600,  lossent: 2.614197, losssum: 2.353822
+04/26/2022 11:00:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 650,  lossent: 2.606380, losssum: 2.350157
+04/26/2022 11:03:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 700,  lossent: 2.594027, losssum: 2.347261
+04/26/2022 11:06:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 750,  lossent: 2.593847, losssum: 2.340507
+04/26/2022 11:09:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 800,  lossent: 2.588301, losssum: 2.336405
+04/26/2022 11:11:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 850,  lossent: 2.577644, losssum: 2.332680
+04/26/2022 11:14:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 900,  lossent: 2.572430, losssum: 2.333397
+04/26/2022 11:17:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 950,  lossent: 2.563411, losssum: 2.328886
+04/26/2022 11:20:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1000,  lossent: 2.559319, losssum: 2.322608
+04/26/2022 11:22:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1050,  lossent: 2.551156, losssum: 2.317682
+04/26/2022 11:25:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1100,  lossent: 2.545469, losssum: 2.314781
+04/26/2022 11:28:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1150,  lossent: 2.541868, losssum: 2.315041
+04/26/2022 11:31:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1200,  lossent: 2.542847, losssum: 2.313484
+04/26/2022 11:34:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1250,  lossent: 2.537662, losssum: 2.310528
+04/26/2022 11:36:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1300,  lossent: 2.534704, losssum: 2.309944
+04/26/2022 11:39:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1350,  lossent: 2.529576, losssum: 2.307095
+04/26/2022 11:42:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1400,  lossent: 2.527509, losssum: 2.301203
+04/26/2022 11:45:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1450,  lossent: 2.526728, losssum: 2.298805
+04/26/2022 11:47:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1500,  lossent: 2.523847, losssum: 2.295514
+04/26/2022 11:50:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1550,  lossent: 2.521865, losssum: 2.292285
+04/26/2022 11:53:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1600,  lossent: 2.519900, losssum: 2.291044
+04/26/2022 11:56:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1650,  lossent: 2.520032, losssum: 2.288789
+04/26/2022 11:58:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1700,  lossent: 2.517765, losssum: 2.286295
+04/26/2022 12:00:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1750,  lossent: 2.515498, losssum: 2.283586
+04/26/2022 12:03:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1800,  lossent: 2.513037, losssum: 2.282036
+04/26/2022 12:05:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1850,  lossent: 2.510964, losssum: 2.280092
+04/26/2022 12:07:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1900,  lossent: 2.505768, losssum: 2.278974
+04/26/2022 12:09:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1950,  lossent: 2.503013, losssum: 2.277196
+04/26/2022 12:11:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2000,  lossent: 2.500611, losssum: 2.274029
+04/26/2022 12:14:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2050,  lossent: 2.497698, losssum: 2.273374
+04/26/2022 12:16:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2100,  lossent: 2.495837, losssum: 2.272593
+04/26/2022 12:18:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2150,  lossent: 2.491566, losssum: 2.271363
+04/26/2022 12:20:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2200,  lossent: 2.489630, losssum: 2.269379
+04/26/2022 12:23:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2250,  lossent: 2.487982, losssum: 2.269433
+04/26/2022 12:26:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2300,  lossent: 2.486326, losssum: 2.267071
+04/26/2022 12:28:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2350,  lossent: 2.484550, losssum: 2.265351
+04/26/2022 12:31:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2400,  lossent: 2.483215, losssum: 2.262946
+04/26/2022 12:34:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2450,  lossent: 2.480800, losssum: 2.261439
+04/26/2022 12:37:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2500,  lossent: 2.479471, losssum: 2.259351
+04/26/2022 12:39:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2550,  lossent: 2.479081, losssum: 2.258589
+04/26/2022 12:42:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2600,  lossent: 2.476979, losssum: 2.256640
+04/26/2022 12:45:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2650,  lossent: 2.474793, losssum: 2.255239
+04/26/2022 12:48:02 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2700,  lossent: 2.474170, losssum: 2.254869
+04/26/2022 12:50:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2750,  lossent: 2.474171, losssum: 2.253319
+04/26/2022 12:53:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2800,  lossent: 2.472020, losssum: 2.253501
+04/26/2022 12:56:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2850,  lossent: 2.470375, losssum: 2.252540
+04/26/2022 12:59:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2900,  lossent: 2.469434, losssum: 2.251916
+04/26/2022 13:01:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2950,  lossent: 2.468827, losssum: 2.250844
+04/26/2022 13:04:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3000,  lossent: 2.468777, losssum: 2.250395
+04/26/2022 13:07:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3050,  lossent: 2.467608, losssum: 2.249593
+04/26/2022 13:10:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3100,  lossent: 2.465916, losssum: 2.248054
+04/26/2022 13:13:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3150,  lossent: 2.465000, losssum: 2.247527
+04/26/2022 13:15:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3200,  lossent: 2.464315, losssum: 2.246498
+04/26/2022 13:18:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3250,  lossent: 2.462564, losssum: 2.246404
+04/26/2022 13:21:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3300,  lossent: 2.462420, losssum: 2.244819
+04/26/2022 13:24:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3350,  lossent: 2.460381, losssum: 2.243277
+04/26/2022 13:26:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3400,  lossent: 2.459385, losssum: 2.243086
+04/26/2022 13:29:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3450,  lossent: 2.458948, losssum: 2.243032
+04/26/2022 13:32:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3500,  lossent: 2.457791, losssum: 2.242014
+04/26/2022 13:35:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3550,  lossent: 2.457678, losssum: 2.241779
+04/26/2022 13:38:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3600,  lossent: 2.456859, losssum: 2.240987
+04/26/2022 13:40:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3650,  lossent: 2.456786, losssum: 2.241047
+04/26/2022 13:43:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3700,  lossent: 2.456038, losssum: 2.239553
+04/26/2022 13:46:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3750,  lossent: 2.455316, losssum: 2.239013
+04/26/2022 13:48:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3800,  lossent: 2.455011, losssum: 2.238140
+04/26/2022 13:51:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3850,  lossent: 2.453377, losssum: 2.237006
+04/26/2022 13:54:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3900,  lossent: 2.451073, losssum: 2.235464
+04/26/2022 13:57:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3950,  lossent: 2.450373, losssum: 2.234472
+04/26/2022 14:00:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4000,  lossent: 2.448993, losssum: 2.234346
+04/26/2022 14:00:10 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]0it [00:10, ?it/s]
+Traceback (most recent call last):
+  File "main.py", line 409, in <module>
+    main(args)
+  File "main.py", line 280, in main
+    pretrain_model(dataset_args, args)
+  File "/export/home/PromptSumm/Summarization/T5PromptNER/TrainTaggerforSum.py", line 753, in pretrain_model
+    dooneevalforpretrain(model, valid_dataloader, args, scaler, result_dict, i, output_dir)
+  File "/export/home/PromptSumm/Summarization/T5PromptNER/TrainTaggerforSum.py", line 460, in dooneevalforpretrain
+    sensum, targetsum, predssum, sen, target, preds = model._generative_step(inputs_all)
+  File "./T5PromptNER/NERModel.py", line 274, in _generative_step
+    all_attention_mask = torch.cat([attention_mask, mask_prompt, batch['entity_mask']], 1)
+NameError: name 'attention_mask' is not defined
+Traceback (most recent call last):
+  File "/export/home/anaconda/envs/a100/lib/python3.6/runpy.py", line 193, in _run_module_as_main
+    "__main__", mod_spec)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/runpy.py", line 85, in _run_code
+    exec(code, run_globals)
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/distributed/launch.py", line 260, in <module>
+    main()
+  File "/export/home/anaconda/envs/a100/lib/python3.6/site-packages/torch/distributed/launch.py", line 256, in main
+    cmd=cmd)
+subprocess.CalledProcessError: Command '['/export/home/anaconda/envs/a100/bin/python', '-u', 'main.py', '--local_rank=0', '--pretrain_t5_tagger', '--valid_size_per_gpu', '16', '--batch_size_per_gpu', '2', '--cuda', '3', '--exp_id', '006', '--concat_mode', 'concat_right', '--pretrain_all_weights', '--prompt_number', '300', '--pretrain_with_ent_chain']' returned non-zero exit status 1.
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='3', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', debug=False, eval_step=100000, exp_id='006', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=True, pretrain_t5_tagger=True, pretrain_with_ent_chain=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/27/2022 01:04:03 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+pretrain_all_weights
+prompt torch.Size([300, 1024])
+04/27/2022 01:04:29 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 783764480 trainable parameters
+04/27/2022 01:04:32 - WARNING - datasets.builder -   Using custom data configuration default
+04/27/2022 01:04:32 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/27/2022 01:04:42 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/27/2022 01:04:42 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/27/2022 01:04:42 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.46M parameters
+
+Epoch 0 validation:
+04/27/2022 01:04:42 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:31, 31.99s/it]2it [00:58, 30.39s/it]3it [01:24, 28.96s/it]4it [01:52, 28.84s/it]5it [02:19, 28.14s/it]6it [02:44, 27.29s/it]7it [03:10, 26.90s/it]8it [03:36, 26.55s/it]9it [04:05, 27.39s/it]10it [04:33, 27.61s/it]11it [05:01, 27.51s/it]12it [05:30, 28.05s/it]13it [06:00, 28.65s/it]14it [06:29, 28.72s/it]15it [06:58, 28.82s/it]16it [07:27, 29.03s/it]17it [07:58, 29.36s/it]18it [08:26, 29.12s/it]19it [08:53, 28.49s/it]20it [09:18, 27.27s/it]21it [09:43, 26.65s/it]22it [10:08, 26.13s/it]23it [10:36, 26.88s/it]24it [11:05, 27.35s/it]25it [11:33, 27.67s/it]26it [12:00, 27.27s/it]27it [12:28, 27.53s/it]28it [12:54, 27.14s/it]29it [13:22, 27.39s/it]30it [13:50, 27.76s/it]31it [14:19, 27.95s/it]32it [14:47, 28.07s/it]33it [15:15, 28.05s/it]34it [15:43, 27.86s/it]35it [16:12, 28.31s/it]36it [16:40, 28.26s/it]37it [17:09, 28.49s/it]

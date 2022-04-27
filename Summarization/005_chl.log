@@ -1,0 +1,595 @@
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_left', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='005', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+prompt torch.Size([300, 1024])
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_left', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='005', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_left', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='005', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=2, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_left', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, exp_id='005', few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+04/26/2022 09:34:05 - INFO - __main__ -   gen token = summerizationcnndm , gen token id = 32100
+
+pre-train tagger
+Pre-training entity tagger...
+prompt torch.Size([300, 1024])
+04/26/2022 09:34:25 - INFO - T5PromptNER.TrainTaggerforSum -   The model has 614400 trainable parameters
+04/26/2022 09:34:29 - WARNING - datasets.builder -   Using custom data configuration default
+04/26/2022 09:34:29 - WARNING - datasets.builder -   Reusing dataset xsum (/export/home/hf_datasets_v1/xsum/default/1.2.0/f9abaabb5e2b2a1e765c25417264722d31877b34ec34b437c53242f6e5c30d6d)
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+04/26/2022 09:34:37 - INFO - T5PromptNER.TrainTaggerforSum -   Begin pre-train...
+04/26/2022 09:34:37 - INFO - root -   Training is not really distributed, single rank. Deactivating buckets
+04/26/2022 09:34:37 - INFO - root -   ShardedDDP bucket size: 0.00M parameters, model size 747.46M parameters
+04/26/2022 09:34:37 - INFO - T5PromptNER.TrainTaggerforSum -   0
+04/26/2022 09:36:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 50,  lossent: 3.635148, losssum: 2.864565
+04/26/2022 09:37:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 100,  lossent: 3.478152, losssum: 2.858645
+04/26/2022 09:39:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 150,  lossent: 3.333297, losssum: 2.827632
+04/26/2022 09:40:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 200,  lossent: 3.235506, losssum: 2.822720
+04/26/2022 09:42:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 250,  lossent: 3.187904, losssum: 2.814834
+04/26/2022 09:44:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 300,  lossent: 3.144909, losssum: 2.819488
+04/26/2022 09:45:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 350,  lossent: 3.149681, losssum: 2.816428
+04/26/2022 09:47:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 400,  lossent: 3.208743, losssum: 2.810407
+04/26/2022 09:49:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 450,  lossent: 3.170428, losssum: 2.800878
+04/26/2022 09:50:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 500,  lossent: 3.139330, losssum: 2.794568
+04/26/2022 09:52:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 550,  lossent: 3.118376, losssum: 2.788427
+04/26/2022 09:53:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 600,  lossent: 3.098241, losssum: 2.788333
+04/26/2022 09:55:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 650,  lossent: 3.084433, losssum: 2.784082
+04/26/2022 09:56:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 700,  lossent: 3.065018, losssum: 2.780506
+04/26/2022 09:58:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 750,  lossent: 3.059187, losssum: 2.778974
+04/26/2022 10:00:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 800,  lossent: 3.047890, losssum: 2.775748
+04/26/2022 10:01:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 850,  lossent: 3.032050, losssum: 2.771455
+04/26/2022 10:03:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 900,  lossent: 3.020771, losssum: 2.771278
+04/26/2022 10:04:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 950,  lossent: 3.007400, losssum: 2.768180
+04/26/2022 10:06:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1000,  lossent: 2.997165, losssum: 2.762252
+04/26/2022 10:07:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1050,  lossent: 2.984380, losssum: 2.758261
+04/26/2022 10:09:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1100,  lossent: 2.973776, losssum: 2.756497
+04/26/2022 10:11:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1150,  lossent: 2.967225, losssum: 2.758552
+04/26/2022 10:12:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1200,  lossent: 2.965317, losssum: 2.758913
+04/26/2022 10:14:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1250,  lossent: 2.957214, losssum: 2.758198
+04/26/2022 10:16:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1300,  lossent: 2.952068, losssum: 2.757998
+04/26/2022 10:17:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1350,  lossent: 2.944158, losssum: 2.755842
+04/26/2022 10:19:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1400,  lossent: 2.941241, losssum: 2.753303
+04/26/2022 10:21:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1450,  lossent: 2.938656, losssum: 2.753260
+04/26/2022 10:22:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1500,  lossent: 2.932406, losssum: 2.750663
+04/26/2022 10:24:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1550,  lossent: 2.927979, losssum: 2.750151
+04/26/2022 10:26:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1600,  lossent: 2.923376, losssum: 2.749519
+04/26/2022 10:28:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1650,  lossent: 2.921657, losssum: 2.748198
+04/26/2022 10:29:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1700,  lossent: 2.917260, losssum: 2.746214
+04/26/2022 10:31:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1750,  lossent: 2.913571, losssum: 2.745129
+04/26/2022 10:33:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1800,  lossent: 2.909571, losssum: 2.745215
+04/26/2022 10:35:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1850,  lossent: 2.906652, losssum: 2.745331
+04/26/2022 10:37:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1900,  lossent: 2.899684, losssum: 2.744137
+04/26/2022 10:39:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 1950,  lossent: 2.894806, losssum: 2.742959
+04/26/2022 10:41:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2000,  lossent: 2.891356, losssum: 2.741387
+04/26/2022 10:43:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2050,  lossent: 2.887168, losssum: 2.741140
+04/26/2022 10:45:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2100,  lossent: 2.883598, losssum: 2.740877
+04/26/2022 10:47:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2150,  lossent: 2.877529, losssum: 2.739707
+04/26/2022 10:49:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2200,  lossent: 2.874140, losssum: 2.738082
+04/26/2022 10:51:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2250,  lossent: 2.870965, losssum: 2.738771
+04/26/2022 10:53:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2300,  lossent: 2.867690, losssum: 2.737422
+04/26/2022 10:55:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2350,  lossent: 2.864807, losssum: 2.735776
+04/26/2022 10:57:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2400,  lossent: 2.862663, losssum: 2.734541
+04/26/2022 10:59:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2450,  lossent: 2.858751, losssum: 2.733457
+04/26/2022 11:01:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2500,  lossent: 2.856543, losssum: 2.732625
+04/26/2022 11:03:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2550,  lossent: 2.854929, losssum: 2.732412
+04/26/2022 11:05:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2600,  lossent: 2.851138, losssum: 2.731472
+04/26/2022 11:06:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2650,  lossent: 2.847816, losssum: 2.730830
+04/26/2022 11:08:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2700,  lossent: 2.846538, losssum: 2.730724
+04/26/2022 11:10:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2750,  lossent: 2.845554, losssum: 2.730291
+04/26/2022 11:12:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2800,  lossent: 2.842197, losssum: 2.729761
+04/26/2022 11:14:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2850,  lossent: 2.839249, losssum: 2.729457
+04/26/2022 11:16:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2900,  lossent: 2.837139, losssum: 2.730208
+04/26/2022 11:18:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 2950,  lossent: 2.835904, losssum: 2.729645
+04/26/2022 11:20:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3000,  lossent: 2.834980, losssum: 2.729696
+04/26/2022 11:22:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3050,  lossent: 2.832890, losssum: 2.729322
+04/26/2022 11:24:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3100,  lossent: 2.830781, losssum: 2.728642
+04/26/2022 11:26:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3150,  lossent: 2.829280, losssum: 2.727982
+04/26/2022 11:28:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3200,  lossent: 2.827726, losssum: 2.728102
+04/26/2022 11:30:02 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3250,  lossent: 2.825140, losssum: 2.727812
+04/26/2022 11:31:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3300,  lossent: 2.824052, losssum: 2.727288
+04/26/2022 11:34:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3350,  lossent: 2.821072, losssum: 2.726238
+04/26/2022 11:35:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3400,  lossent: 2.818642, losssum: 2.726801
+04/26/2022 11:37:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3450,  lossent: 2.817177, losssum: 2.727116
+04/26/2022 11:39:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3500,  lossent: 2.815123, losssum: 2.726973
+04/26/2022 11:41:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3550,  lossent: 2.814093, losssum: 2.727057
+04/26/2022 11:43:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3600,  lossent: 2.812113, losssum: 2.727137
+04/26/2022 11:45:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3650,  lossent: 2.811123, losssum: 2.727711
+04/26/2022 11:47:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3700,  lossent: 2.809165, losssum: 2.726787
+04/26/2022 11:49:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3750,  lossent: 2.807769, losssum: 2.726744
+04/26/2022 11:51:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3800,  lossent: 2.806895, losssum: 2.726687
+04/26/2022 11:53:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3850,  lossent: 2.804606, losssum: 2.726011
+04/26/2022 11:55:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3900,  lossent: 2.801490, losssum: 2.724925
+04/26/2022 11:57:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 3950,  lossent: 2.800436, losssum: 2.724539
+04/26/2022 11:58:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4000,  lossent: 2.798474, losssum: 2.724628
+04/26/2022 11:58:47 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:24, 24.59s/it]2it [00:45, 23.39s/it]3it [01:05, 22.60s/it]4it [01:27, 22.30s/it]5it [01:48, 21.98s/it]6it [02:08, 21.45s/it]7it [02:29, 21.24s/it]8it [02:49, 20.82s/it]9it [03:09, 20.53s/it]10it [03:32, 21.28s/it]11it [03:55, 21.68s/it]12it [04:16, 21.66s/it]13it [04:36, 21.17s/it]14it [04:57, 21.12s/it]15it [05:18, 21.15s/it]16it [05:39, 20.90s/it]17it [05:59, 20.76s/it]18it [06:19, 20.46s/it]19it [06:39, 20.27s/it]20it [07:02, 21.08s/it]21it [07:23, 21.19s/it]22it [07:44, 20.96s/it]23it [08:05, 21.05s/it]24it [08:26, 21.06s/it]25it [08:47, 20.98s/it]26it [09:07, 20.63s/it]27it [09:26, 20.24s/it]28it [09:43, 19.44s/it]29it [10:04, 19.67s/it]30it [10:25, 20.03s/it]31it [10:45, 20.28s/it]32it [11:05, 20.19s/it]33it [11:28, 20.83s/it]34it [11:49, 20.99s/it]35it [12:11, 21.30s/it]36it [12:31, 21.01s/it]37it [12:52, 21.01s/it]38it [13:15, 21.35s/it]39it [13:36, 21.28s/it]40it [13:57, 21.21s/it]41it [14:17, 20.88s/it]42it [14:37, 20.56s/it]43it [14:58, 20.72s/it]44it [15:19, 20.82s/it]45it [15:40, 21.01s/it]46it [16:02, 21.23s/it]47it [16:23, 21.10s/it]48it [16:42, 20.54s/it]49it [17:02, 20.40s/it]50it [17:23, 20.53s/it]51it [17:43, 20.28s/it]52it [18:03, 20.31s/it]53it [18:23, 20.29s/it]54it [18:43, 20.21s/it]55it [19:03, 19.96s/it]56it [19:23, 20.00s/it]57it [19:44, 20.23s/it]58it [20:08, 21.43s/it]59it [20:31, 21.93s/it]60it [20:54, 22.34s/it]61it [21:18, 22.85s/it]62it [21:42, 23.12s/it]63it [21:57, 20.75s/it]63it [21:57, 20.92s/it]
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.1329002808988764
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.14142604135970813
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.036665905693446514
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.13003666940323574
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.2533927566918884
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.04066497876538426
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0.15405140449016907
+04/26/2022 12:20:51 - INFO - T5PromptNER.TrainTaggerforSum -   0 epoch, best epoch was updated! valid_meanR of sum and ent: 0.12604
+04/26/2022 12:22:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4050,  lossent: 2.797364, losssum: 2.724449
+04/26/2022 12:24:46 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4100,  lossent: 2.796268, losssum: 2.724358
+04/26/2022 12:26:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4150,  lossent: 2.794509, losssum: 2.724177
+04/26/2022 12:28:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4200,  lossent: 2.793118, losssum: 2.723680
+04/26/2022 12:30:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4250,  lossent: 2.792237, losssum: 2.723920
+04/26/2022 12:32:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4300,  lossent: 2.791092, losssum: 2.723795
+04/26/2022 12:34:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4350,  lossent: 2.790417, losssum: 2.723455
+04/26/2022 12:36:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4400,  lossent: 2.788817, losssum: 2.722920
+04/26/2022 12:38:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4450,  lossent: 2.787800, losssum: 2.722506
+04/26/2022 12:40:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4500,  lossent: 2.786608, losssum: 2.722552
+04/26/2022 12:42:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4550,  lossent: 2.784852, losssum: 2.722000
+04/26/2022 12:44:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4600,  lossent: 2.783660, losssum: 2.721744
+04/26/2022 12:46:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4650,  lossent: 2.782046, losssum: 2.721840
+04/26/2022 12:48:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4700,  lossent: 2.781005, losssum: 2.722002
+04/26/2022 12:49:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4750,  lossent: 2.779910, losssum: 2.721748
+04/26/2022 12:51:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4800,  lossent: 2.778618, losssum: 2.722005
+04/26/2022 12:53:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4850,  lossent: 2.776940, losssum: 2.721862
+04/26/2022 12:55:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4900,  lossent: 2.775898, losssum: 2.721116
+04/26/2022 12:57:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 4950,  lossent: 2.774815, losssum: 2.721296
+04/26/2022 12:59:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5000,  lossent: 2.773611, losssum: 2.720705
+04/26/2022 13:01:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5050,  lossent: 2.772729, losssum: 2.720937
+04/26/2022 13:03:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5100,  lossent: 2.771208, losssum: 2.720267
+04/26/2022 13:05:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5150,  lossent: 2.770277, losssum: 2.720083
+04/26/2022 13:07:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5200,  lossent: 2.769269, losssum: 2.720043
+04/26/2022 13:09:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5250,  lossent: 2.768388, losssum: 2.719378
+04/26/2022 13:11:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5300,  lossent: 2.766560, losssum: 2.718895
+04/26/2022 13:13:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5350,  lossent: 2.765020, losssum: 2.718553
+04/26/2022 13:15:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5400,  lossent: 2.764463, losssum: 2.718366
+04/26/2022 13:17:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5450,  lossent: 2.763767, losssum: 2.718713
+04/26/2022 13:18:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5500,  lossent: 2.762112, losssum: 2.718300
+04/26/2022 13:20:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5550,  lossent: 2.760591, losssum: 2.717806
+04/26/2022 13:22:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5600,  lossent: 2.759408, losssum: 2.717347
+04/26/2022 13:24:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5650,  lossent: 2.759043, losssum: 2.717352
+04/26/2022 13:26:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5700,  lossent: 2.758537, losssum: 2.717375
+04/26/2022 13:28:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5750,  lossent: 2.756871, losssum: 2.717375
+04/26/2022 13:30:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5800,  lossent: 2.755575, losssum: 2.716782
+04/26/2022 13:32:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5850,  lossent: 2.754997, losssum: 2.717314
+04/26/2022 13:34:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5900,  lossent: 2.754247, losssum: 2.717549
+04/26/2022 13:36:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 5950,  lossent: 2.753539, losssum: 2.717197
+04/26/2022 13:38:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6000,  lossent: 2.753063, losssum: 2.717594
+04/26/2022 13:40:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6050,  lossent: 2.751905, losssum: 2.717522
+04/26/2022 13:42:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6100,  lossent: 2.750210, losssum: 2.717313
+04/26/2022 13:44:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6150,  lossent: 2.749319, losssum: 2.717292
+04/26/2022 13:45:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6200,  lossent: 2.748245, losssum: 2.717060
+04/26/2022 13:47:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6250,  lossent: 2.747321, losssum: 2.716919
+04/26/2022 13:49:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6300,  lossent: 2.746261, losssum: 2.716206
+04/26/2022 13:51:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6350,  lossent: 2.745952, losssum: 2.716583
+04/26/2022 13:53:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6400,  lossent: 2.744726, losssum: 2.716205
+04/26/2022 13:55:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6450,  lossent: 2.743914, losssum: 2.716014
+04/26/2022 13:57:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6500,  lossent: 2.742951, losssum: 2.715837
+04/26/2022 13:59:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6550,  lossent: 2.741830, losssum: 2.715427
+04/26/2022 14:01:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6600,  lossent: 2.741198, losssum: 2.715266
+04/26/2022 14:02:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6650,  lossent: 2.740275, losssum: 2.714643
+04/26/2022 14:04:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6700,  lossent: 2.739843, losssum: 2.714423
+04/26/2022 14:05:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6750,  lossent: 2.738941, losssum: 2.714146
+04/26/2022 14:07:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6800,  lossent: 2.737661, losssum: 2.713986
+04/26/2022 14:09:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6850,  lossent: 2.736127, losssum: 2.713533
+04/26/2022 14:11:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6900,  lossent: 2.734840, losssum: 2.713411
+04/26/2022 14:12:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 6950,  lossent: 2.734303, losssum: 2.713249
+04/26/2022 14:14:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7000,  lossent: 2.733462, losssum: 2.713524
+04/26/2022 14:15:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7050,  lossent: 2.732442, losssum: 2.713184
+04/26/2022 14:17:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7100,  lossent: 2.731557, losssum: 2.713116
+04/26/2022 14:18:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7150,  lossent: 2.730580, losssum: 2.712991
+04/26/2022 14:20:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7200,  lossent: 2.729737, losssum: 2.712454
+04/26/2022 14:21:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7250,  lossent: 2.729337, losssum: 2.712474
+04/26/2022 14:23:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7300,  lossent: 2.728433, losssum: 2.712615
+04/26/2022 14:24:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7350,  lossent: 2.727298, losssum: 2.712521
+04/26/2022 14:26:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7400,  lossent: 2.726661, losssum: 2.712352
+04/26/2022 14:28:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7450,  lossent: 2.726218, losssum: 2.712500
+04/26/2022 14:29:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7500,  lossent: 2.725377, losssum: 2.712368
+04/26/2022 14:31:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7550,  lossent: 2.725090, losssum: 2.712046
+04/26/2022 14:32:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7600,  lossent: 2.725077, losssum: 2.712046
+04/26/2022 14:34:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7650,  lossent: 2.724320, losssum: 2.711841
+04/26/2022 14:36:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7700,  lossent: 2.724089, losssum: 2.711700
+04/26/2022 14:37:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7750,  lossent: 2.723556, losssum: 2.711677
+04/26/2022 14:39:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7800,  lossent: 2.722875, losssum: 2.711256
+04/26/2022 14:40:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7850,  lossent: 2.721834, losssum: 2.711308
+04/26/2022 14:42:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7900,  lossent: 2.721267, losssum: 2.710880
+04/26/2022 14:43:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 7950,  lossent: 2.720504, losssum: 2.710830
+04/26/2022 14:45:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8000,  lossent: 2.719918, losssum: 2.710779
+04/26/2022 14:45:18 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:19, 19.03s/it]2it [00:37, 19.00s/it]3it [00:56, 18.96s/it]4it [01:16, 19.12s/it]5it [01:34, 18.98s/it]6it [01:54, 19.04s/it]7it [02:13, 19.10s/it]8it [02:31, 18.87s/it]9it [02:51, 19.04s/it]10it [03:11, 19.29s/it]11it [03:30, 19.40s/it]12it [03:50, 19.58s/it]13it [04:10, 19.67s/it]14it [04:29, 19.42s/it]15it [04:48, 19.39s/it]16it [05:07, 19.24s/it]17it [05:27, 19.33s/it]18it [05:45, 18.92s/it]19it [06:03, 18.81s/it]20it [06:23, 19.18s/it]21it [06:43, 19.27s/it]22it [07:03, 19.44s/it]23it [07:22, 19.32s/it]24it [07:41, 19.30s/it]25it [08:01, 19.49s/it]26it [08:19, 19.14s/it]27it [08:38, 19.10s/it]28it [08:55, 18.48s/it]29it [09:14, 18.74s/it]30it [09:35, 19.13s/it]31it [09:54, 19.08s/it]32it [10:12, 18.99s/it]33it [10:31, 19.02s/it]34it [10:49, 18.71s/it]35it [11:08, 18.79s/it]36it [11:27, 18.71s/it]37it [11:46, 18.79s/it]38it [12:06, 19.17s/it]39it [12:25, 19.21s/it]40it [12:44, 19.08s/it]41it [13:04, 19.45s/it]42it [13:24, 19.46s/it]43it [13:42, 19.24s/it]44it [14:01, 19.09s/it]45it [14:21, 19.25s/it]46it [14:40, 19.36s/it]47it [15:01, 19.69s/it]48it [15:19, 19.24s/it]49it [15:38, 19.14s/it]50it [15:58, 19.43s/it]51it [16:17, 19.29s/it]52it [16:36, 19.14s/it]53it [16:55, 19.08s/it]54it [17:14, 19.24s/it]55it [17:33, 19.08s/it]56it [17:53, 19.45s/it]57it [18:13, 19.55s/it]58it [18:33, 19.62s/it]59it [18:52, 19.50s/it]60it [19:12, 19.59s/it]61it [19:33, 19.89s/it]62it [19:52, 19.78s/it]63it [20:04, 17.50s/it]63it [20:04, 19.13s/it]
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.14194659776055127
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.14976050679769148
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.039790643696699914
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.13575588637125857
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.2554014305028347
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.0408967741043021
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0.15472379820635268
+04/26/2022 15:05:28 - INFO - T5PromptNER.TrainTaggerforSum -   0 epoch, best epoch was updated! valid_meanR of sum and ent: 0.12939
+04/26/2022 15:06:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8050,  lossent: 2.719437, losssum: 2.710895
+04/26/2022 15:08:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8100,  lossent: 2.718448, losssum: 2.710842
+04/26/2022 15:10:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8150,  lossent: 2.717511, losssum: 2.710720
+04/26/2022 15:11:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8200,  lossent: 2.717153, losssum: 2.710874
+04/26/2022 15:13:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8250,  lossent: 2.716414, losssum: 2.710817
+04/26/2022 15:14:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8300,  lossent: 2.715489, losssum: 2.710297
+04/26/2022 15:16:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8350,  lossent: 2.714866, losssum: 2.710150
+04/26/2022 15:18:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8400,  lossent: 2.714195, losssum: 2.710000
+04/26/2022 15:19:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8450,  lossent: 2.713261, losssum: 2.709789
+04/26/2022 15:21:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8500,  lossent: 2.712094, losssum: 2.709778
+04/26/2022 15:23:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8550,  lossent: 2.711405, losssum: 2.709662
+04/26/2022 15:24:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8600,  lossent: 2.710932, losssum: 2.709761
+04/26/2022 15:26:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8650,  lossent: 2.709960, losssum: 2.709894
+04/26/2022 15:27:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8700,  lossent: 2.709294, losssum: 2.709805
+04/26/2022 15:29:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8750,  lossent: 2.709037, losssum: 2.709871
+04/26/2022 15:30:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8800,  lossent: 2.708564, losssum: 2.709663
+04/26/2022 15:32:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8850,  lossent: 2.708276, losssum: 2.709762
+04/26/2022 15:33:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8900,  lossent: 2.708733, losssum: 2.709430
+04/26/2022 15:35:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 8950,  lossent: 2.708286, losssum: 2.709254
+04/26/2022 15:36:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9000,  lossent: 2.707979, losssum: 2.709413
+04/26/2022 15:38:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9050,  lossent: 2.707296, losssum: 2.709151
+04/26/2022 15:40:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9100,  lossent: 2.706795, losssum: 2.708833
+04/26/2022 15:41:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9150,  lossent: 2.705999, losssum: 2.708916
+04/26/2022 15:43:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9200,  lossent: 2.705683, losssum: 2.709142
+04/26/2022 15:44:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9250,  lossent: 2.705351, losssum: 2.708747
+04/26/2022 15:46:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9300,  lossent: 2.704995, losssum: 2.708770
+04/26/2022 15:47:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9350,  lossent: 2.704588, losssum: 2.708664
+04/26/2022 15:49:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9400,  lossent: 2.703603, losssum: 2.708497
+04/26/2022 15:51:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9450,  lossent: 2.703019, losssum: 2.708432
+04/26/2022 15:52:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9500,  lossent: 2.702836, losssum: 2.708721
+04/26/2022 15:54:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9550,  lossent: 2.702195, losssum: 2.708360
+04/26/2022 15:55:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9600,  lossent: 2.701585, losssum: 2.708445
+04/26/2022 15:57:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9650,  lossent: 2.701423, losssum: 2.708151
+04/26/2022 15:59:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9700,  lossent: 2.700839, losssum: 2.707966
+04/26/2022 16:00:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9750,  lossent: 2.700366, losssum: 2.707406
+04/26/2022 16:02:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9800,  lossent: 2.699922, losssum: 2.707589
+04/26/2022 16:04:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9850,  lossent: 2.699744, losssum: 2.707474
+04/26/2022 16:05:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9900,  lossent: 2.699153, losssum: 2.707092
+04/26/2022 16:07:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 9950,  lossent: 2.698292, losssum: 2.706773
+04/26/2022 16:09:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10000,  lossent: 2.698560, losssum: 2.706975
+04/26/2022 16:10:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10050,  lossent: 2.698478, losssum: 2.706835
+04/26/2022 16:12:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10100,  lossent: 2.697865, losssum: 2.706742
+04/26/2022 16:13:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10150,  lossent: 2.697582, losssum: 2.706738
+04/26/2022 16:15:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10200,  lossent: 2.697243, losssum: 2.706897
+04/26/2022 16:17:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10250,  lossent: 2.696512, losssum: 2.706667
+04/26/2022 16:18:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10300,  lossent: 2.696054, losssum: 2.706599
+04/26/2022 16:20:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10350,  lossent: 2.695507, losssum: 2.706532
+04/26/2022 16:21:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10400,  lossent: 2.695059, losssum: 2.706625
+04/26/2022 16:23:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10450,  lossent: 2.694387, losssum: 2.706446
+04/26/2022 16:25:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10500,  lossent: 2.693734, losssum: 2.706163
+04/26/2022 16:26:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10550,  lossent: 2.693381, losssum: 2.706278
+04/26/2022 16:28:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10600,  lossent: 2.692872, losssum: 2.706298
+04/26/2022 16:29:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10650,  lossent: 2.692201, losssum: 2.706088
+04/26/2022 16:30:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10700,  lossent: 2.691697, losssum: 2.706152
+04/26/2022 16:32:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10750,  lossent: 2.691154, losssum: 2.706378
+04/26/2022 16:34:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10800,  lossent: 2.690655, losssum: 2.709731
+04/26/2022 16:35:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10850,  lossent: 2.690174, losssum: 2.713067
+04/26/2022 16:37:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10900,  lossent: 2.689846, losssum: 2.716563
+04/26/2022 16:38:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 10950,  lossent: 2.689371, losssum: 2.719607
+04/26/2022 16:40:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11000,  lossent: 2.688853, losssum: 2.722344
+04/26/2022 16:41:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11050,  lossent: 2.688406, losssum: 2.724978
+04/26/2022 16:43:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11100,  lossent: 2.687693, losssum: 2.727398
+04/26/2022 16:45:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11150,  lossent: 2.687384, losssum: 2.729599
+04/26/2022 16:46:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11200,  lossent: 2.686866, losssum: 2.731737
+04/26/2022 16:48:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11250,  lossent: 2.686386, losssum: 2.733794
+04/26/2022 16:50:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11300,  lossent: 2.686522, losssum: 2.736056
+04/26/2022 16:51:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11350,  lossent: 2.686156, losssum: 2.737745
+04/26/2022 16:53:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11400,  lossent: 2.685703, losssum: 2.739602
+04/26/2022 16:55:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11450,  lossent: 2.685171, losssum: 2.741027
+04/26/2022 16:56:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11500,  lossent: 2.684981, losssum: 2.742706
+04/26/2022 16:58:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11550,  lossent: 2.684722, losssum: 2.744120
+04/26/2022 17:00:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11600,  lossent: 2.684249, losssum: 2.745227
+04/26/2022 17:01:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11650,  lossent: 2.683820, losssum: 2.746179
+04/26/2022 17:03:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11700,  lossent: 2.683531, losssum: 2.746932
+04/26/2022 17:05:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11750,  lossent: 2.683008, losssum: 2.748356
+04/26/2022 17:06:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11800,  lossent: 2.682786, losssum: 2.749130
+04/26/2022 17:08:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11850,  lossent: 2.682357, losssum: 2.749411
+04/26/2022 17:10:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11900,  lossent: 2.681894, losssum: 2.749814
+04/26/2022 17:11:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 11950,  lossent: 2.681358, losssum: 2.750194
+04/26/2022 17:13:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12000,  lossent: 2.681112, losssum: 2.750654
+04/26/2022 17:13:08 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:19, 19.41s/it]2it [00:38, 19.21s/it]3it [00:57, 19.33s/it]4it [01:16, 19.26s/it]5it [01:36, 19.38s/it]6it [01:55, 19.32s/it]7it [02:14, 19.25s/it]8it [02:33, 19.16s/it]9it [02:53, 19.21s/it]10it [03:11, 19.08s/it]11it [03:30, 19.06s/it]12it [03:50, 19.21s/it]13it [04:10, 19.32s/it]14it [04:28, 19.15s/it]15it [04:47, 19.11s/it]16it [05:07, 19.15s/it]17it [05:28, 19.81s/it]18it [05:46, 19.24s/it]19it [06:04, 19.04s/it]20it [06:23, 19.03s/it]21it [06:43, 19.11s/it]22it [07:01, 18.98s/it]23it [07:21, 19.12s/it]24it [07:40, 19.11s/it]25it [07:59, 18.99s/it]26it [08:17, 18.95s/it]27it [08:36, 18.93s/it]28it [08:53, 18.34s/it]29it [09:13, 18.72s/it]30it [09:32, 18.92s/it]31it [09:52, 19.04s/it]32it [10:11, 19.15s/it]33it [10:30, 19.11s/it]34it [10:48, 18.80s/it]35it [11:07, 18.73s/it]36it [11:25, 18.68s/it]37it [11:45, 18.98s/it]38it [12:05, 19.46s/it]39it [12:24, 19.30s/it]40it [12:44, 19.43s/it]41it [13:05, 19.80s/it]42it [13:25, 19.93s/it]43it [13:44, 19.67s/it]44it [14:03, 19.42s/it]45it [14:23, 19.57s/it]46it [14:42, 19.58s/it]47it [15:03, 19.82s/it]48it [15:21, 19.37s/it]49it [15:40, 19.31s/it]50it [16:01, 19.79s/it]51it [16:22, 20.00s/it]52it [16:41, 19.83s/it]53it [17:00, 19.58s/it]54it [17:20, 19.58s/it]55it [17:39, 19.39s/it]56it [17:58, 19.51s/it]57it [18:18, 19.52s/it]58it [18:38, 19.60s/it]59it [18:57, 19.44s/it]60it [19:16, 19.36s/it]61it [19:37, 19.71s/it]62it [19:56, 19.62s/it]63it [20:08, 17.33s/it]63it [20:08, 19.18s/it]
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.14304179233089187
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.15573546967198698
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.042313933294918886
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.14294536722253634
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.23943627074275292
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.03400801419716045
+04/26/2022 17:33:21 - INFO - T5PromptNER.TrainTaggerforSum -   0.14562689649171312
+04/26/2022 17:35:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12050,  lossent: 2.680802, losssum: 2.751034
+04/26/2022 17:36:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12100,  lossent: 2.680263, losssum: 2.751419
+04/26/2022 17:38:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12150,  lossent: 2.680061, losssum: 2.752046
+04/26/2022 17:39:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12200,  lossent: 2.679926, losssum: 2.752569
+04/26/2022 17:41:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12250,  lossent: 2.679531, losssum: 2.752961
+04/26/2022 17:43:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12300,  lossent: 2.678806, losssum: 2.752925
+04/26/2022 17:44:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12350,  lossent: 2.678563, losssum: 2.753067
+04/26/2022 17:46:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12400,  lossent: 2.677915, losssum: 2.752843
+04/26/2022 17:47:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12450,  lossent: 2.677385, losssum: 2.752777
+04/26/2022 17:49:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12500,  lossent: 2.677036, losssum: 2.752560
+04/26/2022 17:50:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12550,  lossent: 2.676997, losssum: 2.752566
+04/26/2022 17:52:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12600,  lossent: 2.676613, losssum: 2.752667
+04/26/2022 17:54:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12650,  lossent: 2.676168, losssum: 2.752733
+04/26/2022 17:55:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12700,  lossent: 2.675788, losssum: 2.752490
+04/26/2022 17:57:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12750,  lossent: 2.675538, losssum: 2.752227
+04/26/2022 17:58:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12800,  lossent: 2.675352, losssum: 2.752186
+04/26/2022 18:00:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12850,  lossent: 2.674878, losssum: 2.752447
+04/26/2022 18:01:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12900,  lossent: 2.674428, losssum: 2.752377
+04/26/2022 18:03:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 12950,  lossent: 2.674041, losssum: 2.752195
+04/26/2022 18:04:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13000,  lossent: 2.673326, losssum: 2.751968
+04/26/2022 18:06:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13050,  lossent: 2.672927, losssum: 2.751834
+04/26/2022 18:07:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13100,  lossent: 2.672291, losssum: 2.751536
+04/26/2022 18:09:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13150,  lossent: 2.671813, losssum: 2.751453
+04/26/2022 18:10:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13200,  lossent: 2.671490, losssum: 2.751324
+04/26/2022 18:12:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13250,  lossent: 2.670974, losssum: 2.751160
+04/26/2022 18:13:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13300,  lossent: 2.670548, losssum: 2.751100
+04/26/2022 18:15:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13350,  lossent: 2.670195, losssum: 2.750954
+04/26/2022 18:17:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13400,  lossent: 2.669710, losssum: 2.750808
+04/26/2022 18:18:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13450,  lossent: 2.669349, losssum: 2.750615
+04/26/2022 18:20:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13500,  lossent: 2.668990, losssum: 2.750510
+04/26/2022 18:21:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13550,  lossent: 2.668852, losssum: 2.750499
+04/26/2022 18:23:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13600,  lossent: 2.668325, losssum: 2.750112
+04/26/2022 18:25:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13650,  lossent: 2.668028, losssum: 2.749726
+04/26/2022 18:26:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13700,  lossent: 2.667338, losssum: 2.749382
+04/26/2022 18:28:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13750,  lossent: 2.666834, losssum: 2.749080
+04/26/2022 18:29:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13800,  lossent: 2.666380, losssum: 2.748876
+04/26/2022 18:31:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13850,  lossent: 2.666010, losssum: 2.748830
+04/26/2022 18:32:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13900,  lossent: 2.665552, losssum: 2.748716
+04/26/2022 18:34:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 13950,  lossent: 2.665421, losssum: 2.748659
+04/26/2022 18:36:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14000,  lossent: 2.665091, losssum: 2.748514
+04/26/2022 18:37:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14050,  lossent: 2.664855, losssum: 2.748564
+04/26/2022 18:39:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14100,  lossent: 2.664384, losssum: 2.748232
+04/26/2022 18:41:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14150,  lossent: 2.664022, losssum: 2.747880
+04/26/2022 18:42:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14200,  lossent: 2.663589, losssum: 2.747761
+04/26/2022 18:44:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14250,  lossent: 2.663350, losssum: 2.747764
+04/26/2022 18:46:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14300,  lossent: 2.662716, losssum: 2.747354
+04/26/2022 18:47:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14350,  lossent: 2.662119, losssum: 2.746876
+04/26/2022 18:49:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14400,  lossent: 2.661982, losssum: 2.746632
+04/26/2022 18:50:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14450,  lossent: 2.661466, losssum: 2.746390
+04/26/2022 18:52:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14500,  lossent: 2.661191, losssum: 2.746200
+04/26/2022 18:54:02 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14550,  lossent: 2.661003, losssum: 2.746241
+04/26/2022 18:55:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14600,  lossent: 2.660641, losssum: 2.746095
+04/26/2022 18:57:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14650,  lossent: 2.660548, losssum: 2.746006
+04/26/2022 18:58:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14700,  lossent: 2.660308, losssum: 2.745788
+04/26/2022 19:00:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14750,  lossent: 2.660190, losssum: 2.745537
+04/26/2022 19:02:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14800,  lossent: 2.659720, losssum: 2.745254
+04/26/2022 19:03:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14850,  lossent: 2.659420, losssum: 2.745145
+04/26/2022 19:05:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14900,  lossent: 2.659327, losssum: 2.745023
+04/26/2022 19:06:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 14950,  lossent: 2.659212, losssum: 2.744994
+04/26/2022 19:08:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15000,  lossent: 2.658911, losssum: 2.744853
+04/26/2022 19:10:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15050,  lossent: 2.658433, losssum: 2.744614
+04/26/2022 19:11:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15100,  lossent: 2.658287, losssum: 2.744405
+04/26/2022 19:13:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15150,  lossent: 2.658088, losssum: 2.744375
+04/26/2022 19:14:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15200,  lossent: 2.657681, losssum: 2.744106
+04/26/2022 19:16:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15250,  lossent: 2.657312, losssum: 2.744037
+04/26/2022 19:18:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15300,  lossent: 2.657197, losssum: 2.743747
+04/26/2022 19:19:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15350,  lossent: 2.656709, losssum: 2.743594
+04/26/2022 19:21:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15400,  lossent: 2.656476, losssum: 2.743501
+04/26/2022 19:22:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15450,  lossent: 2.656100, losssum: 2.743302
+04/26/2022 19:24:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15500,  lossent: 2.656017, losssum: 2.743172
+04/26/2022 19:25:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15550,  lossent: 2.655502, losssum: 2.742939
+04/26/2022 19:27:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15600,  lossent: 2.655094, losssum: 2.742724
+04/26/2022 19:28:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15650,  lossent: 2.654738, losssum: 2.742573
+04/26/2022 19:30:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15700,  lossent: 2.654637, losssum: 2.742589
+04/26/2022 19:31:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15750,  lossent: 2.654331, losssum: 2.742478
+04/26/2022 19:33:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15800,  lossent: 2.653969, losssum: 2.742225
+04/26/2022 19:35:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15850,  lossent: 2.653753, losssum: 2.742088
+04/26/2022 19:36:47 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15900,  lossent: 2.653384, losssum: 2.741922
+04/26/2022 19:38:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 15950,  lossent: 2.652942, losssum: 2.741748
+04/26/2022 19:39:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16000,  lossent: 2.652683, losssum: 2.741657
+04/26/2022 19:39:37 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:18, 18.76s/it]2it [00:37, 18.79s/it]3it [00:56, 18.80s/it]4it [01:15, 18.81s/it]5it [01:33, 18.74s/it]6it [01:52, 18.74s/it]7it [02:11, 18.85s/it]8it [02:30, 18.74s/it]9it [02:49, 18.89s/it]10it [03:08, 18.95s/it]11it [03:27, 18.97s/it]12it [03:46, 19.10s/it]13it [04:06, 19.15s/it]14it [04:24, 19.04s/it]15it [04:44, 19.32s/it]16it [05:04, 19.26s/it]17it [05:23, 19.33s/it]18it [05:41, 19.00s/it]19it [06:00, 18.90s/it]20it [06:19, 18.88s/it]21it [06:38, 18.93s/it]22it [06:57, 18.94s/it]23it [07:16, 18.93s/it]24it [07:36, 19.20s/it]25it [07:54, 19.03s/it]26it [08:12, 18.78s/it]27it [08:31, 18.60s/it]28it [08:47, 17.93s/it]29it [09:07, 18.61s/it]30it [09:26, 18.71s/it]31it [09:45, 18.68s/it]32it [10:04, 18.80s/it]33it [10:23, 18.82s/it]34it [10:40, 18.46s/it]35it [10:59, 18.52s/it]36it [11:17, 18.53s/it]37it [11:36, 18.67s/it]38it [11:56, 19.02s/it]39it [12:15, 18.95s/it]40it [12:34, 19.07s/it]41it [12:55, 19.40s/it]42it [13:14, 19.47s/it]43it [13:33, 19.29s/it]44it [13:52, 19.21s/it]45it [14:12, 19.44s/it]46it [14:32, 19.54s/it]47it [14:52, 19.64s/it]48it [15:10, 19.31s/it]49it [15:30, 19.30s/it]50it [15:50, 19.56s/it]51it [16:08, 19.31s/it]52it [16:27, 19.19s/it]53it [16:46, 19.02s/it]54it [17:05, 19.07s/it]55it [17:24, 19.00s/it]56it [17:43, 19.05s/it]57it [18:02, 19.00s/it]58it [18:21, 19.01s/it]59it [18:40, 18.88s/it]60it [18:59, 19.02s/it]61it [19:20, 19.71s/it]62it [19:40, 19.72s/it]63it [19:54, 17.87s/it]63it [19:54, 18.96s/it]
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.14492753623188406
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.15747648026307381
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.043347075042538666
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.1456730648936818
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.26209142354133363
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.042731916728332604
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0.15658401603572195
+04/26/2022 19:59:37 - INFO - T5PromptNER.TrainTaggerforSum -   0 epoch, best epoch was updated! valid_meanR of sum and ent: 0.13465
+04/26/2022 20:01:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16050,  lossent: 2.652442, losssum: 2.741603
+04/26/2022 20:02:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16100,  lossent: 2.652249, losssum: 2.741445
+04/26/2022 20:04:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16150,  lossent: 2.652000, losssum: 2.741229
+04/26/2022 20:06:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16200,  lossent: 2.651798, losssum: 2.741155
+04/26/2022 20:07:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16250,  lossent: 2.651457, losssum: 2.741113
+04/26/2022 20:09:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16300,  lossent: 2.651277, losssum: 2.741003
+04/26/2022 20:11:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16350,  lossent: 2.650879, losssum: 2.740842
+04/26/2022 20:12:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16400,  lossent: 2.650650, losssum: 2.740676
+04/26/2022 20:14:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16450,  lossent: 2.650252, losssum: 2.740654
+04/26/2022 20:15:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16500,  lossent: 2.649958, losssum: 2.740574
+04/26/2022 20:17:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16550,  lossent: 2.649894, losssum: 2.740500
+04/26/2022 20:18:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16600,  lossent: 2.649452, losssum: 2.740412
+04/26/2022 20:20:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16650,  lossent: 2.649246, losssum: 2.740171
+04/26/2022 20:22:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16700,  lossent: 2.649006, losssum: 2.739940
+04/26/2022 20:23:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16750,  lossent: 2.648716, losssum: 2.739703
+04/26/2022 20:25:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16800,  lossent: 2.648572, losssum: 2.739562
+04/26/2022 20:26:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16850,  lossent: 2.648131, losssum: 2.739460
+04/26/2022 20:28:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16900,  lossent: 2.647743, losssum: 2.739385
+04/26/2022 20:29:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 16950,  lossent: 2.647322, losssum: 2.739496
+04/26/2022 20:31:37 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17000,  lossent: 2.647207, losssum: 2.739386
+04/26/2022 20:33:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17050,  lossent: 2.646809, losssum: 2.739205
+04/26/2022 20:34:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17100,  lossent: 2.646650, losssum: 2.739050
+04/26/2022 20:36:25 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17150,  lossent: 2.646410, losssum: 2.738999
+04/26/2022 20:38:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17200,  lossent: 2.646125, losssum: 2.738923
+04/26/2022 20:39:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17250,  lossent: 2.645909, losssum: 2.738839
+04/26/2022 20:41:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17300,  lossent: 2.645587, losssum: 2.738693
+04/26/2022 20:42:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17350,  lossent: 2.645368, losssum: 2.738630
+04/26/2022 20:44:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17400,  lossent: 2.645113, losssum: 2.738470
+04/26/2022 20:45:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17450,  lossent: 2.644942, losssum: 2.738242
+04/26/2022 20:47:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17500,  lossent: 2.644602, losssum: 2.738099
+04/26/2022 20:49:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17550,  lossent: 2.644361, losssum: 2.737959
+04/26/2022 20:50:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17600,  lossent: 2.643965, losssum: 2.737676
+04/26/2022 20:52:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17650,  lossent: 2.643741, losssum: 2.737533
+04/26/2022 20:53:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17700,  lossent: 2.643433, losssum: 2.737473
+04/26/2022 20:55:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17750,  lossent: 2.643113, losssum: 2.737232
+04/26/2022 20:57:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17800,  lossent: 2.642847, losssum: 2.737085
+04/26/2022 20:58:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17850,  lossent: 2.642680, losssum: 2.737068
+04/26/2022 21:00:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17900,  lossent: 2.642610, losssum: 2.736929
+04/26/2022 21:01:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 17950,  lossent: 2.642267, losssum: 2.736739
+04/26/2022 21:03:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18000,  lossent: 2.641932, losssum: 2.736596
+04/26/2022 21:04:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18050,  lossent: 2.641545, losssum: 2.736585
+04/26/2022 21:06:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18100,  lossent: 2.641553, losssum: 2.736400
+04/26/2022 21:08:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18150,  lossent: 2.641270, losssum: 2.736184
+04/26/2022 21:09:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18200,  lossent: 2.641091, losssum: 2.736180
+04/26/2022 21:11:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18250,  lossent: 2.640877, losssum: 2.736021
+04/26/2022 21:12:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18300,  lossent: 2.640784, losssum: 2.735997
+04/26/2022 21:14:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18350,  lossent: 2.640473, losssum: 2.735838
+04/26/2022 21:15:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18400,  lossent: 2.640441, losssum: 2.735863
+04/26/2022 21:17:27 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18450,  lossent: 2.640488, losssum: 2.735767
+04/26/2022 21:19:01 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18500,  lossent: 2.640268, losssum: 2.735603
+04/26/2022 21:20:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18550,  lossent: 2.639925, losssum: 2.735336
+04/26/2022 21:22:11 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18600,  lossent: 2.639994, losssum: 2.735450
+04/26/2022 21:23:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18650,  lossent: 2.639406, losssum: 2.735108
+04/26/2022 21:25:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18700,  lossent: 2.639408, losssum: 2.735075
+04/26/2022 21:26:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18750,  lossent: 2.639122, losssum: 2.735135
+04/26/2022 21:28:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18800,  lossent: 2.638887, losssum: 2.735015
+04/26/2022 21:30:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18850,  lossent: 2.638798, losssum: 2.734825
+04/26/2022 21:31:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18900,  lossent: 2.638429, losssum: 2.734621
+04/26/2022 21:33:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 18950,  lossent: 2.638061, losssum: 2.734485
+04/26/2022 21:34:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19000,  lossent: 2.637532, losssum: 2.734226
+04/26/2022 21:36:33 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19050,  lossent: 2.637378, losssum: 2.734087
+04/26/2022 21:38:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19100,  lossent: 2.637331, losssum: 2.734025
+04/26/2022 21:40:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19150,  lossent: 2.636929, losssum: 2.733916
+04/26/2022 21:41:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19200,  lossent: 2.636644, losssum: 2.733823
+04/26/2022 21:43:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19250,  lossent: 2.636410, losssum: 2.733747
+04/26/2022 21:44:56 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19300,  lossent: 2.636142, losssum: 2.733470
+04/26/2022 21:46:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19350,  lossent: 2.635886, losssum: 2.733352
+04/26/2022 21:48:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19400,  lossent: 2.635708, losssum: 2.733279
+04/26/2022 21:49:36 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19450,  lossent: 2.635790, losssum: 2.733201
+04/26/2022 21:51:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19500,  lossent: 2.635562, losssum: 2.733080
+04/26/2022 21:52:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19550,  lossent: 2.635328, losssum: 2.732847
+04/26/2022 21:54:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19600,  lossent: 2.635247, losssum: 2.732725
+04/26/2022 21:55:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19650,  lossent: 2.634836, losssum: 2.732630
+04/26/2022 21:57:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19700,  lossent: 2.634589, losssum: 2.732626
+04/26/2022 21:59:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19750,  lossent: 2.634559, losssum: 2.732488
+04/26/2022 22:00:53 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19800,  lossent: 2.634421, losssum: 2.732422
+04/26/2022 22:02:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19850,  lossent: 2.633994, losssum: 2.732306
+04/26/2022 22:04:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19900,  lossent: 2.633722, losssum: 2.732107
+04/26/2022 22:05:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 19950,  lossent: 2.633451, losssum: 2.732082
+04/26/2022 22:07:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20000,  lossent: 2.633277, losssum: 2.731906
+04/26/2022 22:07:10 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:19, 19.66s/it]2it [00:38, 19.34s/it]3it [00:57, 19.25s/it]4it [01:15, 19.04s/it]5it [01:34, 18.94s/it]6it [01:53, 18.79s/it]7it [02:11, 18.83s/it]8it [02:30, 18.64s/it]9it [02:48, 18.71s/it]10it [03:08, 18.91s/it]11it [03:27, 19.04s/it]12it [03:46, 19.10s/it]13it [04:06, 19.21s/it]14it [04:25, 19.10s/it]15it [04:44, 19.19s/it]16it [05:05, 19.75s/it]17it [05:24, 19.59s/it]18it [05:42, 19.05s/it]19it [06:01, 19.00s/it]20it [06:20, 18.89s/it]21it [06:40, 19.15s/it]22it [06:58, 18.96s/it]23it [07:17, 19.04s/it]24it [07:37, 19.22s/it]25it [07:56, 19.07s/it]26it [08:14, 18.99s/it]27it [08:33, 18.89s/it]28it [08:50, 18.19s/it]29it [09:09, 18.48s/it]30it [09:29, 18.95s/it]31it [09:47, 18.76s/it]32it [10:08, 19.38s/it]33it [10:28, 19.53s/it]34it [10:48, 19.64s/it]35it [11:07, 19.42s/it]36it [11:25, 19.05s/it]37it [11:44, 19.06s/it]38it [12:04, 19.23s/it]39it [12:23, 19.31s/it]40it [12:41, 19.01s/it]41it [13:01, 19.19s/it]42it [13:21, 19.32s/it]43it [13:39, 19.11s/it]44it [13:58, 19.08s/it]45it [14:18, 19.39s/it]46it [14:38, 19.43s/it]47it [14:59, 19.90s/it]48it [15:17, 19.44s/it]49it [15:36, 19.30s/it]50it [15:56, 19.40s/it]51it [16:15, 19.47s/it]52it [16:34, 19.15s/it]53it [16:53, 19.01s/it]54it [17:12, 19.07s/it]55it [17:30, 18.91s/it]56it [17:49, 18.94s/it]57it [18:09, 19.17s/it]58it [18:28, 19.10s/it]59it [18:46, 18.75s/it]60it [19:05, 18.73s/it]61it [19:24, 19.03s/it]62it [19:44, 19.15s/it]63it [19:56, 17.02s/it]63it [19:56, 18.99s/it]
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.15223097112860892
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.16018128895243317
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.043424447891627894
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.1467430008258483
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.26114256860809015
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.04180001155662231
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0.1557991147351449
+04/26/2022 22:27:11 - INFO - T5PromptNER.TrainTaggerforSum -   0 epoch, best epoch was updated! valid_meanR of sum and ent: 0.13485
+04/26/2022 22:28:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20050,  lossent: 2.633165, losssum: 2.731814
+04/26/2022 22:30:23 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20100,  lossent: 2.632958, losssum: 2.731707
+04/26/2022 22:32:07 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20150,  lossent: 2.632613, losssum: 2.731602
+04/26/2022 22:33:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20200,  lossent: 2.632435, losssum: 2.731494
+04/26/2022 22:35:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20250,  lossent: 2.632240, losssum: 2.731348
+04/26/2022 22:37:13 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20300,  lossent: 2.632075, losssum: 2.731212
+04/26/2022 22:38:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20350,  lossent: 2.631786, losssum: 2.731082
+04/26/2022 22:40:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20400,  lossent: 2.631639, losssum: 2.730916
+04/26/2022 22:42:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20450,  lossent: 2.631628, losssum: 2.730899
+04/26/2022 22:43:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20500,  lossent: 2.631401, losssum: 2.730910
+04/26/2022 22:45:15 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20550,  lossent: 2.631184, losssum: 2.730818
+04/26/2022 22:46:45 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20600,  lossent: 2.631161, losssum: 2.730749
+04/26/2022 22:48:22 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20650,  lossent: 2.630971, losssum: 2.730726
+04/26/2022 22:50:02 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20700,  lossent: 2.630779, losssum: 2.730563
+04/26/2022 22:51:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20750,  lossent: 2.630588, losssum: 2.730637
+04/26/2022 22:53:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20800,  lossent: 2.630530, losssum: 2.730556
+04/26/2022 22:54:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20850,  lossent: 2.630141, losssum: 2.730270
+04/26/2022 22:56:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20900,  lossent: 2.629875, losssum: 2.730121
+04/26/2022 22:57:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 20950,  lossent: 2.629741, losssum: 2.729923
+04/26/2022 22:59:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21000,  lossent: 2.629563, losssum: 2.729848
+04/26/2022 23:01:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21050,  lossent: 2.629438, losssum: 2.729754
+04/26/2022 23:02:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21100,  lossent: 2.629514, losssum: 2.729745
+04/26/2022 23:04:26 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21150,  lossent: 2.629401, losssum: 2.729574
+04/26/2022 23:06:04 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21200,  lossent: 2.629196, losssum: 2.729585
+04/26/2022 23:07:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21250,  lossent: 2.628854, losssum: 2.729374
+04/26/2022 23:09:17 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21300,  lossent: 2.628662, losssum: 2.729253
+04/26/2022 23:10:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21350,  lossent: 2.628515, losssum: 2.729254
+04/26/2022 23:12:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21400,  lossent: 2.628345, losssum: 2.729106
+04/26/2022 23:14:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21450,  lossent: 2.628180, losssum: 2.728986
+04/26/2022 23:15:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21500,  lossent: 2.627983, losssum: 2.728801
+04/26/2022 23:17:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21550,  lossent: 2.627851, losssum: 2.728756
+04/26/2022 23:19:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21600,  lossent: 2.627908, losssum: 2.728735
+04/26/2022 23:21:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21650,  lossent: 2.627625, losssum: 2.728560
+04/26/2022 23:22:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21700,  lossent: 2.627492, losssum: 2.728537
+04/26/2022 23:24:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21750,  lossent: 2.627397, losssum: 2.728343
+04/26/2022 23:25:42 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21800,  lossent: 2.627281, losssum: 2.728313
+04/26/2022 23:27:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21850,  lossent: 2.627102, losssum: 2.728126
+04/26/2022 23:28:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21900,  lossent: 2.626935, losssum: 2.728114
+04/26/2022 23:30:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 21950,  lossent: 2.626835, losssum: 2.728044
+04/26/2022 23:31:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22000,  lossent: 2.626666, losssum: 2.727934
+04/26/2022 23:33:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22050,  lossent: 2.626435, losssum: 2.727707
+04/26/2022 23:35:06 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22100,  lossent: 2.626338, losssum: 2.727619
+04/26/2022 23:36:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22150,  lossent: 2.626144, losssum: 2.727526
+04/26/2022 23:38:14 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22200,  lossent: 2.625925, losssum: 2.727454
+04/26/2022 23:39:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22250,  lossent: 2.625778, losssum: 2.727405
+04/26/2022 23:41:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22300,  lossent: 2.625601, losssum: 2.727292
+04/26/2022 23:42:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22350,  lossent: 2.625488, losssum: 2.727151
+04/26/2022 23:44:35 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22400,  lossent: 2.625307, losssum: 2.727060
+04/26/2022 23:46:16 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22450,  lossent: 2.625178, losssum: 2.726954
+04/26/2022 23:47:50 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22500,  lossent: 2.626105, losssum: 2.726883
+04/26/2022 23:49:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22550,  lossent: 2.626127, losssum: 2.726790
+04/26/2022 23:51:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22600,  lossent: 2.625764, losssum: 2.726566
+04/26/2022 23:52:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22650,  lossent: 2.625450, losssum: 2.726473
+04/26/2022 23:53:58 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22700,  lossent: 2.625256, losssum: 2.726222
+04/26/2022 23:55:28 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22750,  lossent: 2.625283, losssum: 2.726283
+04/26/2022 23:56:59 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22800,  lossent: 2.625142, losssum: 2.726291
+04/26/2022 23:58:26 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22850,  lossent: 2.624945, losssum: 2.726227
+04/27/2022 00:00:02 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22900,  lossent: 2.624759, losssum: 2.726135
+04/27/2022 00:01:38 - INFO - T5PromptNER.TrainTaggerforSum -   step: 22950,  lossent: 2.624626, losssum: 2.726141
+04/27/2022 00:03:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23000,  lossent: 2.624548, losssum: 2.726058
+04/27/2022 00:04:54 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23050,  lossent: 2.624334, losssum: 2.725951
+04/27/2022 00:06:31 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23100,  lossent: 2.624149, losssum: 2.725905
+04/27/2022 00:08:10 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23150,  lossent: 2.623952, losssum: 2.725675
+04/27/2022 00:09:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23200,  lossent: 2.623828, losssum: 2.725608
+04/27/2022 00:11:24 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23250,  lossent: 2.623636, losssum: 2.725525
+04/27/2022 00:12:57 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23300,  lossent: 2.623432, losssum: 2.725467
+04/27/2022 00:14:32 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23350,  lossent: 2.623243, losssum: 2.725302
+04/27/2022 00:16:12 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23400,  lossent: 2.623076, losssum: 2.725281
+04/27/2022 00:17:52 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23450,  lossent: 2.622720, losssum: 2.725109
+04/27/2022 00:19:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23500,  lossent: 2.622522, losssum: 2.724961
+04/27/2022 00:21:09 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23550,  lossent: 2.622477, losssum: 2.724824
+04/27/2022 00:22:51 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23600,  lossent: 2.622420, losssum: 2.724758
+04/27/2022 00:24:30 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23650,  lossent: 2.622289, losssum: 2.724692
+04/27/2022 00:26:08 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23700,  lossent: 2.621853, losssum: 2.724564
+04/27/2022 00:27:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23750,  lossent: 2.621702, losssum: 2.724521
+04/27/2022 00:29:26 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23800,  lossent: 2.621682, losssum: 2.724448
+04/27/2022 00:31:05 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23850,  lossent: 2.621564, losssum: 2.724406
+04/27/2022 00:32:43 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23900,  lossent: 2.621362, losssum: 2.724281
+04/27/2022 00:34:19 - INFO - T5PromptNER.TrainTaggerforSum -   step: 23950,  lossent: 2.621149, losssum: 2.724258
+04/27/2022 00:35:48 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24000,  lossent: 2.621040, losssum: 2.724263
+04/27/2022 00:35:48 - INFO - T5PromptNER.TrainTaggerforSum -   63
+0it [00:00, ?it/s]1it [00:20, 20.77s/it]2it [00:41, 20.77s/it]3it [01:01, 20.38s/it]4it [01:20, 19.98s/it]5it [01:39, 19.76s/it]6it [01:58, 19.63s/it]7it [02:17, 19.51s/it]8it [02:36, 19.29s/it]9it [02:57, 19.66s/it]10it [03:16, 19.57s/it]11it [03:35, 19.53s/it]12it [03:55, 19.53s/it]13it [04:15, 19.60s/it]14it [04:35, 19.69s/it]15it [04:55, 19.80s/it]16it [05:14, 19.71s/it]17it [05:35, 20.10s/it]18it [05:53, 19.54s/it]19it [06:12, 19.38s/it]20it [06:31, 19.22s/it]21it [06:50, 19.14s/it]22it [07:09, 19.02s/it]23it [07:29, 19.21s/it]24it [07:54, 21.08s/it]25it [08:14, 20.61s/it]26it [08:32, 20.09s/it]27it [08:51, 19.74s/it]28it [09:09, 19.01s/it]29it [09:29, 19.26s/it]30it [09:48, 19.42s/it]31it [10:07, 19.27s/it]32it [10:26, 19.23s/it]33it [10:47, 19.50s/it]34it [11:05, 19.17s/it]35it [11:25, 19.40s/it]36it [11:44, 19.24s/it]37it [12:04, 19.45s/it]38it [12:24, 19.77s/it]39it [12:44, 19.64s/it]40it [13:04, 19.82s/it]41it [13:24, 20.06s/it]42it [13:45, 20.11s/it]43it [14:04, 20.00s/it]44it [14:24, 19.82s/it]45it [14:44, 19.89s/it]46it [15:04, 19.91s/it]47it [15:24, 20.02s/it]48it [15:43, 19.77s/it]49it [16:03, 19.65s/it]50it [16:23, 19.78s/it]51it [16:42, 19.68s/it]52it [17:01, 19.50s/it]53it [17:21, 19.65s/it]54it [17:41, 19.68s/it]55it [18:00, 19.55s/it]56it [18:21, 19.96s/it]57it [18:42, 20.21s/it]58it [19:01, 19.95s/it]59it [19:20, 19.70s/it]60it [19:40, 19.68s/it]61it [20:00, 19.79s/it]62it [20:20, 19.96s/it]63it [20:33, 17.62s/it]63it [20:33, 19.58s/it]
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   ----Validation Results Summary----
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.14711899079440846
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.15755662176138197
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.04295754431656687
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.14544855393513917
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.2631409425268331
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.04250937801563216
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0.15825921508020754
+04/27/2022 00:56:26 - INFO - T5PromptNER.TrainTaggerforSum -   0 epoch, best epoch was updated! valid_meanR of sum and ent: 0.13498
+04/27/2022 00:58:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24050,  lossent: 2.621080, losssum: 2.724281
+04/27/2022 00:59:39 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24100,  lossent: 2.620781, losssum: 2.724151
+04/27/2022 01:01:21 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24150,  lossent: 2.620571, losssum: 2.723969
+04/27/2022 01:03:00 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24200,  lossent: 2.620493, losssum: 2.723896
+04/27/2022 01:04:41 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24250,  lossent: 2.620359, losssum: 2.723724
+04/27/2022 01:06:18 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24300,  lossent: 2.620418, losssum: 2.723710
+04/27/2022 01:07:55 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24350,  lossent: 2.620398, losssum: 2.723747
+04/27/2022 01:09:44 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24400,  lossent: 2.620138, losssum: 2.723641
+04/27/2022 01:11:34 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24450,  lossent: 2.620049, losssum: 2.723523
+04/27/2022 01:13:20 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24500,  lossent: 2.619937, losssum: 2.723411
+04/27/2022 01:15:03 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24550,  lossent: 2.619893, losssum: 2.723304
+04/27/2022 01:16:49 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24600,  lossent: 2.619708, losssum: 2.723206
+04/27/2022 01:18:40 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24650,  lossent: 2.619607, losssum: 2.723116
+04/27/2022 01:20:29 - INFO - T5PromptNER.TrainTaggerforSum -   step: 24700,  lossent: 2.619639, losssum: 2.723251

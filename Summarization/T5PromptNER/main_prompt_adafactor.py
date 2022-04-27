@@ -309,7 +309,7 @@ def test(args, test_dataset):
     test_dataloader = get_dataloader(args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
                                       test_dataset.tokenizer.pad_token_id,test_sampler)
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/data/qin/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache")
     model = T5forNER(args, t5model, tokenizer)
     allckpt = torch.load("./t5ner_ckpt/" + args.save_dir + "/ckptofT5ner_best")
     model.promptnumber = allckpt["promptnumber"]
@@ -661,9 +661,9 @@ if __name__ == "__main__":
             f.write("----------------------------------------------------------------------------\n")
 
 
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir="/data/qin/cache/")
+    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name,cache_dir="/export/home/cache")
     #print(t5model.get_input_embeddings().weight[2040])
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir="/data/qin/cache/")
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir="/export/home/cache")
     if args.model == "T5NER":
         model = T5forNER(args,t5model,tokenizer)
         #print(model.model.get_input_embeddings().weight[2040])

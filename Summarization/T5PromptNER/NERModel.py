@@ -30,9 +30,13 @@ class T5forNER(nn.Module):
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device)
-        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        if self.args.concat_mode == 'concat_right':
+            allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        elif self.args.concat_mode == 'concat_left':
+            allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
 
         return self.model(
             inputs_embeds=allembedding,
@@ -59,9 +63,13 @@ class T5forNER(nn.Module):
     def _generative_step_for_tagger(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
-        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        if self.args.concat_mode == 'concat_right':
+            allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
+            all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        elif self.args.concat_mode == 'concat_left':
+            allembedding = torch.cat([soft_prompt_embed, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -84,9 +92,13 @@ class T5forNER(nn.Module):
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
-        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        if self.args.concat_mode == 'concat_right':
+            allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+            all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        elif self.args.concat_mode == 'concat_left':
+            allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -150,9 +162,13 @@ class T5forPretrain(nn.Module):
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device)
-        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        if self.args.concat_mode == 'concat_right':
+            allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+            all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        elif self.args.concat_mode == 'concat_left':
+            allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
 
         return self.model(
             inputs_embeds=allembedding,
@@ -163,13 +179,27 @@ class T5forPretrain(nn.Module):
         )
 
     def _step_sum(
-            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
+            self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, ent_chain=None, ent_chain_mask=None, decoder_attention_mask=None
     ):
         input_embed_part = self.model.encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembeddingforsum.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumberforsum), 1).to(self.args.device)
-        all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+        
+        if self.args.pretrain_with_ent_chain:
+            input_embed_part_2 = self.model.encoder.embed_tokens(ent_chain)
+            if self.args.concat_mode == 'concat_right':
+                allembedding = torch.cat([input_embed_part, prompt_embed_repeat, input_embed_part_2], 1)
+                all_attention_mask = torch.cat([attention_mask, mask_prompt, ent_chain_mask], 1)
+            elif self.args.concat_mode == 'concat_left':
+                allembedding = torch.cat([input_embed_part_2, prompt_embed_repeat, input_embed_part], 1)
+                all_attention_mask = torch.cat([ent_chain_mask, mask_prompt, attention_mask], 1)
+        else:
+            if self.args.concat_mode == 'concat_right':
+                allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+                all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
+            elif self.args.concat_mode == 'concat_left':
+                allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+                all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
 
         return self.model(
             inputs_embeds=allembedding,
@@ -180,7 +210,7 @@ class T5forPretrain(nn.Module):
         )
 
     def forward(self, batch):
-        lm_labels = batch["entity_ids"]
+        lm_labels = torch.clone(batch["entity_ids"])
         lm_labels[lm_labels[:, :] == self.tokenizer.pad_token_id] = -100
         outputs = self._step(
             input_ids=batch["input_ids"],
@@ -196,6 +226,8 @@ class T5forPretrain(nn.Module):
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
             labels=lm_labels,
+            ent_chain=batch["entity_ids"],
+            ent_chain_mask=batch['entity_mask'],
             decoder_attention_mask=batch['target_mask']
         )
 
@@ -206,9 +238,14 @@ class T5forPretrain(nn.Module):
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
-        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        if self.args.concat_mode == 'concat_right':
+            allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+            all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        elif self.args.concat_mode == 'concat_left':
+            allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+            all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
+
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
@@ -229,9 +266,23 @@ class T5forPretrain(nn.Module):
 
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembeddingforsum.repeat(input_embed_part.size(0), 1, 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumberforsum), 1).to(self.args.device)
-        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        if self.args.pretrain_with_ent_chain:
+            input_embed_part_2 = self.model.encoder.embed_tokens(batch["entity_ids"])
+            if self.args.concat_mode == 'concat_right':
+                allembedding = torch.cat([input_embed_part, prompt_embed_repeat, input_embed_part_2], 1)
+                all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt, batch['entity_mask']], 1)
+            elif self.args.concat_mode == 'concat_left':
+                allembedding = torch.cat([input_embed_part_2, prompt_embed_repeat, input_embed_part], 1)
+                all_attention_mask = torch.cat([batch['entity_mask'], mask_prompt, batch["attention_mask"]], 1)
+        else:
+            if self.args.concat_mode == 'concat_right':
+                allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+                all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+            elif self.args.concat_mode == 'concat_left':
+                allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
+                all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
+
         decoder_input_ids = (
                 torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
