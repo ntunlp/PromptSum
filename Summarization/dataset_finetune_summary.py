@@ -14,31 +14,8 @@ import re
 
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
-from utils import *
-from transformers import BertTokenizer
-
-
-def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
-    '''
-    This function reads in the few-shot datasets saved at save_path
-    returns:
-        list of tuples (train_dataset, valid_dataset)
-    '''
-    datasets = []
-    for seed in few_shot_seeds:
-        train_file_name = args.few_shot_save_dir + 'seed_{}/train_with_ents_preds.txt'.format(seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid_with_ents_preds.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(
-            train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
-            counterfactual_removal=args.counterfactual_removal
-        )
-        valid_dataset = T5SummarizationDataset(
-            valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed
-        )
-        datasets.append((train_dataset, valid_dataset, seed))
-
-    return datasets
-
+import random
+from nltk.corpus import stopwords
 
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0,
@@ -138,6 +115,9 @@ class T5SummarizationDataset(Dataset):
         # guidance
         input_guidance = "None"
         pred_guidance = "None"
+        filter_types = ['CARDINAL']
+        
+        stop_words = set(stopwords.words('english'))
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
             if not self.args.use_t5_tagger:
@@ -146,10 +126,14 @@ class T5SummarizationDataset(Dataset):
                     ents = [ent.text for ent in ents]
                     if ents == []:
                         ents = ["none"]
-                    input_guidance = self.args.separator.join(ents)
-                elif self.args.guidance_mode == "target_unique" or self.args.guidance_mode == "target_unique_shuffle":
+                if "target_unique" in self.args.guidance_mode:
                     old_ents = self.spacy_nlp(targetdata).ents
-                    old_ents = [ent.text for ent in old_ents]
+                    if 'filter' in self.args.guidance_mode:
+                        # old_ents = [ent.text for ent in old_ents if ent.label_ not in filter_types]
+                        old_ents = [ent.text for ent in old_ents]
+                        old_ents = [w for w in old_ents if not w.lower() in stop_words]
+                    else:
+                        old_ents = [ent.text for ent in old_ents]
                     # remove entities case-insensitively
                     marker = set()
                     ents = []
@@ -162,10 +146,9 @@ class T5SummarizationDataset(Dataset):
                         ents_x = self.spacy_nlp(inputdata).ents
                         ents_x = [ent.text for ent in ents_x]
                         ents = ents_x[:2]
-                    if self.args.guidance_mode == "target_unique_shuffle":
+                    if "shuffle" in self.args.guidance_mode:
                         # shuffle ents
                         random.shuffle(ents, random.random)
-                    input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
@@ -174,13 +157,11 @@ class T5SummarizationDataset(Dataset):
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
                     ents_intersection = list(dict.fromkeys(ents_intersection))  # remove duplicates, while keeping order
                     if ents_intersection == []:
-                        ents_intersection = ents_x[:max(2, len(ents_y))]
-                    input_guidance = self.args.separator.join(ents_intersection)
+                        ents_intersection = ents_x[:max(2,len(ents_y))]
                 elif self.args.guidance_mode == "input_salient_sents":
                     top_sents = self.find_salient_sents(inputdata, 5)
                     ents = self.spacy_nlp(top_sents).ents
                     ents = [ent.text for ent in ents]
-                    input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_most_frequent":
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
@@ -195,13 +176,16 @@ class T5SummarizationDataset(Dataset):
                         top_ents.append(k)
                         if len(top_ents) >= 20:
                             break
-                    input_guidance = self.args.separator.join(top_ents)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
+                    # for e in ents:
+                    #     if e.text.lower() in stop_words:
+                    #         print('e.text: ', e.text)
+                    #         print('e.label_: ',e.label_)
+                    #         raise Exception('end')
                     ents = [ent.text for ent in ents]
-                    input_guidance = self.args.separator.join(
-                        ents)  # can decide which delimiter works the best, just pick comma first
-            else:  # use t5_tagger
+                input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+            else: #use bert_tagger
                 ####for train
                 if self.split.startswith("train"):
                     tempdata = re.sub(' +', ' ', inputdata)
