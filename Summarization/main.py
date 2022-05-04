@@ -208,7 +208,7 @@ parser.add_argument("--save_model_path", dest="save_model_path", type=str,
 # Overall pipeline
 ##### pre-training
 parser.add_argument("--pretrain", action='store_true',
-                    default=True, help="whether pretrain a T5 tagger")
+                    default=False, help="whether pretrain a T5 tagger")
 parser.add_argument("--build_salient_entities", action='store_true',
                     default=False, help="whether to build the pseudo-labels for pre-training")
 parser.add_argument("--pretraining_train_size", type=int,
@@ -227,7 +227,7 @@ parser.add_argument("--finetune_entity", action='store_true',
 parser.add_argument("--infer_val_entities", action="store_true",
                     default=False, help="whether to run inference with the T5 entity chain prediction on val set")
 parser.add_argument("--finetune_summary", action='store_true',
-                    default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',

@@ -110,7 +110,6 @@ class T5SummarizationDataset(Dataset):
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
-        entsdata = self.data[idx][2]
 
         # guidance
         input_guidance = "None"
