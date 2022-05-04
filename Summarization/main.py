@@ -46,7 +46,7 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="1", help="gpu id")
+                    default="2", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
@@ -268,17 +268,15 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    # set cuda
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-    if args.local_rank == -1:
+    device = torch.device("cpu")
+    if len(args.cuda) > 0 and torch.cuda.is_available():
         device = torch.device("cuda")
-    else:
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
+    if args.local_rank != -1:
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
     print("device", args.device)
     args.n_gpu = len(args.cuda.split(","))
+
     seed_everything(args)
 
     # log train
