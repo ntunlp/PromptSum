@@ -3,6 +3,8 @@ cool prompting for summarization!
 
 # Running command
 
+!!! Don't forget to change the "root" variable at the top of args !!!
+
 ### 1: Pre-training stage
 CUDA_VISIBLE_DEVICES=? python main.py --pretrain --pretrain_all_weights
 
