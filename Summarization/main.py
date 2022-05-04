@@ -103,7 +103,7 @@ parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", t
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 # optimization
-parser.add_argument("--adam_epsilon", dest="adam_epsilon_pretrain", type=float,
+parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
                     default = 1e-8, help="adam epsilon")
 ##### pretraining
 parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
@@ -174,7 +174,7 @@ parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", typ
 # evaluation
 parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                     default=50, help="how many steps to log")
-parser.add_argument("--log_step_finetune", dest="log_step", type=int,
+parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
                     default=1, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
