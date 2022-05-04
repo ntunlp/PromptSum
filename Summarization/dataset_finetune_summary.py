@@ -115,7 +115,6 @@ class T5SummarizationDataset(Dataset):
         # guidance
         input_guidance = "None"
         pred_guidance = "None"
-        filter_types = ['CARDINAL']
         
         stop_words = set(stopwords.words('english'))
         # 1st option: based on entities
@@ -129,8 +128,10 @@ class T5SummarizationDataset(Dataset):
                 if "target_unique" in self.args.guidance_mode:
                     old_ents = self.spacy_nlp(targetdata).ents
                     if 'filter' in self.args.guidance_mode:
-                        # old_ents = [ent.text for ent in old_ents if ent.label_ not in filter_types]
-                        old_ents = [ent.text for ent in old_ents]
+                        if self.args.filter_type!=None:
+                            old_ents = [ent.text for ent in old_ents if ent.label_ != self.args.filter_type]
+                        else:
+                            old_ents = [ent.text for ent in old_ents]
                         old_ents = [w for w in old_ents if not w.lower() in stop_words]
                     else:
                         old_ents = [ent.text for ent in old_ents]

@@ -81,7 +81,7 @@ def finetune_model_tagger(trainfile, validfile, args):
         print("Loading the pre-trained NER model!")
 
         # full model
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
+        ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
         dic = {}
         for x in ckpt.keys():
             if not (x in ["promptnumber", "promptembedding", "promptnumberforsum", "promptembeddingforsum"]):
@@ -89,7 +89,7 @@ def finetune_model_tagger(trainfile, validfile, args):
         model.load_state_dict(dic)
 
         # just prompt
-        ckpt = torch.load("t5_tagger_pretrained_ckpt/bestckpt_prompt_39k")
+        ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt")
         model.promptnumber = ckpt["promptnumber"]
         model.promptembedding = ckpt["promptembedding"]
     else:
