@@ -67,7 +67,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     max_seq_length = args.max_length
     num_workers = args.num_workers_entity
     max_grad_norm = args.max_grad_norm_entity
-    log_step = args.log_step
+    log_step = args.log_step_finetune
     model_name = args.model_name
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)

@@ -127,7 +127,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 optimizer.zero_grad()
                 global_step += 1
 
-                if args.local_rank in [0, -1] and global_step % args.log_step == 0:
+                if args.local_rank in [0, -1] and global_step % args.log_step_finetune == 0:
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / step_tot, np.average(allloss)))
 

@@ -42,6 +42,8 @@ from models_summarization.model_mixture_double_discrete import *
 
 parser = argparse.ArgumentParser(description="latentRE")
 
+root = "/data/mathieu/"
+
 # general stuff
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
@@ -52,7 +54,7 @@ parser.add_argument("--local_rank", dest="local_rank", type=int,
 
 # data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/mathieu/DATASETS/PromptSumm/")
+                    default = root + "DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -62,8 +64,6 @@ parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
 # model
-parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
-                    default=1, help="If ckpt only contains model. Default: True, only contains model")
 ##### input
 parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
@@ -76,10 +76,10 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default = root + "lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-base/",
+                    default = root + "hf_models/t5-v1-base/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -97,15 +97,15 @@ parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                     default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
 parser.add_argument("--filter_type", dest="filter_type", type=str,
                     default=None, choices=['PERSON','NORP','FAC','ORG','GPE','LOC','PRODUCT','EVENT','WORK_OF_ART','LAW','LANGUAGE','DATE','TIME','PERCENT','MONEY','QUANTITY','ORDINAL','CARDINAL'])
-
-parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
-                    default=False)
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
                     default=100)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
 # optimization
+parser.add_argument("--adam_epsilon", dest="adam_epsilon_pretrain", type=float,
+                    default = 1e-8, help="adam epsilon")
+##### pretraining
 parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
                     default=5e-1, help='learning rate')
 parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
@@ -122,8 +122,6 @@ parser.add_argument("--num_workers_pretrain", dest="num_workers_pretrain", type=
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay_pretrain", dest="weight_decay_pretrain", type=float,
                     default=0, help="weight decay")
-parser.add_argument("--adam_epsilon_pretrain", dest="adam_epsilon_pretrain", type=float,
-                    default = 1e-8, help="adam epsilon")
 parser.add_argument("--warmup_steps_pretrain", dest="warmup_steps_pretrain", type=float,
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm_pretrain", dest="max_grad_norm_pretrain", type=float,
@@ -145,8 +143,6 @@ parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
                     default=4, help="dataloader num_workers")
 parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--adam_epsilon_entity", dest="adam_epsilon_entity", type=float,
-                    default = 1e-8, help="adam epsilon")
 parser.add_argument("--warmup_steps_entity", dest="warmup_steps_entity", type=float,
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
@@ -170,8 +166,6 @@ parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=in
                     default=0, help="dataloader num_workers")
 parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
                     default=1e-5, help="weight decay")
-parser.add_argument("--adam_epsilon_summary", dest="adam_epsilon_summary", type=float,
-                    default = 1e-8, help="adam epsilon")
 parser.add_argument("--warmup_steps_summary", dest="warmup_steps_summary", type=float,
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
@@ -180,7 +174,7 @@ parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", typ
 # evaluation
 parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                     default=50, help="how many steps to log")
-parser.add_argument("--log_step", dest="log_step", type=int,
+parser.add_argument("--log_step_finetune", dest="log_step", type=int,
                     default=1, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
@@ -198,8 +192,6 @@ parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                     default=1.0, help="length penalty")
 
 # export
-parser.add_argument("--save_step", dest="save_step", type=int,
-                    default=100000, help="step to save")
 parser.add_argument("--save_model", dest="save_model", type=bool,
                     default=False, help="whether to save the model or not")
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
