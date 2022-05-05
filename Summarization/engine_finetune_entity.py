@@ -84,14 +84,13 @@ def finetune_model_tagger(trainfile, validfile, args):
         ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
         dic = {}
         for x in ckpt.keys():
-            if not (x in ["promptnumber", "promptembedding", "promptnumberforsum", "promptembeddingforsum"]):
-                dic[x] = ckpt[x]
+            if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+               dic[x[7:]] = ckpt[x]
         model.load_state_dict(dic)
-
         # just prompt
         ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt")
         model.promptnumber = ckpt["promptnumber"]
-        model.promptembedding = ckpt["promptembedding"]
+        model.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
     else:
         ifuseconll = True
         if ifuseconll:
@@ -110,6 +109,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
+
 
     train_dataset = T5DatasetPretrainConll(trainfile, max_seq_length, tokenizer)
     valid_dataset = T5DatasetPretrainConll(validfile, max_seq_length, tokenizer)

@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 import pickle
 import argparse
 import gc
@@ -46,13 +46,13 @@ parser = argparse.ArgumentParser(description="latentRE")
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="1", help="gpu id")
+                    default="2", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 
 # data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/data/mathieu/DATASETS/PromptSumm/")
+                    default="/data/qin/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -72,14 +72,14 @@ parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/data/mathieu/lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default="/data/qin/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/data/mathieu/hf_models/t5-v1-base/",
+                    default="/data/qin/hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -231,7 +231,7 @@ parser.add_argument("--finetune_summary", action='store_true',
 parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
-                    default=False, help="whether use spacy to supervise the training of T5 tagger")
+                    default=True, help="whether use spacy to supervise the training of T5 tagger")
 
 args = parser.parse_args()
 
@@ -395,19 +395,40 @@ def main(args):
             else:
                 raise Exception('Model not implemented yet')
 
+            n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            logger.info("The model has {} trainable parameters".format(n_params))
+
+            #####load pre-trained model
+            if args.use_pretrain_ckpt:
+                print("load pre-trained model for summarization")
+                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
+                dicsum = {}
+                for x in ckptsum.keys():
+                    #print(x)
+                    #if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                    if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
+                        dicsum[x[7:]] = ckptsum[x]
+                model.load_state_dict(dicsum)
+                # just prompt
+                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt")
+                model.promptnumber = ckptsum["promptnumberforsum"]
+                model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
+                n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                logger.info("The model has {} trainable parameters".format(n_params))
+
             ####add t5 tagger
             if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target" and args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
-                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_dir)
-                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_dir)
+                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                 entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
                 print("Loading the pre-trained NER model!")
                 # full model
-                ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
+                ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
                 dic = {}
                 for x in ckpt.keys():
-                    if not (x in ["promptnumber", "promptembedding"]):
-                        dic[x] = ckpt[x]
+                    if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                        dic[x[7:]] = ckpt[x]
                 entmodel.load_state_dict(dic)
                 # just prompt
                 onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
