@@ -432,6 +432,24 @@ def convert_data_to_txt(train_data, new_train_path, args):
             f.write(to_write)
 
 
+def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
+    '''
+    This function reads in the few-shot datasets saved at save_path
+    returns:
+        list of tuples (train_dataset, valid_dataset)
+    '''
+    datasets = []
+    for seed in few_shot_seeds:
+        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
+                                               counterfactual_removal=args.counterfactual_removal)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        datasets.append((train_dataset, valid_dataset, seed))
+
+    return datasets
+
+
 def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     '''
     Function that subsamples a dataset and saves the results for few-shot exps
