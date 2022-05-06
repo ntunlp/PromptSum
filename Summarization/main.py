@@ -214,6 +214,10 @@ parser.add_argument("--debug_pretrain", action='store_true',
 ##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
+parser.add_argument("--pretrain_ckpt", type=str,
+                    default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model", help="path to pretrained model")
+parser.add_argument("--pretrain_prompt_ckpt", type=str,
+                    default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt", help="path to pretrained model prompt")
 parser.add_argument("--finetune_entity", action='store_true',
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--infer_val_entities", action="store_true",
@@ -318,15 +322,14 @@ def main(args):
     ########## pre-training?
     if args.pretrain:
         print("\n"+ "*"*50)
-        print("Pre-training...")
+        print("1/ Pre-training...")
         pretrain_model(dataset_args, args)
-        raise Exception
         return
 
     ########## 1st prompt tuning stage (for entity chain)?
     if args.finetune_entity:
         print("\n"+ "*"*50)
-        print("Prompt tuning the tagger for entity chain prediction...")
+        print("2/ Prompt tuning the tagger for entity chain prediction...")
         # get data
         print("\nprepare data..")
         alltrainfile, allvalidfile = get_data(few_shot_seeds, args.few_shot_save_dir, args)
@@ -338,7 +341,7 @@ def main(args):
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
         print("\n"+ "*"*50)
-        print("Prompt tuning the summarization model...")
+        print("3/ Prompt tuning the summarization model...")
         # read datasets
         datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
@@ -391,16 +394,18 @@ def main(args):
             #####load pre-trained model
             if args.use_pretrain_ckpt:
                 print("load pre-trained model for summarization")
-                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_82k")
+
+                # model weights
+                ckptsum = torch.load(args.pretrain_ckpt)
                 dicsum = {}
                 for x in ckptsum.keys():
-                    #print(x)
-                    #if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+
                     if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
                         dicsum[x[7:]] = ckptsum[x]
                 model.load_state_dict(dicsum)
+
                 # just prompt
-                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt_82k")
+                ckptsum = torch.load(args.pretrain_prompt_ckpt)
                 model.promptnumber = ckptsum["promptnumberforsum"]
                 model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
                 n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -413,18 +418,21 @@ def main(args):
                 enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                 entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
                 print("Loading the pre-trained NER model!")
-                # full model
-                ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_82k")
+
+                # model weights
+                ckpt = torch.load(args.pretrain_ckpt)
                 dic = {}
                 for x in ckpt.keys():
                     if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
                         dic[x[7:]] = ckpt[x]
                 entmodel.load_state_dict(dic)
+
                 # just prompt
                 onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
                 oneckpt = torch.load(onepath)
                 entmodel.promptnumber = oneckpt["promptnumber"]
                 entmodel.promptembedding = oneckpt["promptembedding"]
+                
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))
                 entmodel.to(args.device)
