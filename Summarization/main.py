@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '1'
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 import pickle
 import argparse
 import gc
@@ -42,7 +42,7 @@ from models_summarization.model_mixture_double_discrete import *
 
 parser = argparse.ArgumentParser(description="latentRE")
 
-root = "/data/mathieu/"
+root = "/data/qin/"
 
 # general stuff
 parser.add_argument("--seed", dest="seed", type=int,
@@ -72,14 +72,14 @@ parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-base", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default = root + "lm_adapted_t5model/torch_ckpt/base/pytorch_model.bin",
+                    default = root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default = root + "hf_models/t5-v1-base/",
+                    default = root + "hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
@@ -227,7 +227,7 @@ parser.add_argument("--finetune_summary", action='store_true',
 parser.add_argument("--use_t5_tagger",  action='store_true',
                     default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
-                    default=False, help="whether use spacy to supervise the training of T5 tagger")
+                    default=True, help="whether use spacy to supervise the training of T5 tagger")
 
 args = parser.parse_args()
 
@@ -388,26 +388,51 @@ def main(args):
             else:
                 raise Exception('Model not implemented yet')
 
+            n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            logger.info("The model has {} trainable parameters".format(n_params))
+
+            #####load pre-trained model
+            if args.use_pretrain_ckpt:
+                print("load pre-trained model for summarization")
+
+                # model weights
+                ckptsum = torch.load(args.pretrain_ckpt)
+                dicsum = {}
+                for x in ckptsum.keys():
+
+                    if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
+                        dicsum[x[7:]] = ckptsum[x]
+                model.load_state_dict(dicsum)
+
+                # just prompt
+                ckptsum = torch.load(args.pretrain_prompt_ckpt)
+                model.promptnumber = ckptsum["promptnumberforsum"]
+                model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
+                n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                logger.info("The model has {} trainable parameters".format(n_params))
+
             ####add t5 tagger
             if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target" and args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
-                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_dir)
-                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_dir)
+                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                 entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
                 print("Loading the pre-trained NER model!")
 
-                # full model
+                # model weights
                 ckpt = torch.load(args.pretrain_ckpt)
                 dic = {}
                 for x in ckpt.keys():
-                    if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
+                    if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
                         dic[x[7:]] = ckpt[x]
                 entmodel.load_state_dict(dic)
+
                 # just prompt
                 onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
                 oneckpt = torch.load(onepath)
                 entmodel.promptnumber = oneckpt["promptnumber"]
                 entmodel.promptembedding = oneckpt["promptembedding"]
+                
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))
                 entmodel.to(args.device)

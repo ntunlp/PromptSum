@@ -142,10 +142,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
 
-        if args.train_sample:
-            logger.info("sampling...")
-            logger.info("sampled")
-
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()

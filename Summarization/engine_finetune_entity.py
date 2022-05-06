@@ -85,10 +85,10 @@ def finetune_model_tagger(trainfile, validfile, args):
         dic = {}
         for x in ckpt.keys():
             if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                dic[x] = ckpt[x]
+               dic[x[7:]] = ckpt[x]
         model.load_state_dict(dic)
 
-        # prompt
+        # just prompt
         ckpt = torch.load(args.pretrain_prompt_ckpt)
         model.promptnumber = ckpt["promptnumber"]
         model.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
@@ -110,6 +110,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
+
 
     train_dataset = T5DatasetPretrainConll(trainfile, max_seq_length, tokenizer)
     valid_dataset = T5DatasetPretrainConll(validfile, max_seq_length, tokenizer)
