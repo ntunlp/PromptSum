@@ -5,6 +5,7 @@ echo "end 10-shot finetune_entity"
 
 echo "start 10-shot finetune_summary"
 python main.py --few_shot 10 --finetune_summary --infer_val_entities
+#python main.py --few_shot 10 --finetune_summary --infer_val_entities --max_epoch_summary 60
 echo "end 10-shot finetune_summary"
 
 echo "start 10-shot finetune_summary oracle"
@@ -20,6 +21,7 @@ echo "end 64-shot finetune_entity"
 
 echo "start 64-shot finetune_summary"
 python main.py --few_shot 64 --finetune_summary --infer_val_entities
+#python main.py --few_shot 64 --finetune_summary --infer_val_entities --max_epoch_summary 60
 echo "end 64-shot finetune_summary"
 
 echo "start 64-shot finetune_summary oracle"
@@ -35,6 +37,7 @@ echo "end 100-shot finetune_entity"
 
 echo "start 100-shot finetune_summary"
 python main.py --few_shot 100 --finetune_summary --infer_val_entities
+#python main.py --few_shot 100 --finetune_summary --infer_val_entities --max_epoch_summary 60
 echo "end 100-shot finetune_summary"
 
 echo "start 100-shot finetune_summary oracle"

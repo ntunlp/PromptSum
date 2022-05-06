@@ -391,7 +391,7 @@ def main(args):
             #####load pre-trained model
             if args.use_pretrain_ckpt:
                 print("load pre-trained model for summarization")
-                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
+                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_82k")
                 dicsum = {}
                 for x in ckptsum.keys():
                     #print(x)
@@ -400,7 +400,7 @@ def main(args):
                         dicsum[x[7:]] = ckptsum[x]
                 model.load_state_dict(dicsum)
                 # just prompt
-                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt")
+                ckptsum = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt_82k")
                 model.promptnumber = ckptsum["promptnumberforsum"]
                 model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
                 n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -414,7 +414,7 @@ def main(args):
                 entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
                 print("Loading the pre-trained NER model!")
                 # full model
-                ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model")
+                ckpt = torch.load("/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_82k")
                 dic = {}
                 for x in ckpt.keys():
                     if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
