@@ -87,10 +87,9 @@ class T5forPretrain(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask']
         )
-
         losssum = outputs[0]
 
-        return lossent,losssum
+        return lossent, losssum
 
     def _generative_step(self, batch):
         input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])

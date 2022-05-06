@@ -38,7 +38,6 @@ class ModelMixPrompt(nn.Module):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 
-
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None,
             ent_ids=None, ent_mask=None, predent_ids=None, predent_mask=None
