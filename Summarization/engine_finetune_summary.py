@@ -22,31 +22,30 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model import *
-from dataset import *
 from utils import *
+from models_summarization.model_soft import *
+from dataset_finetune_summary import *
 
 
 
-def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
+def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
     step_tot = (len(
-        train_dataset) // args.gradient_accumulation_steps // args.batch_size_per_gpu // args.n_gpu) * args.max_epoch
-    warmup_steps_total = step_tot * args.warmup_steps
+        train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
         train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
 
-    train_dataloader = get_dataloader(args, tokenizer, args.num_workers, train_dataset, args.batch_size_per_gpu, args.max_length,
-                                      args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler)
-    valid_dataloader = get_dataloader(args, tokenizer, args.num_workers, valid_dataset, args.valid_size_per_gpu, args.max_length,
-                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler)
+    train_dataloader = get_dataloader(tokenizer, args.num_workers_summary, train_dataset, args.batch_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler, args)
+    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
 
     base_optimizer_arguments = {
-        "lr": args.lr, 
-        "clip_threshold": args.max_grad_norm, 
+        "lr": args.lr_summary,
+        "clip_threshold": args.max_grad_norm_summary,
         "decay_rate": -0.8,
-        "weight_decay": args.weight_decay,
+        "weight_decay": args.weight_decay_summary,
         "scale_parameter": False, 
         "relative_step": False
     }
@@ -79,11 +78,11 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     }
 
     if args.zero_shot:
-        dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,0)
+        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
         return result_dict
 
     global_step = 0
-    for i in range(args.max_epoch):
+    for i in range(args.max_epoch_summary):
         thisevalstep = args.eval_step
         logger.info(i)
         model.train()
@@ -93,10 +92,11 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
-            for k in range(inputs["input_ents"].shape[0]):
-                for l in range(inputs["input_ents"].shape[1]):
-                    ent = inputs["input_ents"][k,l].item()
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
+                      "predents_ids": batch[4].to(args.device), "predents_mask": batch[5].to(args.device)}
+            for k in range(inputs["ents_ids"].shape[0]):
+                for l in range(inputs["ents_ids"].shape[1]):
+                    ent = inputs["ents_ids"][k,l].item()
                     ents.append(ent)
             if scaler is not None:
                 with autocast():
@@ -109,7 +109,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
                 loss.backward()
             allloss.append(loss.item())
 
-            if step % args.gradient_accumulation_steps == 0 or step == len(train_dataloader) - 1:
+            if step % args.gradient_accumulation_steps_summary == 0 or step == len(train_dataloader) - 1:
                 if scaler is not None:
                     scaler.step(optimizer)
                     scaler.update()
@@ -127,7 +127,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
                 optimizer.zero_grad()
                 global_step += 1
 
-                if args.local_rank in [0, -1] and global_step % args.log_step == 0:
+                if args.local_rank in [0, -1] and global_step % args.log_step_finetune == 0:
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / step_tot, np.average(allloss)))
 
@@ -139,12 +139,8 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
         if args.local_rank in [0, -1]:
             # if i >= 8:
             # do after every epoch
-            dooneeval(args, model, valid_dataloader, scaler, result_dict, logger,i)
+            dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
-
-        if args.train_sample:
-            logger.info("sampling...")
-            logger.info("sampled")
 
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
@@ -153,8 +149,7 @@ def train(args, tokenizer, model, train_dataset, valid_dataset, logger):
     return result_dict
 
 
-
-def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler):
+def get_dataloader(tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler, args):
     collate_fn = SmartBatchingCollate(
         args = args,
         tokenizer = tokenizer,
@@ -175,7 +170,7 @@ def get_dataloader(args, tokenizer, num_workers, dataset, batch_size, max_len, m
     return dataloader
 
 
-def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, i):
+def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, args):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
     else:
@@ -190,7 +185,8 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
             logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "input_ents": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
+                      "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
@@ -248,52 +244,6 @@ def dooneeval(args, modeltoeval, valid_dataloader, scaler, result_dict, logger, 
             torch.save(ckpt, args.save_model_path)
     
     return result_dict
-
-
-def test(args, tokenizer, test_dataset, logger):
-
-    test_sampler = SequentialSampler(test_dataset)
-
-    test_dataloader = get_dataloader(args, tokenizer, args.num_workers, test_dataset, args.test_size_per_gpu, args.max_length,
-                                    args.max_guidance_length, test_dataset.tokenizer.pad_token_id,test_sampler)
-
-    t5model = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = T5forSummarization(args, t5model, test_dataset.tokenizer)
-    allckpt = torch.load(args.save_model_path)
-    model.promptnumber = allckpt["promptnumber"]
-    model.promptembedding = allckpt["promptembedding"]
-    logger.info("load finished!")
-
-    model.to(args.device)
-    model.eval()
-    #scaler = ShardedGradScaler()
-    scaler = None
-    allytrue = []
-    allypred = []
-
-    with torch.no_grad():
-        for step, batch in enumerate(test_dataloader):
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
-            if scaler is not None:
-                with autocast():
-                    sen,target,preds = model._generative_step(inputs)
-                    tarres, predres = target, preds
-                    allytrue.extend(tarres)
-                    allypred.extend(predres)
-            else:
-                sen, target, preds = model._generative_step(inputs)
-                tarres, predres = target, preds
-                allytrue.extend(tarres)
-                allypred.extend(predres)
-    rouge = load_metric('rouge')
-    rouge_score = rouge.compute(references=allytrue, predictions=allypred)
-    logger.info('----Test Results Summary----')
-    logger.info(len(allypred))
-    logger.info(rouge_score)
-    logger.info("test_rouge1: %f", rouge_score["rouge1"].mid.fmeasure)
-    logger.info("test_rouge2: %f", rouge_score["rouge2"].mid.fmeasure)
-    logger.info("test_rougeL: %f", rouge_score["rougeL"].mid.fmeasure)
 
 
 def entity_eval(ytrue, ypred):

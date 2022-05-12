@@ -25,24 +25,30 @@ from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
-from model_finetune import *
-from model import *
-from model_mixture import *
-from model_mixture_discrete_in_decoder import * 
-from dataset import *
 from utils import *
-from engine import *
-from T5PromptNER.TrainTaggerforSum import *
-from T5PromptNER.NERModel import *
+from dataset_finetune_entity import *
+from dataset_finetune_summary import *
+from engine_pretrain import *
+from engine_finetune_entity import *
+from engine_finetune_summary import *
+
+from models_summarization.model_finetune import *
+from models_summarization.model_soft import *
+from models_summarization.model_mixture import *
+from models_summarization.model_mixture_discrete_in_decoder import *
+from models_summarization.model_mixture_double_discrete import *
+
 
 
 parser = argparse.ArgumentParser(description="latentRE")
 
-### general stuff
+root = "/data/qin/"
+
+# general stuff
 parser.add_argument("--seed", dest="seed", type=int,
                     default=42, help="seed for network")
 parser.add_argument("--cuda", dest="cuda", type=str,
-                    default="1", help="gpu id")
+                    default="2", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
 parser.add_argument("--exp_id", dest="exp_id", type=str,
@@ -50,7 +56,7 @@ parser.add_argument("--exp_id", dest="exp_id", type=str,
 parser.add_argument("--debug", action='store_true',
                     default=False, help="whether debug with breakpoint")
 
-### data
+# data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
                     default="/export/home/dataset/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
@@ -61,13 +67,11 @@ parser.add_argument("--zero_shot", action = 'store_true')
 parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                     default=3, help="number of seeds to sample for training AND validation")
 
-### model
-parser.add_argument("--ifckpt_onlymodel", dest="ifckpt_onlymodel", type=int,
-                    default=1, help="If ckpt only contains model. Default: True, only contains model")
-# input
+# model
+##### input
 parser.add_argument("--max_length", dest="max_length", type=int,
                     default=512, help="max sentence length")
-# base model
+##### base model
 parser.add_argument("--model", dest="model", type=str,
                     default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
@@ -88,55 +92,100 @@ parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                     default="concat_right", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
                     default=300, help="The number of prompt")
-# discrete prompt
+##### discrete prompt
 parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                     default="ents")
 parser.add_argument("--separator", dest="separator", type=str,
                     default=",", choices=[",", " "])
 parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
-                    default="target", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target"])
-parser.add_argument("--use_bert_tagger", dest="use_bert_tagger", type=bool,
-                    default=False)
+                    default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
+parser.add_argument("--filter_type", dest="filter_type", type=str,
+                    default=None, choices=['PERSON','NORP','FAC','ORG','GPE','LOC','PRODUCT','EVENT','WORK_OF_ART','LAW','LANGUAGE','DATE','TIME','PERCENT','MONEY','QUANTITY','ORDINAL','CARDINAL'])
 parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
                     default=100)
 parser.add_argument("--counterfactual_removal", dest="counterfactual_removal", type=bool,
                     default=False, help="whether to use counterfactual removal method during training to enforce causal link")
 
-### optimization
-parser.add_argument("--train_sample", dest="train_sample", type=bool,
-                    default=True, help="dynamic sample or not")
-parser.add_argument("--lr", dest="lr", type=float,
-                    default=5e-1, help='learning rate')
-parser.add_argument("--batch_size_per_gpu", dest="batch_size_per_gpu", type=int,
-                    default=1, help="batch size per gpu")
-parser.add_argument("--valid_size_per_gpu", dest="valid_size_per_gpu", type=int,
-                    default=4, help="valid size per gpu")
-parser.add_argument("--test_size_per_gpu", dest="test_size_per_gpu", type=int,
-                    default=8, help="test size per gpu")
-parser.add_argument("--gradient_accumulation_steps", dest="gradient_accumulation_steps", type=int,
-                    default=8, help="gradient accumulation steps")
-parser.add_argument("--max_epoch", dest="max_epoch", type=int,
-                    default=30, help="max epoch number")
-parser.add_argument("--num_workers", dest="num_workers", type=int,
-                    default=0, help="dataloader num_workers")
-parser.add_argument("--weight_decay", dest="weight_decay", type=float,
-                    default=1e-5, help="weight decay")
+# optimization
 parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
                     default = 1e-8, help="adam epsilon")
-parser.add_argument("--warmup_steps", dest="warmup_steps", type=float,
+##### pretraining
+parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
+                    default=5e-1, help='learning rate')
+parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
+                    default=1, help="batch size per gpu")
+parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
+                    default=4, help="valid size per gpu")
+parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
+                    default=8, help="test size per gpu")
+parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
+                    default=4, help="gradient accumulation steps")
+parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
+                    default=5, help="max epoch number")
+parser.add_argument("--num_workers_pretrain", dest="num_workers_pretrain", type=int,
+                    default=4, help="dataloader num_workers")
+parser.add_argument("--weight_decay_pretrain", dest="weight_decay_pretrain", type=float,
+                    default=0, help="weight decay")
+parser.add_argument("--warmup_steps_pretrain", dest="warmup_steps_pretrain", type=float,
                     default=0.01, help="warmup steps")
-parser.add_argument("--max_grad_norm", dest="max_grad_norm", type=float,
+parser.add_argument("--max_grad_norm_pretrain", dest="max_grad_norm_pretrain", type=float,
+                    default=1.0, help="max grad norm")
+##### entity prompt tuning
+parser.add_argument("--lr_entity", dest="lr_entity", type=float,
+                    default=5e-1, help='learning rate')
+parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
+                    default=2, help="batch size per gpu")
+parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
+                    default=4, help="valid size per gpu")
+parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
+                    default=8, help="test size per gpu")
+parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
+                    default=2, help="gradient accumulation steps")
+parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
+                    default=60, help="max epoch number")
+parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
+                    default=4, help="dataloader num_workers")
+parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
+                    default=1e-5, help="weight decay")
+parser.add_argument("--warmup_steps_entity", dest="warmup_steps_entity", type=float,
+                    default=0.01, help="warmup steps")
+parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
+                    default=1.0, help="max grad norm")
+##### summary prompt tuning
+parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
+                    default=True, help="dynamic sample or not")
+parser.add_argument("--lr_summary", dest="lr_summary", type=float,
+                    default=5e-1, help='learning rate')
+parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
+                    default=1, help="batch size per gpu")
+parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
+                    default=4, help="valid size per gpu")
+parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
+                    default=8, help="test size per gpu")
+parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
+                    default=8, help="gradient accumulation steps")
+parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
+                    default=30, help="max epoch number")
+parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
+                    default=0, help="dataloader num_workers")
+parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
+                    default=1e-5, help="weight decay")
+parser.add_argument("--warmup_steps_summary", dest="warmup_steps_summary", type=float,
+                    default=0.01, help="warmup steps")
+parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
                     default=1.0, help="max grad norm")
 
 # evaluation
-parser.add_argument("--log_step", dest="log_step", type=int,
+parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
+                    default=50, help="how many steps to log")
+parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
                     default=1, help="how many steps to log")
 parser.add_argument("--eval_step", dest="eval_step", type=int,
                     default=100000, help="how many steps to eval")
 parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                     default=True)
 
-##### generation
+# generation
 parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
                     default=64, help="max summary length")
 parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -147,16 +196,14 @@ parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                     default=1.0, help="length penalty")
 
 # export
-parser.add_argument("--save_step", dest="save_step", type=int,
-                    default=100000, help="step to save")
 parser.add_argument("--save_model", dest="save_model", type=bool,
                     default=False, help="whether to save the model or not")
 parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                     default="", help="the path where to save the model")
 
-##### T5 tagger
-# pre-training
-parser.add_argument("--pretrain_t5_tagger", action='store_true',
+# Overall pipeline
+##### pre-training
+parser.add_argument("--pretrain", action='store_true',
                     default=False, help="whether pretrain a T5 tagger")
 parser.add_argument("--build_salient_entities", action='store_true',
                     default=False, help="whether to build the pseudo-labels for pre-training")
@@ -165,20 +212,26 @@ parser.add_argument("--pretraining_train_size", type=int,
 parser.add_argument("--pretraining_val_size", type=int,
                     default=1000, help="pre-training train size")
 parser.add_argument("--pretrain_all_weights", action='store_true',
-                    default=False, help="whether pretrain a T5 tagger")
-parser.add_argument("--pretrain_with_ent_chain", action='store_true',
-                    default=False, help="whether to input entity chain for summ output")
-                    
-# fine-tuning
+                    default=True, help="whether pretrain a T5 tagger")
+parser.add_argument("--debug_pretrain", action='store_true',
+                    default=True, help="whether to just use 100-10 data points")
+##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
-parser.add_argument("--train_t5_tagger", action='store_true',
+parser.add_argument("--pretrain_ckpt", type=str,
+                    default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model", help="path to pretrained model")
+parser.add_argument("--pretrain_prompt_ckpt", type=str,
+                    default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt", help="path to pretrained model prompt")
+parser.add_argument("--finetune_entity", action='store_true',
                     default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+parser.add_argument("--infer_val_entities", action="store_true",
+                    default=False, help="whether to run inference with the T5 entity chain prediction on val set")
+parser.add_argument("--finetune_summary", action='store_true',
+                    default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
 parser.add_argument("--use_t5_tagger",  action='store_true',
-                    default=False, help="whether use a t5 tagger")
+                    default=True, help="whether use a t5 tagger")
 parser.add_argument("--if_spacy", action='store_true',
-                    default=False, help="whether use spacy to supervise the training of T5 tagger")
-
+                    default=True, help="whether use spacy to supervise the training of T5 tagger")
 
 args = parser.parse_args()
 
@@ -215,18 +268,15 @@ logger = logging.getLogger(__name__)
 
 
 def main(args):
-    # set cuda
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-    if args.local_rank == -1:
+    device = torch.device("cpu")
+    if len(args.cuda) > 0 and torch.cuda.is_available():
         device = torch.device("cuda")
-    else:
-        torch.cuda.set_device(args.local_rank)
-        device = torch.device("cuda", args.local_rank)
+    if args.local_rank != -1:
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
     print("device", args.device)
     args.n_gpu = len(args.cuda.split(","))
-    initialseed = args.seed
+
     seed_everything(args)
 
     # log train
@@ -257,7 +307,6 @@ def main(args):
     answertoken = "__ans__"
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
-    special_token_ids = {k: tokenizer.convert_tokens_to_ids(v) for k, v in special_tokens.items()}
     tokenizer.add_tokens(['[SEP]'])
 
     promptnumber = args.prompt_number
@@ -274,134 +323,172 @@ def main(args):
         import pdb;pdb.set_trace()
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
-    # handle few-shot data for BERT tagger
-    if args.pretrain_t5_tagger:
-        print("\npre-train tagger")
+
+    ########## pre-training?
+    if args.pretrain:
+        print("\n"+ "*"*50)
+        print("1/ Pre-training...")
         pretrain_model(dataset_args, args)
-        raise Exception
         return
-    if args.train_t5_tagger:
-        print("\ntrain tagger")
-        #####get data
-        alltrainfile, allvalidfile = get_data(dataset_args, args, few_shot_seeds, tokenizer, args.few_shot_save_dir)
+
+    ########## 1st prompt tuning stage (for entity chain)?
+    if args.finetune_entity:
+        print("\n"+ "*"*50)
+        print("2/ Prompt tuning the tagger for entity chain prediction...")
+        # get data
+        print("\nprepare data..")
+        alltrainfile, allvalidfile = get_data(few_shot_seeds, args.few_shot_save_dir, args)
+        # train one T5 tagger for each seed
+        print("\nfine-tune...")
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
-        raise Exception
         return
-    print(args.use_t5_tagger)
-    # read datasets
-    datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
-    keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
-    result_dict_total = {}
-    for k in keys:
-        result_dict_total[k] = []
 
-    count = 0
-    for (train_dataset, valid_dataset, seed) in datasets:
-        count += 1
-        # base model
-        if 'Bart' in args.model:
-            basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        else:
-            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        logger.info("Finish prepare model and dataset")
-        logger.info("Start training")
-
-        if 'Finetune' in args.model:
-            print('\nFinetuning')
-            model = ModelFinetune(args, basemodel, tokenizer, args.model)
-        elif 'SoftPrompt' in args.model:
-            print('\nSoft prompt tuning')
-            model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-            model.set_prompt_embedding(promptnumber, promptembedding)
-        elif 'MixPrompt' in args.model and not('DID' in args.model):
-            print('\nMix prompt tuning')
-            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-            model.set_prompt_embedding(promptnumber, promptembedding)
-        elif 'MixPromptDID' in args.model:
-            print('\nMix prompt tuning with discrete prompt in decoder')
-            model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-            model.set_prompt_embedding(promptnumber, promptembedding)            
-        else:
-            raise Exception('Model not implemented yet')
-        ####add t5 tagger
-        if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
-            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir="/export/home/cache")
-            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir="/export/home/cache")
-            entmodel = T5forNER(args, entbasemodel, enttokenizer)
-            print("Loading the pre-trained NER model!")
-            # full model
-            ckpt = torch.load("/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model_39k")
-            dic = {}
-            for x in ckpt.keys():
-                if not (x in ["promptnumber", "promptembedding"]):
-                    dic[x] = ckpt[x]
-            entmodel.load_state_dict(dic)
-            # just prompt
-            onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            oneckpt = torch.load(onepath)
-            entmodel.promptnumber = oneckpt["promptnumber"]
-            entmodel.promptembedding = oneckpt["promptembedding"]
-            n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-            logger.info("The ent model has {} trainable parameters".format(n_params))
-            entmodel.to(args.device)
-            print("move to device!")
-            model.eval()
-
-            alldata = valid_dataset.data
-            print("valid size: ", len(alldata))
-            allresofvalid = {}
-            with torch.no_grad():
-                for step in range(len(alldata)):
-                    onedata = alldata[step]
-                    inputdata = onedata[0]
-                    tempdata = re.sub(' +', ' ', inputdata)
-                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                    input_ids = inputres["input_ids"].to(args.device)
-                    attention_mask = inputres["attention_mask"].to(args.device)
-                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                    tagpreds = entmodel._generative_step_for_tagger(input)
-                    allentitylist = tagpreds[0].split(',')
-                    if allentitylist == []:
-                        allentitylist = ["none"]
-                    input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                    allresofvalid[tempdata] = input_guidance
-            print(len(allresofvalid))
-            respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
-            with open(respath, "wb") as f:
-                pickle.dump(allresofvalid, f)
-                print("saved the T5 valid entities")
-            valid_dataset.set_allent_for_valid()
-            torch.cuda.empty_cache()
-            del entmodel, enttokenizer
-            gc.collect()
-
-        model.to(args.device)
-
-        n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info("The model has {} trainable parameters".format(n_params))
-        
-        result_dict = train(args, tokenizer, model, train_dataset, valid_dataset, logger)
-        logger.info("Finish training")
-        logger.info("The model has {} trainable parameters".format(n_params))
+    ########## 2nd prompt tuning stage (for summarization)?
+    if args.finetune_summary:
+        print("\n"+ "*"*50)
+        print("3/ Prompt tuning the summarization model...")
+        # read datasets
+        datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
+        keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        result_dict_total = {}
         for k in keys:
-            result_dict_total[k].append(result_dict[k])
-    print('final results:')
-    for k in keys:
-        easy_results = ["{:.2f}".format(x) for x in result_dict_total[k]]
-        print('{}: {:.4f} (all: {})'.format(k, np.mean(result_dict_total[k]), easy_results))
+            result_dict_total[k] = []
 
-    # don't test for now, as it takes too long
-    # if args.local_rank in [0, -1]:
-    #     logger.info("Start testing")
-    #     logger.info("Testing...")
-    #     test(args, tokenizer, test_dataset, logger)
-    #     logger.info("Finish testing!")
+        count = 0
+        for (train_dataset, valid_dataset, seed) in datasets:
+            count += 1
+            if count <=0:
+                continue
+            # base model
+            if 'Bart' in args.model:
+                basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            else:
+                basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            logger.info("Finish prepare model and dataset")
+            logger.info("Start training")
 
-    if args.local_rank != -1:
-        torch.distributed.destroy_process_group()
+            if args.model == 'T5Finetune':
+                print('\nFinetuning')
+                model = ModelFinetune(args, basemodel, tokenizer, args.model)
+            elif args.model == 'T5SoftPrompt':
+                print('\nSoft prompt tuning')
+                model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                model.set_prompt_embedding(promptnumber, promptembedding)
+            elif args.model == 'T5MixPrompt':
+                print('\nMix prompt tuning')
+                model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                model.set_prompt_embedding(promptnumber, promptembedding)
+            elif args.model == 'T5MixPromptDID':
+                print('\nMix prompt tuning with discrete prompt in decoder')
+                model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                model.set_prompt_embedding(promptnumber, promptembedding)
+            elif args.model == 'T5MixPromptDD':
+                print('\nMix prompt tuning with double discrete prompt')
+                model = ModelMixPromptDD(args, basemodel, tokenizer, args.model)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                model.set_prompt_embedding(promptnumber, promptembedding)
+            else:
+                raise Exception('Model not implemented yet')
+
+            n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            logger.info("The model has {} trainable parameters".format(n_params))
+
+            #####load pre-trained model
+            if args.use_pretrain_ckpt:
+                print("load pre-trained model for summarization")
+
+                # model weights
+                ckptsum = torch.load(args.pretrain_ckpt)
+                dicsum = {}
+                for x in ckptsum.keys():
+
+                    if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
+                        dicsum[x[7:]] = ckptsum[x]
+                model.load_state_dict(dicsum)
+
+                # just prompt
+                ckptsum = torch.load(args.pretrain_prompt_ckpt)
+                model.promptnumber = ckptsum["promptnumberforsum"]
+                model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
+                n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+                logger.info("The model has {} trainable parameters".format(n_params))
+
+            ####add t5 tagger
+            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target" and args.infer_val_entities:
+                ########## predict the validation entity chains with the 1st prompt tuning stage model
+                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+                print("Loading the pre-trained NER model!")
+
+                # model weights
+                ckpt = torch.load(args.pretrain_ckpt)
+                dic = {}
+                for x in ckpt.keys():
+                    if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                        dic[x[7:]] = ckpt[x]
+                entmodel.load_state_dict(dic)
+
+                # just prompt
+                onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
+                oneckpt = torch.load(onepath)
+                entmodel.promptnumber = oneckpt["promptnumber"]
+                entmodel.promptembedding = oneckpt["promptembedding"]
+                
+                n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
+                logger.info("The ent model has {} trainable parameters".format(n_params))
+                entmodel.to(args.device)
+                print("move to device!")
+                model.eval()
+
+                alldata = valid_dataset.data
+                print("valid size: ", len(alldata))
+                allresofvalid = {}
+                with torch.no_grad():
+                    for step in range(len(alldata)):
+                        onedata = alldata[step]
+                        inputdata = onedata[0]
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(args.device)
+                        attention_mask = inputres["attention_mask"].to(args.device)
+                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                        tagpreds = entmodel._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        if allentitylist == []:
+                            allentitylist = ["none"]
+                        input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                        allresofvalid[tempdata] = input_guidance
+                print(len(allresofvalid))
+                respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+                with open(respath, "wb") as f:
+                    pickle.dump(allresofvalid, f)
+                    print("saved the T5 valid entities")
+                valid_dataset.set_allent_for_valid()
+                torch.cuda.empty_cache()
+                del entmodel, enttokenizer
+                gc.collect()
+
+            ########## 2nd prompt tuning stage: summarization
+            model.to(args.device)
+            n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+            logger.info("The model has {} trainable parameters".format(n_params))
+
+            result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
+            logger.info("Finish training")
+            logger.info("The model has {} trainable parameters".format(n_params))
+            for k in keys:
+                result_dict_total[k].append(result_dict[k])
+        print('final results:')
+        for k in keys:
+            easy_results = ["{:.2f}".format(x) for x in result_dict_total[k]]
+            print('{}: {:.4f} (all: {})'.format(k, np.mean(result_dict_total[k]), easy_results))
+
+        if args.local_rank != -1:
+            torch.distributed.destroy_process_group()
 
 
 

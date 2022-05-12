@@ -1,4 +1,5 @@
 import sys
+
 sys.path.append("../..")
 
 import spacy
@@ -7,18 +8,18 @@ import datasets
 import os
 import numpy as np
 import nltk
-from torch.utils.data import Sampler, Dataset, DataLoader
-from rouge_score import rouge_scorer
-
-import re
-from utils import *
-from transformers import BertTokenizer
 import nltk
 import random
-
+import re
+import pickle
+from torch.utils.data import Sampler, Dataset, DataLoader
+from rouge_score import rouge_scorer
+import random
+from nltk.corpus import stopwords
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed = 0, counterfactual_removal = False):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0,
+                 counterfactual_removal=False):
         super(T5SummarizationDataset, self).__init__()
 
         self.filename = filename
@@ -29,7 +30,7 @@ class T5SummarizationDataset(Dataset):
         self.args = args
         self.save_path = args.few_shot_save_dir
         self.seed = seed
-        
+
         self.data = []
         self.data = self.getalldata(self.filename)
         self.num_entries = len(self.data)
@@ -53,7 +54,6 @@ class T5SummarizationDataset(Dataset):
                 if self.args.guidance_mode == 'target':
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
                     self.allent = self.handleentfile(entpath)
-
 
         # counterfactual training
         self.counterfactual_removal = args.counterfactual_removal
@@ -83,8 +83,8 @@ class T5SummarizationDataset(Dataset):
         with open(entpath, "rb") as f:
             self.allent = pickle.load(f)
 
-    def getalldata(self,filename):
-        f = open(filename,'r')
+    def getalldata(self, filename):
+        f = open(filename, 'r')
         alldata = []
         i = 0
         while True:
@@ -96,12 +96,14 @@ class T5SummarizationDataset(Dataset):
             onedata = []
             onedata.append(linelist[0])
             onedata.append(linelist[1])
+            if len(linelist) > 2:
+                onedata.append(linelist[2])
             alldata.append(onedata)
         f.close()
-        
+
         return alldata
 
-    def set_tagger_tokenizer(self,tagger,tokenizer):
+    def set_tagger_tokenizer(self, tagger, tokenizer):
         self.tagger = tagger
         self.tagtokenizer = tokenizer
 
@@ -111,6 +113,9 @@ class T5SummarizationDataset(Dataset):
 
         # guidance
         input_guidance = "None"
+        pred_guidance = "None"
+        
+        stop_words = set(stopwords.words('english'))
         # 1st option: based on entities
         if self.args.guidance_type == "ents":
             if not self.args.use_t5_tagger:
@@ -119,47 +124,50 @@ class T5SummarizationDataset(Dataset):
                     ents = [ent.text for ent in ents]
                     if ents == []:
                         ents = ["none"]
-                    input_guidance = self.args.separator.join(ents)
-                elif self.args.guidance_mode == "target_unique" or self.args.guidance_mode == "target_unique_shuffle":
+                if "target_unique" in self.args.guidance_mode:
                     old_ents = self.spacy_nlp(targetdata).ents
-                    old_ents = [ent.text for ent in old_ents]
+                    if 'filter' in self.args.guidance_mode:
+                        if self.args.filter_type!=None:
+                            old_ents = [ent.text for ent in old_ents if ent.label_ != self.args.filter_type]
+                        else:
+                            old_ents = [ent.text for ent in old_ents]
+                        old_ents = [w for w in old_ents if not w.lower() in stop_words]
+                    else:
+                        old_ents = [ent.text for ent in old_ents]
                     # remove entities case-insensitively
                     marker = set()
-                    ents=[]
+                    ents = []
                     for l in old_ents:
                         ll = l.lower()
-                        if ll not in marker:   # test presence
+                        if ll not in marker:  # test presence
                             marker.add(ll)
                             ents.append(l)
                     if len(ents) == 0:
                         ents_x = self.spacy_nlp(inputdata).ents
                         ents_x = [ent.text for ent in ents_x]
                         ents = ents_x[:2]
-                    if self.args.guidance_mode == "target_unique_shuffle":
+                    if "shuffle" in self.args.guidance_mode:
                         # shuffle ents
                         random.shuffle(ents, random.random)
-                    input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_and_target":
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
                     ents_y = self.spacy_nlp(targetdata).ents
                     ents_y = [ent.text for ent in ents_y]
                     ents_intersection = [ent for ent in ents_x if ent in ents_y]
-                    ents_intersection = list(dict.fromkeys(ents_intersection)) # remove duplicates, while keeping order
+                    ents_intersection = list(dict.fromkeys(ents_intersection))  # remove duplicates, while keeping order
                     if ents_intersection == []:
                         ents_intersection = ents_x[:max(2,len(ents_y))]
-                    input_guidance = self.args.separator.join(ents_intersection)
                 elif self.args.guidance_mode == "input_salient_sents":
                     top_sents = self.find_salient_sents(inputdata, 5)
                     ents = self.spacy_nlp(top_sents).ents
                     ents = [ent.text for ent in ents]
-                    input_guidance = self.args.separator.join(ents)
                 elif self.args.guidance_mode == "input_most_frequent":
                     ents = self.spacy_nlp(inputdata).ents
                     ents = [ent.text for ent in ents]
                     counts = {}
                     for ent in ents:
-                        if not(ent in counts.keys()):
+                        if not (ent in counts.keys()):
                             counts[ent] = 0
                         counts[ent] += 1
                     sorted_counts = dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
@@ -168,12 +176,16 @@ class T5SummarizationDataset(Dataset):
                         top_ents.append(k)
                         if len(top_ents) >= 20:
                             break
-                    input_guidance = self.args.separator.join(top_ents)
                 else:
                     ents = self.spacy_nlp(inputdata).ents
+                    # for e in ents:
+                    #     if e.text.lower() in stop_words:
+                    #         print('e.text: ', e.text)
+                    #         print('e.label_: ',e.label_)
+                    #         raise Exception('end')
                     ents = [ent.text for ent in ents]
-                    input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
-            else: #use t5_tagger
+                input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+            else: #use bert_tagger
                 ####for train
                 if self.split.startswith("train"):
                     tempdata = re.sub(' +', ' ', inputdata)
@@ -212,8 +224,8 @@ class T5SummarizationDataset(Dataset):
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
-                            print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
-
+                            print(
+                                "For valid: we can not find inputdata in the dictionary!! There should be some errors!")
 
             # if counterfactual_removed, remove removed_ents in the input_guidance
             if self.counterfactual_removal:
@@ -229,15 +241,21 @@ class T5SummarizationDataset(Dataset):
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
             input_guidance = salient_sents
-        #print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance)
-        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        input_ents_res = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        # print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance)
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,
+                                                    return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen,
+                                                     truncation=True, return_tensors="pt")
+        inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen,
+                                                        truncation=True, return_tensors="pt")
+        predentsres = self.tokenizer.batch_encode_plus([pred_guidance], padding=False, max_length=self.maxlen,
+                                                       truncation=True, return_tensors="pt")
 
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), input_ents_res['input_ids'].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze(), \
+               predentsres['input_ids'].squeeze()
 
     def __len__(self):
-        
+
         return self.num_entries
 
     def counterfactual_remove(self):
@@ -250,7 +268,7 @@ class T5SummarizationDataset(Dataset):
         targetdata = [i[1] for i in self.data]
         new_inputdata = inputdata
         new_targetdata = targetdata
-        removed_ents = [None]*len(inputdata)
+        removed_ents = [None] * len(inputdata)
         tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
         for i in range(len(inputdata)):
             ents_x = self.spacy_nlp(inputdata[i]).ents
@@ -268,7 +286,7 @@ class T5SummarizationDataset(Dataset):
                     # if it's in the intersection list
                     removed = [ent.text for ent in ents if ent.text in ents_intersection]
                     # if this list is not empty
-                    if len(removed)>0:
+                    if len(removed) > 0:
                         # construct counterfactual example
                         new_targetdata.append(' '.join(sents).replace(sent, ''))
                         new_inputdata.append(inputdata[i])
@@ -283,7 +301,7 @@ class T5SummarizationDataset(Dataset):
         scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
         for j in range(len(sents)):
             sent = sents[j]
-            rest = " ".join(sents[:j] + sents[(j+1):])
+            rest = " ".join(sents[:j] + sents[(j + 1):])
             rouge_scores = scorer.score(rest, sent)
             r1 = rouge_scores["rouge1"].fmeasure
             r1s.append(r1)
@@ -295,6 +313,7 @@ class T5SummarizationDataset(Dataset):
 
         return top_sents
 
+
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
         self.args = args
@@ -304,13 +323,21 @@ class SmartBatchingCollate:
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-        sequences, targets, ents = list(zip(*batch))
+        sequences, targets, ents, predents = list(zip(*batch))
 
+        # input
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
+        # target
+        target_ids, target_mask = self.pad_target(
+            targets,
+            max_sequence_length=self._max_length,
+            pad_token_id=self._pad_token_id
+        )
+        # guidance
         right = True
         if "DID" in self.args.model:
             right = False
@@ -318,21 +345,23 @@ class SmartBatchingCollate:
             ents,
             max_sequence_length=self._max_guidance_length,
             pad_token_id=self._pad_token_id,
-            right = right
+            right=right
         )
         if "DID" in self.args.model:
-            sep_ids = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device) * self.tokenizer.encode("[SEP]")[0]
+            sep_ids = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device) * \
+                      self.tokenizer.encode("[SEP]")[0]
             ents_ids = torch.cat((ents_ids, sep_ids), 1)
-            sep_mask = torch.ones((ents_ids.shape[0], 1), dtype = torch.long, device = ents_ids.device)
+            sep_mask = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device)
             ents_mask = torch.cat((ents_mask, sep_mask), 1)
-        target_ids, target_mask = self.pad_target(
-            targets, 
-            max_sequence_length=self._max_length, 
-            pad_token_id=self._pad_token_id
+        predents_ids, predents_mask = self.pad_sequence(
+            predents,
+            max_sequence_length=self._max_guidance_length,
+            pad_token_id=self._pad_token_id,
+            right=right
         )
+        # print(input_ids.shape, target_ids.shape, ents_ids.shape, predents_ids.shape)
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, predents_ids, predents_mask
 
-        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
-        
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -351,10 +380,10 @@ class SmartBatchingCollate:
             attention_masks.append(attention_mask)
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
-        
-        return padded_sequences,attention_masks
 
-    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right = True):
+        return padded_sequences, attention_masks
+
+    def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right=True):
         max_batch_len = max(len(sequence) for sequence in sequence_batch)
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
@@ -371,7 +400,7 @@ class SmartBatchingCollate:
                 attention_mask.extend([no_attend] * pad_length)
             else:
                 padding = [pad_token_id] * pad_length
-                new_sequence = padding + new_sequence 
+                new_sequence = padding + new_sequence
                 padding = [no_attend] * pad_length
                 attention_mask = padding + attention_mask
 
@@ -380,24 +409,9 @@ class SmartBatchingCollate:
 
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
-        
+
         return padded_sequences, attention_masks
 
-def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
-    '''
-    This function reads in the few-shot datasets saved at save_path
-    returns:
-        list of tuples (train_dataset, valid_dataset)
-    '''
-    datasets = []
-    for seed in few_shot_seeds:
-        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed, counterfactual_removal = args.counterfactual_removal)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
-        datasets.append((train_dataset, valid_dataset, seed))
-    
-    return datasets
 
 def convert_data_to_txt(train_data, new_train_path, args):
     all_train_texts, all_train_summaries = [], []
@@ -415,7 +429,26 @@ def convert_data_to_txt(train_data, new_train_path, args):
             if idx > 0:
                 to_write = "\n" + to_write
             f.write(to_write)
-            
+
+
+def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds):
+    '''
+    This function reads in the few-shot datasets saved at save_path
+    returns:
+        list of tuples (train_dataset, valid_dataset)
+    '''
+    datasets = []
+    for seed in few_shot_seeds:
+        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
+                                               counterfactual_removal=args.counterfactual_removal)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        datasets.append((train_dataset, valid_dataset, seed))
+
+    return datasets
+
+
 def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     '''
     Function that subsamples a dataset and saves the results for few-shot exps
@@ -442,87 +475,3 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
         convert_data_to_txt(valid_data_new, valid_path, args)
     # convert to original seed
     np.random.seed(args.seed)
-
-def get_data(dataset_args, args, few_shot_seeds, tokenizer, save_path):
-
-    usetrain = True
-    usevalid = True
-    spacy_nlp = spacy.load("en_core_web_sm")
-    alltrainfile = []
-    allvalidfile = []
-    for seed in few_shot_seeds:
-        train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
-        valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
-        handler_train = open(train_file_name, "r")
-        handler_valid = open(valid_file_name, "r")
-
-        alldoc = []
-        allsum = []
-        if usetrain:
-            while True:
-                oneline = handler_train.readline().strip()
-                if not oneline:
-                    break
-                onedata = oneline.split('\t')
-                if len(onedata) != 2:
-                    print("train doc sum split error")
-                    continue
-                onedoc = re.sub(' +', ' ', onedata[0].replace("\n"," "))
-                alldoc.append(onedoc)
-                onesum = re.sub(' +', ' ', onedata[1].replace("\n"," "))
-                allsum.append(onesum)
-        if usevalid:
-            while True:
-                oneline = handler_valid.readline().strip()
-                if not oneline:
-                    break
-                onedata = oneline.split('\t')
-                if len(onedata) != 2:
-                    print("valid doc sum split error")
-                    continue
-                onedoc = re.sub(' +', ' ', onedata[0].replace("\n", " "))
-                alldoc.append(onedoc)
-                onesum = re.sub(' +', ' ', onedata[1].replace("\n", " "))
-                allsum.append(onesum)
-
-        handler_train.close()
-        handler_valid.close()
-        doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
-        if not os.path.exists(doc_sum_path):
-            os.makedirs(doc_sum_path, exist_ok=True)
-
-        #####seperate it to document + summary
-        docpath = doc_sum_path + "doc.txt"
-        sumpath = doc_sum_path + "sum.txt"
-        f = open(docpath, 'w')
-        for oned in alldoc:
-            f.write(oned + "\n")
-        f.close()
-        f = open(sumpath, 'w')
-        for ones in allsum:
-            f.write(ones + "\n")
-        f.close()
-
-        ####get train and valid data for bert tagger
-        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(args, sumpath, docpath, doc_sum_path, spacy_nlp)
-        #print(docwithlabel_train, docwithlabel_vaid)
-        alltrainfile.append(docwithlabel_train)
-        allvalidfile.append(docwithlabel_vaid)
-    return alltrainfile, allvalidfile
-
-
-def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
-    all_f1s, all_meanRs = [], []
-    for i in range(len(alltrainfile)):
-        result_dict = train_tagger_for_one_seed(alltrainfile[i], allvalidfile[i], args)
-        f1 = result_dict["best_val_F1"]
-        meanR = result_dict["best_val_meanR"]
-        all_f1s.append(f1)
-        all_meanRs.append(meanR)
-    f1 = np.mean(all_f1s)
-    clean_f1s = ["{:.4f}".format(x) for x in all_f1s]
-    print("Mean F1: {:.4f} (over all seeds: {})".format(f1, clean_f1s))
-    meanR = np.mean(all_meanRs)
-    clean_meanRs = ["{:.4f}".format(x) for x in all_meanRs]
-    print("Mean mean ROUGE: {:.4f} (over all seeds: {})".format(meanR, clean_meanRs))
-

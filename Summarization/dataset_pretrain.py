@@ -2,11 +2,14 @@ import sys
 import torch
 import random
 import pickle5
+
 from torch.utils.data import Sampler, Dataset, DataLoader
 
-class T5NERDatasetConll(Dataset):
+
+
+class T5DatasetPretrainConll(Dataset):
     def __init__(self, filename, maxlen, tokenizer):
-        super(T5NERDatasetConll, self).__init__()
+        super(T5DatasetPretrainConll, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
@@ -44,15 +47,17 @@ class T5NERDatasetConll(Dataset):
         #    print(inputres)
         #    print(targetres)
         #    sys.stdout.flush()
+
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
 
     def __len__(self):
+
         return self.num_entries
 
 
-class T5NERDataset(Dataset):
+class T5DatasetPretrain(Dataset):
     def __init__(self, texts, ents, target, maxlen, tokenizer, args):
-        super(T5NERDataset, self).__init__()
+        super(T5DatasetPretrain, self).__init__()
         self.texts = texts
         self.ents = ents
         self.target = target
@@ -83,7 +88,9 @@ class T5NERDataset(Dataset):
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), entityres["input_ids"].squeeze()
 
     def __len__(self):
+
         return self.num_entries
+
 
 class SmartBatchingCollateTag:
     def __init__(self, max_length, pad_token_id):
@@ -103,6 +110,7 @@ class SmartBatchingCollateTag:
         target_ids, target_mask = self.pad_target(targets,max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
 
         output = input_ids, attention_mask, target_ids, target_mask
+
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -123,8 +131,8 @@ class SmartBatchingCollateTag:
             attention_masks.append(attention_mask)
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
-        return padded_sequences,attention_masks
 
+        return padded_sequences,attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         ##tokenize sequence_batch
@@ -148,7 +156,9 @@ class SmartBatchingCollateTag:
 
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+
         return padded_sequences, attention_masks
+
 
 class SmartBatchingCollateTagPretrain:
     def __init__(self, max_length, pad_token_id):
@@ -171,6 +181,7 @@ class SmartBatchingCollateTagPretrain:
         entity_ids, entity_mask = self.pad_target(entities,max_sequence_length=64,pad_token_id=self._pad_token_id)
 
         output = input_ids, attention_mask, target_ids, target_mask, entity_ids, entity_mask
+
         return output
 
     def pad_target(self, sequence_batch, max_sequence_length, pad_token_id):
@@ -191,8 +202,8 @@ class SmartBatchingCollateTagPretrain:
             attention_masks.append(attention_mask)
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
-        return padded_sequences,attention_masks
 
+        return padded_sequences,attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id):
         ##tokenize sequence_batch
@@ -216,7 +227,9 @@ class SmartBatchingCollateTagPretrain:
 
         padded_sequences = torch.tensor(padded_sequences)
         attention_masks = torch.tensor(attention_masks)
+
         return padded_sequences, attention_masks
+
 
 def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     collate_fn = SmartBatchingCollateTag(
@@ -233,6 +246,7 @@ def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler
         num_workers=num_workers,
         pin_memory=True
     )
+
     return dataloader
 
 
@@ -251,6 +265,7 @@ def get_dataloader_tag_pretrain(num_workers,dataset, batch_size, max_len, pad_id
         num_workers=num_workers,
         pin_memory=True
     )
+
     return dataloader
 
 
