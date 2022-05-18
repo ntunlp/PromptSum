@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -51,10 +51,14 @@ parser.add_argument("--cuda", dest="cuda", type=str,
                     default="2", help="gpu id")
 parser.add_argument("--local_rank", dest="local_rank", type=int,
                     default=-1, help="local rank")
+parser.add_argument("--exp_id", dest="exp_id", type=str,
+                    default='001', help="id for current exp")
+parser.add_argument("--debug", action='store_true',
+                    default=False, help="whether debug with breakpoint")
 
 # data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default = root + "DATASETS/PromptSumm/")
+                    default="/export/home/dataset/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -76,14 +80,14 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default = root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                    default="/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default = root + "hf_models/t5-v1-large/",
+                    default="/export/home/cache",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                    default="../../hf_datasets/", help="dataset cache folder")
-##### prompt
+                    default="/export/home/hf_datasets_v1/", help="dataset cache folder")
+# prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                     default="concat_right", choices = ["concat_right", "concat_left"])
 parser.add_argument("--prompt_number", dest="prompt_number", type=int,
@@ -126,6 +130,13 @@ parser.add_argument("--warmup_steps_pretrain", dest="warmup_steps_pretrain", typ
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm_pretrain", dest="max_grad_norm_pretrain", type=float,
                     default=1.0, help="max grad norm")
+parser.add_argument("--pretrain_dataset_path", dest="pretrain_dataset_path", type=str,
+                    default="", help="pretrain data path when using huggingface dataset")
+parser.add_argument("--use_huggingface_dataset", dest="use_huggingface_dataset", action='store_true',
+                    default=False, help="whether to use huggingface dataset for pretraining")
+parser.add_argument("--pretrain_with_ent_chain", dest="pretrain_with_ent_chain", action='store_true',
+                    default=False, help="whether to pretrain with ent chain as input")
+                    
 ##### entity prompt tuning
 parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                     default=5e-1, help='learning rate')
@@ -210,7 +221,7 @@ parser.add_argument("--pretraining_val_size", type=int,
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
 parser.add_argument("--debug_pretrain", action='store_true',
-                    default=True, help="whether to just use 100-10 data points")
+                    default=False, help="whether to just use 100-10 data points")
 ##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
@@ -231,8 +242,8 @@ parser.add_argument("--if_spacy", action='store_true',
 
 args = parser.parse_args()
 
-dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
-dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
+dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
+dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
 text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
 summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
 validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
@@ -316,6 +327,7 @@ def main(args):
     few_shot_seeds = range(args.num_seeds)
     # if files don't exist, subsample
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
+        import pdb;pdb.set_trace()
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     print(args.pretrain_ckpt)

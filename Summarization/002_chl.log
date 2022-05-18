@@ -1,0 +1,40 @@
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=16, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=256, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=256, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=16, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=256, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=256, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+prompt torch.Size([300, 1024])
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+
+Epoch 0 validation:
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=4, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+prompt torch.Size([300, 1024])
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+
+Epoch 0 validation:
+Namespace(adam_epsilon=1e-08, batch_size_per_gpu=4, build_salient_entities=False, cache_path='/export/home/cache', concat_mode='concat_right', counterfactual_removal=False, cuda='1', data_dir='/export/home/dataset/PromptSumm/', dataset='xsum', dataset_cache_dir='/export/home/hf_datasets_v1/', dataset_name='xsum', dataset_version='default', eval_step=100000, few_shot=10, gradient_accumulation_steps=8, guidance_mode='target', guidance_type='ents', highlights=False, if_spacy=False, ifckpt_onlymodel=1, length_penalty=1.0, lm_adapted_path='/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin', local_rank=0, log_step=1, lr=0.5, max_epoch=30, max_grad_norm=1.0, max_guidance_length=100, max_length=512, max_summary_length=64, model='T5MixPrompt', model_name='google/t5-v1_1-large', num_beams=4, num_seeds=3, num_workers=0, pretrain_all_weights=False, pretrain_t5_tagger=True, pretraining_train_size=204045, pretraining_val_size=1000, prompt_number=300, repetition_penalty=2.5, save_model=False, save_model_path='', save_step=100000, seed=42, separator=',', stemmer=True, summary_key='summary', test_key='test', test_size_per_gpu=8, text_key='document', train_sample=True, train_t5_tagger=False, use_bert_tagger=False, use_lm_adapted=1, use_pretrain_ckpt=True, use_t5_tagger=False, valid_size_per_gpu=16, validation_key='validation', warmup_steps=0.01, weight_decay=1e-05, zero_shot=False)
+device cuda:0
+
+pre-train tagger
+Pre-training entity tagger...
+prompt torch.Size([300, 1024])
+204045 1000
+load the pre-training train data
+204045
+load the pre-training val data
+1000
+
+Epoch 0 validation:
