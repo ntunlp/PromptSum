@@ -130,6 +130,13 @@ parser.add_argument("--warmup_steps_pretrain", dest="warmup_steps_pretrain", typ
                     default=0.01, help="warmup steps")
 parser.add_argument("--max_grad_norm_pretrain", dest="max_grad_norm_pretrain", type=float,
                     default=1.0, help="max grad norm")
+parser.add_argument("--pretrain_dataset_path", dest="pretrain_dataset_path", type=str,
+                    default="", help="pretrain data path when using huggingface dataset")
+parser.add_argument("--use_huggingface_dataset", dest="use_huggingface_dataset", action='store_true',
+                    default=False, help="whether to use huggingface dataset for pretraining")
+parser.add_argument("--pretrain_with_ent_chain", dest="pretrain_with_ent_chain", action='store_true',
+                    default=False, help="whether to pretrain with ent chain as input")
+                    
 ##### entity prompt tuning
 parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                     default=5e-1, help='learning rate')
@@ -214,7 +221,7 @@ parser.add_argument("--pretraining_val_size", type=int,
 parser.add_argument("--pretrain_all_weights", action='store_true',
                     default=True, help="whether pretrain a T5 tagger")
 parser.add_argument("--debug_pretrain", action='store_true',
-                    default=True, help="whether to just use 100-10 data points")
+                    default=False, help="whether to just use 100-10 data points")
 ##### fine-tuning
 parser.add_argument("--use_pretrain_ckpt", action='store_false',
                     default=True, help="whether to load the pre-training ckpt before fine-tuning")
@@ -235,8 +242,8 @@ parser.add_argument("--if_spacy", action='store_true',
 
 args = parser.parse_args()
 
-dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
-dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
+dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
+dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
 text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
 summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
 validation_keys = ["validation", "validation", "", "validation", "test", "validation"]

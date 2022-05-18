@@ -1,10 +1,11 @@
-python -m torch.distributed.launch --nproc_per_node 1 --master_port 29565 main.py --pretrain_t5_tagger \
-    --valid_size_per_gpu 16 \
-    --batch_size_per_gpu 3 \
+ python -m torch.distributed.launch --nproc_per_node 1 --master_port 29526 main.py \
+    --pretrain \
+    --valid_size_per_gpu_pretrain 4 \
+    --batch_size_per_gpu_pretrain 1 \
     --cuda 3 \
-    --exp_id 007 \
-    --concat_mode concat_left \
+    --exp_id 008 \
     --pretrain_all_weights \
-    --prompt_number 300 \
-    --pretrain_with_ent_chain \
-    --gradient_accumulation_steps 1 \
+    --prompt_number 100 \
+    --gradient_accumulation_steps_pretrain 1 \
+    --use_huggingface_dataset \
+    --pretrain_dataset_path /export/home/PromptSumm/Summarization/t5_tagger_pretraining_data/c4_realnewslike \
