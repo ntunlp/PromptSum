@@ -23,9 +23,10 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 from torch.cuda.amp import autocast as autocast
 from nltk.tokenize import sent_tokenize
-
+from datasets import load_from_disk
 from dataset_pretrain import *
 from model_pretrain import *
+from utils import VirtualList
 
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -70,7 +71,7 @@ def pretrain_model(dataset_args, args):
         model.promptnumberforsum = allckpt["promptnumber"]
         model.promptembeddingforsum = allckpt["promptembedding"]
     else:
-        promptnumber = 300
+        promptnumber = args.prompt_number # 300
         taskname = "name entity recognition"
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
         print("prompt", promptembedding.shape)
@@ -116,26 +117,32 @@ def pretrain_model(dataset_args, args):
             print("saved the pre-training val data")
         raise Exception
     else:
-        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_train_size)
-        with open(train_path, "rb") as f:
-            train_data = pickle.load(f)
-        print("load the pre-training train data")
-        train_texts, train_target, train_ents = train_data
-        print(len(train_texts))
-        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_val_size)
-        with open(val_path, "rb") as f:
-            val_data = pickle.load(f)
-        print("load the pre-training val data")
-        val_texts, valid_target, val_ents = val_data
-        print(len(val_texts))
-        if args.debug_pretrain:
-            train_texts = train_texts[:10]
-            train_target = train_target[:10]
-            train_ents = train_ents[:10]
-            val_texts = val_texts[:10]
-            valid_target = valid_target[:10]
-            val_ents = val_ents[:10]
-            print(len(train_texts), len(val_texts))
+        if args.use_huggingface_dataset:
+            dataset = load_from_disk(args.pretrain_dataset_path)
+            train_data, val_data = dataset['train'], dataset['validation']
+            train_texts, train_target, train_ents = VirtualList(train_data, 'text_rest'), VirtualList(train_data, 'summary'), VirtualList(train_data, 'ent_chain')
+            val_texts, valid_target, val_ents = VirtualList(val_data, 'text_rest'), VirtualList(val_data, 'summary'), VirtualList(val_data, 'ent_chain')
+        else:
+            train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_train_size)
+            with open(train_path, "rb") as f:
+                train_data = pickle.load(f)
+            print("load the pre-training train data")
+            train_texts, train_target, train_ents = train_data
+            print(len(train_texts))
+            val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_val_size)
+            with open(val_path, "rb") as f:
+                val_data = pickle.load(f)
+            print("load the pre-training val data")
+            val_texts, valid_target, val_ents = val_data
+            print(len(val_texts))
+            if args.debug_pretrain:
+                train_texts = train_texts[:10]
+                train_target = train_target[:10]
+                train_ents = train_ents[:10]
+                val_texts = val_texts[:10]
+                valid_target = valid_target[:10]
+                val_ents = val_ents[:10]
+                print(len(train_texts), len(val_texts))
 
     # datasets
     train_dataset = T5DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
@@ -188,8 +195,8 @@ def pretrain_model(dataset_args, args):
     }
     global_step = 0
     output_dir = "t5_tagger_pretrained_ckpt/"
-    print("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
+    # print("\nEpoch 0 validation:")
+    # dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
@@ -253,6 +260,45 @@ def pretrain_model(dataset_args, args):
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
 
+
+def find_salient_sentences_and_entities_per_example(example, scorer, spacy_nlp):
+    '''map function for huggingface dataset
+    '''
+    n = 3
+    text = example['text']
+    sents = nltk.sent_tokenize(text)
+    sents = sents[:40]
+    r1s = []
+    for j in range(len(sents)):
+        sent = sents[j]
+        rest = " ".join(sents[:j] + sents[(j+1):])
+        rouge_scores = scorer.score(rest, sent)
+        r1 = rouge_scores["rouge1"].fmeasure
+        r1s.append(r1)
+    idx = np.argsort(np.array(r1s))[::-1]
+    # top sents
+    top_idx = idx[:n]
+    top_idx.sort()
+    top_sents = [sents[i] for i in top_idx]
+    top_sents = " ".join(top_sents)
+    
+    # top entities
+    ents = spacy_nlp(top_sents).ents
+    allents = [ent.text for ent in ents]
+    if allents == []:
+        allents = ["none"]
+    
+    # text
+    bottom_idx = idx[n:]
+    bottom_idx.sort()
+    rest_sents = [sents[i] for i in bottom_idx]
+    rest = " ".join(rest_sents)
+
+    example['text_rest'] = rest
+    example['summary'] = top_sents
+    example['ent_chain'] = allents
+    return example
+    
 
 def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
     print("finding the salient entities...")

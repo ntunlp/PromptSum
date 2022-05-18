@@ -10,6 +10,17 @@ import pickle5
 # from T5PromptNER.TrainTaggerforSum import *
 import spacy
 
+class VirtualList(object):
+    def __init__(self, dataset, field):
+        self.dataset = dataset
+        self.field = field 
+    
+    def __getitem__(self, idx):
+        return self.dataset[self.field][idx]
+
+    def __len__(self):
+        return len(self.dataset)
+
 def seed_everything(args):
     random.seed(args.seed)
     os.environ['PYTHONASSEED'] = str(args.seed)

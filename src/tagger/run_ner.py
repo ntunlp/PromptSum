@@ -340,7 +340,7 @@ def main():
                         help="The output directory where the model predictions and checkpoints will be written.")
 
     ## Other parameters
-    parser.add_argument('--cache_dir', type=str, default="/data/qin/cache/")
+    parser.add_argument('--cache_dir', type=str, default="/export/home/cache")
     parser.add_argument("--max_seq_length",
                         default=128,
                         type=int,
