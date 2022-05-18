@@ -161,7 +161,7 @@ parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summa
 parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
                     default=8, help="gradient accumulation steps")
 parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
-                    default=30, help="max epoch number")
+                    default=60, help="max epoch number")
 parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                     default=0, help="dataloader num_workers")
 parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
@@ -318,7 +318,8 @@ def main(args):
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
-
+    print(args.pretrain_ckpt)
+    print(args.pretrain_prompt_ckpt)
     ########## pre-training?
     if args.pretrain:
         print("\n"+ "*"*50)
