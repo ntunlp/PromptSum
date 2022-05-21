@@ -195,7 +195,7 @@ def pretrain_model(dataset_args, args):
     global_step = 0
     output_dir = f"t5_tagger_pretrained_ckpt/{args.exp_id}"
     logger.info("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args, optimizer)
+    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
@@ -244,12 +244,12 @@ def pretrain_model(dataset_args, args):
                     allloss = []
 
                 if args.local_rank in [0, -1] and global_step % eval_step == 0 and global_step > args.eval_start_step:
-                    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args, optimizer)
+                    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
                     model.train()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args, optimizer)
+            dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
             model.train()
 
     torch.cuda.empty_cache()
@@ -341,7 +341,7 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
     return all_texts, all_top_sen, all_ents
 
 
-def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args, optimizer):
+def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     spacy_nlp = spacy.load("en_core_web_sm")
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -506,7 +506,6 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
             "promptembedding": promptembedding,
             "promptnumberforsum": model_to_save.promptnumberforsum,
             "promptembeddingforsum":promptembeddingforsum,
-            'optimizer': optimizer.state_dict()
         }
         torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
         torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
