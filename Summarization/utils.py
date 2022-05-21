@@ -16,10 +16,15 @@ class VirtualList(object):
         self.field = field 
     
     def __getitem__(self, idx):
-        return self.dataset[self.field][idx]
+        return self.dataset[idx][self.field]
 
     def __len__(self):
         return len(self.dataset)
+
+class Nop(object):
+    def nop(*args, **kw): pass
+    def __getattr__(self, _): return self.nop
+        
 
 def seed_everything(args):
     random.seed(args.seed)

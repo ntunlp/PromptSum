@@ -1,11 +1,12 @@
- python -m torch.distributed.launch --nproc_per_node 1 --master_port 29526 main.py \
+ python -m torch.distributed.launch --nproc_per_node 1 --master_port 29527 main.py \
     --pretrain \
-    --valid_size_per_gpu_pretrain 4 \
-    --batch_size_per_gpu_pretrain 1 \
-    --cuda 3 \
-    --exp_id 008 \
+    --valid_size_per_gpu_pretrain 20 \
+    --batch_size_per_gpu_pretrain 2 \
+    --cuda 1 \
+    --exp_id 012 \
+    --log_name 012 \
     --pretrain_all_weights \
-    --prompt_number 100 \
-    --gradient_accumulation_steps_pretrain 1 \
+    --prompt_number 300 \
+    --gradient_accumulation_steps_pretrain 2 \
     --use_huggingface_dataset \
     --pretrain_dataset_path /export/home/PromptSumm/Summarization/t5_tagger_pretraining_data/c4_realnewslike \
