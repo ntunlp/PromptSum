@@ -29,7 +29,7 @@ from models_summarization.model_soft import *
 from model_finetune_entity import *
 from engine_pretrain import *
 
-
+logger = logging.getLogger('root')
 
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     all_f1s, all_meanRs = [], []

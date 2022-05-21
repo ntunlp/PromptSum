@@ -26,7 +26,7 @@ from utils import *
 from models_summarization.model_soft import *
 from dataset_finetune_summary import *
 
-
+logger = logging.getLogger('root')
 
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step

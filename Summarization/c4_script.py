@@ -14,5 +14,12 @@ def process_c4():
     new_data = data.map(data_fn, num_proc=multiprocessing.cpu_count()-4)
     new_data.save_to_disk("t5_tagger_pretraining_data/c4_realnewslike")
 
-def convert_data():
-    data = load_from_disk('t5_tagger_pretraining_data/c4_realnewslike')
+def subsample_validation():
+    data = load_from_disk("t5_tagger_pretraining_data/c4_realnewslike")
+    test_valid = data['validation'].train_test_split(test_size=1000)
+    data['val_small'] = test_valid['test']
+    data['val_small'].save_to_disk("t5_tagger_pretraining_data/c4_realnewslike_v2/val_small")
+
+if __name__ == '__main__':
+    # process_c4()
+    subsample_validation()
