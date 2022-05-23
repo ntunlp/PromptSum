@@ -2,10 +2,11 @@
     --pretrain \
     --valid_size_per_gpu_pretrain 4 \
     --batch_size_per_gpu_pretrain 1 \
-    --cuda 3 \
+    --cuda 2 \
     --exp_id 008 \
     --pretrain_all_weights \
     --prompt_number 100 \
     --gradient_accumulation_steps_pretrain 1 \
     --use_huggingface_dataset \
-    --pretrain_dataset_path /export/home/PromptSumm/Summarization/t5_tagger_pretraining_data/c4_realnewslike \
+    --dataset_name c4 \
+    --pretrain_dataset_path /data/hailin/PromptSumm/c4_realnewslike \

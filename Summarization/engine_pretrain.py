@@ -53,7 +53,8 @@ def pretrain_model(dataset_args, args):
     num_workers = args.num_workers_pretrain
     max_grad_norm = args.max_grad_norm_pretrain
     log_step = args.log_step_pretrain
-    eval_step = args.eval_step
+    #eval_step = args.eval_step
+    eval_step = 10000
     model_name = args.model_name
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)

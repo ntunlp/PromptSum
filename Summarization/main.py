@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -58,7 +58,7 @@ parser.add_argument("--debug", action='store_true',
 
 # data
 parser.add_argument("--data_dir", dest="data_dir", type=str,
-                    default="/export/home/dataset/PromptSumm/")
+                    default = root + "DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="xsum")
 parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -80,13 +80,13 @@ parser.add_argument("--model_name", dest="model_name", type=str,
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                     default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                    default="/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin",
+                    default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                     help="The path of lm_adapted model")
 parser.add_argument("--cache_path", dest="cache_path", type=str,
-                    default="/export/home/cache",
+                    default = root + "hf_models/t5-v1-large/",
                     help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                    default="/export/home/hf_datasets_v1/", help="dataset cache folder")
+                    default="../../hf_datasets/", help="dataset cache folder")
 # prompt
 parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                     default="concat_right", choices = ["concat_right", "concat_left"])
