@@ -200,8 +200,6 @@ def set_args():
                         default=30000, help="how many steps to start eval")                    
 
     # generation
-    parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
-                        default=64, help="max summary length")
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -257,6 +255,7 @@ def set_args():
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False]
+    max_summary_lengths = [128, 64, 64, 128, 256, 64]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -271,6 +270,7 @@ def set_args():
     args.validation_key = validation_keys[idx]
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
+    args.max_summary_length = max_summary_lengths[idx]
 
     return args
 
@@ -292,11 +292,6 @@ def set_logger(args):
         ]
     )
     
-
-
-
-
-
 
 def main(args):
     device = torch.device("cpu")
