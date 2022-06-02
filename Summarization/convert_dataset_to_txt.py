@@ -9,13 +9,13 @@ gc.enable()
 
 parser = argparse.ArgumentParser(description="latentRE")
 
-parser.add_argument("--data_dir", type = str, default = "/export/home/dataset/PromptSumm/")
+parser.add_argument("--data_dir", type = str, default = "/data/mathieu/DATASETS/PromptSumm/")
 parser.add_argument("--dataset_name", type=str, default="ccdv/cnn_dailymail", 
                     choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
 parser.add_argument("--dataset", type = str, default = "cnndm",
                     choices = ["cnndm", "xsum", "billsum", "samsum"])
-parser.add_argument("--size", type = int, default = 64)
-parser.add_argument("--seeds", type = list, default = [0])
+parser.add_argument("--size", type = int, default = 100)
+parser.add_argument("--seeds", type = list, default = [0, 1, 2])
 
 args = parser.parse_args()
 

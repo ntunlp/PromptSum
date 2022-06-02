@@ -42,7 +42,8 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/qin/"
+    #root = "/data/qin/"
+    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -62,9 +63,9 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default="/export/home/dataset/PromptSumm/")
+                        default="/data/mathieu/DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="xsum")
+                        default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -84,13 +85,13 @@ def set_args():
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                        default="/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin",
+                        default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default="/export/home/cache",
+                        default="/data/mathieu/hf_models/t5-v1-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="/export/home/hf_datasets_v1/", help="dataset cache folder")
+                        default="/data/mathieu/hf_datasets/", help="dataset cache folder")
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -232,13 +233,13 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
-                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
+                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--use_t5_tagger",  action='store_true',
