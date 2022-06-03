@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = '3'
 import pickle
 import argparse
 import gc
@@ -63,7 +63,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default="/data/mathieu/DATASETS/PromptSumm/")
+                        default=root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -85,13 +85,13 @@ def set_args():
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
-                        default="/data/mathieu/lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
+                        default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default="/data/mathieu/hf_models/t5-v1-large/",
+                        default=root + "hf_models/t5-v1-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="/data/mathieu/hf_datasets/", help="dataset cache folder")
+                        default="../../hf_datasets/", help="dataset cache folder")
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -254,7 +254,7 @@ def set_args():
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False]
+    highlights = [True, False, False, False, False, False, False]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
 
     idx = dataset_names.index(args.dataset_name)
@@ -291,7 +291,6 @@ def set_logger(args):
             logging.StreamHandler()
         ]
     )
-    
 
 def main(args):
     device = torch.device("cpu")
@@ -348,7 +347,8 @@ def main(args):
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
-
+    print(args.pretrain_ckpt)
+    print(args.pretrain_prompt_ckpt)
     ########## pre-training?
     if args.pretrain:
         logger.info("\n"+ "*"*50)

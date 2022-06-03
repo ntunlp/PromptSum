@@ -26,17 +26,18 @@ from nltk.tokenize import sent_tokenize
 from datasets import load_from_disk
 from dataset_pretrain import *
 from model_pretrain import *
-from utils import VirtualList, Nop
+from utils import VirtualList
 
-logger = logging.getLogger('root')
+
+logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt = '%m/%d/%Y %H:%M:%S',
+                    level = logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 
 def pretrain_model(dataset_args, args):
-    if args.local_rank not in [0, -1]:
-        global logger
-        logger = Nop()
-    
-    logger.info("Pre-training entity tagger...")
+    print("Pre-training entity tagger...")
 
     ### train
     gradient_accumulation_steps = args.gradient_accumulation_steps_pretrain
@@ -45,14 +46,15 @@ def pretrain_model(dataset_args, args):
     num_train_epochs = args.max_epoch_pretrain ### epochs for training tagger
     learning_rate = args.lr_pretrain
     if args.pretrain_all_weights:
-        logger.info("pretrain_all_weights")
+        print("pretrain_all_weights")
         learning_rate = 5e-5
     weight_decay = args.weight_decay_pretrain
     max_seq_length = args.max_length
     num_workers = args.num_workers_pretrain
     max_grad_norm = args.max_grad_norm_pretrain
     log_step = args.log_step_pretrain
-    eval_step = args.eval_step
+    #eval_step = args.eval_step
+    eval_step = 10000
     model_name = args.model_name
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
@@ -73,7 +75,7 @@ def pretrain_model(dataset_args, args):
         promptnumber = args.prompt_number # 300
         taskname = "name entity recognition"
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
-        logger.info(f"prompt {promptembedding.shape}")
+        print("prompt", promptembedding.shape)
         model.set_prompt_embedding(promptnumber, promptembedding)
 
         tasknamesum = "summarization"
@@ -86,19 +88,19 @@ def pretrain_model(dataset_args, args):
     spacy_nlp = spacy.load("en_core_web_sm")
 
     # data
-    full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    train_data = full_data['train']
-    valid_data = full_data['validation']
-    train_texts = [x[args.text_key] for x in train_data]
-    val_texts = [x[args.text_key] for x in valid_data]
-    p = np.random.permutation(len(val_texts))
-    val_texts = [val_texts[x] for x in p]
-    val_texts = val_texts[:1000]
-    logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
-    if args.debug_pretrain:
-        train_texts = train_texts[:10]
-        val_texts = val_texts[:10]
-        logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
+    # full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    # train_data = full_data['train']
+    # valid_data = full_data['validation']
+    # train_texts = [x[args.text_key] for x in train_data]
+    # val_texts = [x[args.text_key] for x in valid_data]
+    # p = np.random.permutation(len(val_texts))
+    # val_texts = [val_texts[x] for x in p]
+    # val_texts = val_texts[:1000]
+    # print(len(train_texts), len(val_texts))
+    # if args.debug_pretrain:
+    #     train_texts = train_texts[:10]
+    #     val_texts = val_texts[:10]
+    #     print(len(train_texts), len(val_texts))
 
     # build data
     if args.build_salient_entities:
@@ -107,33 +109,33 @@ def pretrain_model(dataset_args, args):
         train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], len(train_texts))
         with open(train_path, "wb") as f:
             pickle.dump(train_data, f)
-            logger.info("saved the pre-training train data")
+            print("saved the pre-training train data")
         val_texts, valid_target, val_ents = find_salient_sentences_and_entities(val_texts, scorer, spacy_nlp, args)
         val_data = val_texts, valid_target, val_ents
         val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], len(val_texts))
         with open(val_path, "wb") as f:
             pickle.dump(val_data, f)
-            logger.info("saved the pre-training val data")
+            print("saved the pre-training val data")
         raise Exception
     else:
         if args.use_huggingface_dataset:
             dataset = load_from_disk(args.pretrain_dataset_path)
-            train_data, val_data = dataset['train'], dataset['val_small']
+            train_data, val_data = dataset['train'], dataset['validation']
             train_texts, train_target, train_ents = VirtualList(train_data, 'text_rest'), VirtualList(train_data, 'summary'), VirtualList(train_data, 'ent_chain')
             val_texts, valid_target, val_ents = VirtualList(val_data, 'text_rest'), VirtualList(val_data, 'summary'), VirtualList(val_data, 'ent_chain')
         else:
             train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_train_size)
             with open(train_path, "rb") as f:
                 train_data = pickle.load(f)
-            logger.info("load the pre-training train data")
+            print("load the pre-training train data")
             train_texts, train_target, train_ents = train_data
-            logger.info(len(train_texts))
+            print(len(train_texts))
             val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_val_size)
             with open(val_path, "rb") as f:
                 val_data = pickle.load(f)
-            logger.info("load the pre-training val data")
+            print("load the pre-training val data")
             val_texts, valid_target, val_ents = val_data
-            logger.info(f"val examples: {len(val_texts)}")
+            print(len(val_texts))
             if args.debug_pretrain:
                 train_texts = train_texts[:10]
                 train_target = train_target[:10]
@@ -141,7 +143,7 @@ def pretrain_model(dataset_args, args):
                 val_texts = val_texts[:10]
                 valid_target = valid_target[:10]
                 val_ents = val_ents[:10]
-                logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
+                print(len(train_texts), len(val_texts))
 
     # datasets
     train_dataset = T5DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
@@ -193,19 +195,19 @@ def pretrain_model(dataset_args, args):
         'best_val_meanR': Best_val_meanR
     }
     global_step = 0
-    output_dir = f"t5_tagger_pretrained_ckpt/{args.exp_id}"
-    logger.info("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args, optimizer)
+    output_dir = "t5_tagger_pretrained_ckpt/"
+    # print("\nEpoch 0 validation:")
+    # dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
-        logger.info(f"epoch {i}")
+        logger.info(i)
         model.train()
         result_dict['epoch'] = i
         alllossent = []
         alllosssum = []
         for step, batch in enumerate(train_dataloader):
-            # logger.info(step)
+            #print(step)
             inputs_all = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                           "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                           "entity_ids": batch[4].to(args.device), "entity_mask": batch[5].to(args.device)}
@@ -243,13 +245,13 @@ def pretrain_model(dataset_args, args):
                     logger.info("step: %d,  lossent: %.6f, losssum: %.6f" % (global_step,  np.average(alllossent), np.average(alllosssum)))
                     allloss = []
 
-                if args.local_rank in [0, -1] and global_step % eval_step == 0 and global_step > args.eval_start_step:
-                    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args, optimizer)
+                if args.local_rank in [0, -1] and global_step % eval_step == 0:
+                    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
                     model.train()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args, optimizer)
+            dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
             model.train()
 
     torch.cuda.empty_cache()
@@ -300,7 +302,7 @@ def find_salient_sentences_and_entities_per_example(example, scorer, spacy_nlp):
     
 
 def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
-    logger.info("finding the salient entities...")
+    print("finding the salient entities...")
     n = 3
     # index = 0
     all_texts, all_top_sen, all_ents = [], [], []
@@ -341,7 +343,7 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
     return all_texts, all_top_sen, all_ents
 
 
-def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args, optimizer):
+def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     spacy_nlp = spacy.load("en_core_web_sm")
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -355,7 +357,7 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     allsen, alltar, allpred = [], [], []
     alltarsum, allpredsum = [], []
     with torch.no_grad():
-        logger.info(f"validation steps: {len(valid_dataloader)}")
+        logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
             inputs_all = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                           "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
@@ -506,7 +508,6 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
             "promptembedding": promptembedding,
             "promptnumberforsum": model_to_save.promptnumberforsum,
             "promptembeddingforsum":promptembeddingforsum,
-            'optimizer': optimizer.state_dict()
         }
         torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
         torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
