@@ -42,7 +42,8 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/qin/"
+    #root = "/data/qin/"
+    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -64,7 +65,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default=root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="xsum")
+                        default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -199,8 +200,6 @@ def set_args():
                         default=30000, help="how many steps to start eval")                    
 
     # generation
-    parser.add_argument("--max_summary_length", dest="max_summary_length", type=int,
-                        default=64, help="max summary length")
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -232,13 +231,13 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
-                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
+                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--use_t5_tagger",  action='store_true',
@@ -256,6 +255,7 @@ def set_args():
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False, False]
+    max_summary_lengths = [128, 64, 64, 128, 256, 64]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -270,6 +270,7 @@ def set_args():
     args.validation_key = validation_keys[idx]
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
+    args.max_summary_length = max_summary_lengths[idx]
 
     return args
 
