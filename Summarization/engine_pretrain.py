@@ -88,19 +88,19 @@ def pretrain_model(dataset_args, args):
     spacy_nlp = spacy.load("en_core_web_sm")
 
     # data
-    full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    train_data = full_data['train']
-    valid_data = full_data['validation']
-    train_texts = [x[args.text_key] for x in train_data]
-    val_texts = [x[args.text_key] for x in valid_data]
-    p = np.random.permutation(len(val_texts))
-    val_texts = [val_texts[x] for x in p]
-    val_texts = val_texts[:1000]
-    print(len(train_texts), len(val_texts))
-    if args.debug_pretrain:
-        train_texts = train_texts[:10]
-        val_texts = val_texts[:10]
-        print(len(train_texts), len(val_texts))
+    # full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    # train_data = full_data['train']
+    # valid_data = full_data['validation']
+    # train_texts = [x[args.text_key] for x in train_data]
+    # val_texts = [x[args.text_key] for x in valid_data]
+    # p = np.random.permutation(len(val_texts))
+    # val_texts = [val_texts[x] for x in p]
+    # val_texts = val_texts[:1000]
+    # print(len(train_texts), len(val_texts))
+    # if args.debug_pretrain:
+    #     train_texts = train_texts[:10]
+    #     val_texts = val_texts[:10]
+    #     print(len(train_texts), len(val_texts))
 
     # build data
     if args.build_salient_entities:
