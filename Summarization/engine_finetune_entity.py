@@ -29,7 +29,7 @@ from models_summarization.model_soft import *
 from model_finetune_entity import *
 from engine_pretrain import *
 
-logger = logging.getLogger('root')
+
 
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     all_f1s, all_meanRs = [], []
@@ -131,9 +131,25 @@ def finetune_model_tagger(trainfile, validfile, args):
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
     print(foldername)
-    output_dir = foldername + "tagger"
+    seedname = foldername.split("/")[-3]
+    print(seedname)
+
+    taggerfolder = "tagger_ckpt/"
+    if not os.path.exists(taggerfolder):
+        os.makedirs(taggerfolder)
+
+    output_dir = taggerfolder + args.dataset
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
+
+    output_dir = output_dir + "/" + str(args.few_shot)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    output_dir = output_dir + "/" + seedname
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    print(output_dir)
 
     base_optimizer_arguments = {
         "lr": learning_rate,
@@ -281,7 +297,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
             "promptembedding": model_to_save.promptembedding
         }
         torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
-        torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
+        #torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
 
 
 def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
