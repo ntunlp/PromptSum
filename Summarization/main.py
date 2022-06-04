@@ -67,7 +67,7 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
-                        default=10, help="number of data points for training AND validation")
+                        default=64, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
@@ -177,7 +177,7 @@ def set_args():
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
                         default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
-                        default=30, help="max epoch number")
+                        default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                         default=0, help="dataloader num_workers")
     parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
@@ -231,15 +231,15 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--finetune_entity", action='store_true',
-                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
-    parser.add_argument("--infer_val_entities", action="store_true",
-                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
-    parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+    parser.add_argument("--infer_val_entities", action="store_true",
+                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
+    parser.add_argument("--finetune_summary", action='store_true',
+                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--use_t5_tagger",  action='store_true',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_true',
@@ -345,7 +345,6 @@ def main(args):
     few_shot_seeds = range(args.num_seeds)
     # if files don't exist, subsample
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
-        #import pdb;pdb.set_trace()
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
     print(args.pretrain_ckpt)
