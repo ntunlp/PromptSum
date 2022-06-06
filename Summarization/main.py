@@ -49,7 +49,7 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="", help="gpu id")
+                        default="2", help="gpu id")
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--exp_id", dest="exp_id", type=str,
@@ -243,8 +243,8 @@ def set_args():
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
-    parser.add_argument("--use_entity_chain",  action='store_true',
-                        default=True, help="whether to use the chain of predicted entities or not at all")
+    parser.add_argument("--use_entity_chain",
+                        default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
     parser.add_argument("--use_t5_tagger",  action='store_true',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_true',
