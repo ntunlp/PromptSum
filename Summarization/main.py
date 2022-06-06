@@ -42,8 +42,8 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    #root = "/data/qin/"
-    root = "/data/mathieu/"
+    root = "/data/qin/"
+    #root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -65,7 +65,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default=root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="ccdv/cnn_dailymail")
+                        default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -458,7 +458,9 @@ def main(args):
                 entmodel.load_state_dict(dic)
 
                 # just prompt
-                onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
+                #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
+                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                print(onepath)
                 oneckpt = torch.load(onepath)
                 entmodel.promptnumber = oneckpt["promptnumber"]
                 entmodel.promptembedding = oneckpt["promptembedding"]
@@ -470,7 +472,8 @@ def main(args):
                 model.eval()
 
                 alldata = valid_dataset.data
-                logger.info("valid size: ", len(alldata))
+                #logger.info("valid size: ", len(alldata))
+                print("valid size: ", len(alldata))
                 allresofvalid = {}
                 with torch.no_grad():
                     for step in range(len(alldata)):
@@ -488,7 +491,8 @@ def main(args):
                         input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
                         allresofvalid[tempdata] = input_guidance
                 logger.info(len(allresofvalid))
-                respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+                #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
                 with open(respath, "wb") as f:
                     pickle.dump(allresofvalid, f)
                     logger.info("saved the T5 valid entities")

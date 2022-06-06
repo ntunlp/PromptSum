@@ -79,7 +79,9 @@ class T5SummarizationDataset(Dataset):
         return allres
 
     def set_allent_for_valid(self):
-        entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/T5valident.pkl'
+        #entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/T5valident.pkl'
+        entpath = f'tagger_ckpt/{self.args.dataset}/{self.args.few_shot}/seed_{self.seed}/T5valident.pkl'
+        print("entpath: ",entpath)
         with open(entpath, "rb") as f:
             self.allent = pickle.load(f)
 
