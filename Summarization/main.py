@@ -244,13 +244,13 @@ def set_args():
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
-    parser.add_argument("--infer_val_entities", action="store_true",
+    parser.add_argument("--infer_val_entities", action="store_false",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
-    parser.add_argument("--use_entity_chain",
+    parser.add_argument("--use_entity_chain", action='store_false',
                         default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
-    parser.add_argument("--use_t5_tagger",  action='store_true',
+    parser.add_argument("--use_t5_tagger",  action='store_false',
                         default=True, help="whether use a t5 tagger")
-    parser.add_argument("--if_spacy", action='store_true',
+    parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
