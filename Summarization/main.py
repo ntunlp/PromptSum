@@ -78,8 +78,8 @@ def set_args():
                         default=512, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5Finetune", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
+                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -230,7 +230,7 @@ def set_args():
     ##### fine-tuning
     ######### pre-training
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
-                        default=False, help="whether to load the pre-training ckpt before fine-tuning")
+                        default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
@@ -242,13 +242,13 @@ def set_args():
     parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
-                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
+                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain",
-                        default=False, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
+                        default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
     parser.add_argument("--use_t5_tagger",  action='store_true',
-                        default=False, help="whether use a t5 tagger")
+                        default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_true',
-                        default=False, help="whether use spacy to supervise the training of T5 tagger")
+                        default=True, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
     
@@ -408,16 +408,6 @@ def main(args):
             elif args.model == 'T5MixPrompt':
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-                model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model == 'T5MixPromptDID':
-                logger.info('\nMix prompt tuning with discrete prompt in decoder')
-                model = ModelMixPromptDID(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-                model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model == 'T5MixPromptDD':
-                logger.info('\nMix prompt tuning with double discrete prompt')
-                model = ModelMixPromptDD(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             else:

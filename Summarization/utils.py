@@ -1,13 +1,13 @@
 import torch
 import os
 import sys
-sys.path.append("./T5PromptNER/")
+sys.path.append("./prompt_tuning_ckpt_conll/")
 import numpy as np
 import random
 import csv
 import pickle
 import pickle5
-# from T5PromptNER.TrainTaggerforSum import *
+# from prompt_tuning_ckpt_conll.TrainTaggerforSum import *
 import spacy
 
 class VirtualList(object):

@@ -5,7 +5,7 @@ import numpy as np
 import torch.nn.functional as F
 import sys
 import datasets
-sys.path.append("./T5PromptNER/")
+sys.path.append("./prompt_tuning_ckpt_conll/")
 import spacy
 import nltk
 import pickle
@@ -66,7 +66,7 @@ def pretrain_model(dataset_args, args):
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
     if ifuseconll:
-        allckpt = torch.load("./T5PromptNER/bestckpt")
+        allckpt = torch.load("./prompt_tuning_ckpt_conll/bestckpt")
         model.promptnumber = allckpt["promptnumber"]
         model.promptembedding = allckpt["promptembedding"]
         model.promptnumberforsum = allckpt["promptnumber"]
