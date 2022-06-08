@@ -228,6 +228,7 @@ def set_args():
     parser.add_argument("--debug_pretrain", action='store_true',
                         default=False, help="whether to just use 100-10 data points")
     ##### fine-tuning
+    #use_pretrain_ckpt, use_t5_tagger, if_spacy
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
@@ -235,15 +236,15 @@ def set_args():
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--finetune_entity", action='store_true',
-                        default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
                         default=False, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--finetune_summary", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--use_t5_tagger",  action='store_true',
-                        default=True, help="whether use a t5 tagger")
+                        default=False, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_true',
-                        default=True, help="whether use spacy to supervise the training of T5 tagger")
+                        default=False, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
     
@@ -422,7 +423,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt:
+            if args.use_pretrain_ckpt and args.model != "T5Finetune":
                 logger.info("load pre-trained model for summarization")
 
                 # model weights

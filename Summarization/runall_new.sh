@@ -8,12 +8,16 @@
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_prompt"
 
-all_pretrain_ckpt=("/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_full_model"
-                  "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
-                  "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model")
-all_pretrain_prompt_ckpt=("/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_prompt"
-                        "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
-                        "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt")
+all_pretrain_ckpt=(#"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_full_model"
+                  "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model")
+                  #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model"
+                  #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_405k/bestckpt_full_model")
+                  #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model")
+all_pretrain_prompt_ckpt=(#"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_375k/bestckpt_prompt"
+                        "/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt")
+                        #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt"
+                        #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_405k/bestckpt_prompt")
+                        #"/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model")
 for(( i=0;i<${#all_pretrain_ckpt[@]};i++))
 do
   pretrain_ckpt=${all_pretrain_ckpt[i]}
