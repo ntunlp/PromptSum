@@ -43,6 +43,7 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     #root = "/data/qin/"
+    data_root = "/data/ruochen/"
     root = "/data/mathieu/"
 
     # general stuff
@@ -63,7 +64,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default=root + "DATASETS/PromptSumm/")
+                        default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -197,7 +198,9 @@ def set_args():
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
-                        default=30000, help="how many steps to start eval")                    
+                        default=30000, help="how many steps to start eval")
+    parser.add_argument("--big_testset", dest="big_testset", type=bool,
+                        default=False, help="whether or not to evaluate using the 2k testset")                  
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -375,6 +378,14 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
+        print('args.big_testset: ', args.big_testset)
+        if args.big_testset:
+            args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
+            # check if we have already generated it
+            if not os.path.isfile(args.test_file):
+                subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
+            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+      
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
