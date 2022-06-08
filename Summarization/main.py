@@ -42,8 +42,8 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/qin/"
-    #root = "/data/mathieu/"
+    #root = "/data/qin/"
+    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -65,7 +65,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default=root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="xsum")
+                        default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -78,7 +78,7 @@ def set_args():
                         default=512, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
+                        default="T5Finetune", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
@@ -230,7 +230,7 @@ def set_args():
     ##### fine-tuning
     ######### pre-training
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
-                        default=True, help="whether to load the pre-training ckpt before fine-tuning")
+                        default=False, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
@@ -242,13 +242,13 @@ def set_args():
     parser.add_argument("--finetune_summary", action='store_true',
                         default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_true",
-                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
+                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain",
-                        default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
+                        default=False, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
     parser.add_argument("--use_t5_tagger",  action='store_true',
-                        default=True, help="whether use a t5 tagger")
+                        default=False, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_true',
-                        default=True, help="whether use spacy to supervise the training of T5 tagger")
+                        default=False, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
     
@@ -446,66 +446,68 @@ def main(args):
                 n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
                 logger.info("The model has {} trainable parameters".format(n_params))
 
+            model.eval()
             ####add t5 tagger
-            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target" and args.infer_val_entities:
-                ########## predict the validation entity chains with the 1st prompt tuning stage model
-                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
-                logger.info("Loading the pre-trained NER model!")
+            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+                if args.infer_val_entities:
+                    ########## predict the validation entity chains with the 1st prompt tuning stage model
+                    entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                    enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                    entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+                    logger.info("Loading the pre-trained NER model!")
 
-                # model weights
-                ckpt = torch.load(args.pretrain_ckpt)
-                dic = {}
-                for x in ckpt.keys():
-                    if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                        dic[x[7:]] = ckpt[x]
-                entmodel.load_state_dict(dic)
-
-                # just prompt
-                #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                print(onepath)
-                oneckpt = torch.load(onepath)
-                entmodel.promptnumber = oneckpt["promptnumber"]
-                entmodel.promptembedding = oneckpt["promptembedding"]
+                    # model weights
+                    ckpt = torch.load(args.pretrain_ckpt)
+                    dic = {}
+                    for x in ckpt.keys():
+                        if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                            dic[x[7:]] = ckpt[x]
+                    entmodel.load_state_dict(dic)
+    
+                    # just prompt
+                    #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
+                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                    print(onepath)
+                    oneckpt = torch.load(onepath)
+                    entmodel.promptnumber = oneckpt["promptnumber"]
+                    entmodel.promptembedding = oneckpt["promptembedding"]
                 
-                n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-                logger.info("The ent model has {} trainable parameters".format(n_params))
-                entmodel.to(args.device)
-                logger.info("move to device!")
-                model.eval()
+                    n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
+                    logger.info("The ent model has {} trainable parameters".format(n_params))
+                    entmodel.to(args.device)
+                    logger.info("move to device!")
+                    model.eval()
 
-                alldata = valid_dataset.data
-                #logger.info("valid size: ", len(alldata))
-                print("valid size: ", len(alldata))
-                allresofvalid = {}
-                with torch.no_grad():
-                    for step in range(len(alldata)):
-                        onedata = alldata[step]
-                        inputdata = onedata[0]
-                        tempdata = re.sub(' +', ' ', inputdata)
-                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                        input_ids = inputres["input_ids"].to(args.device)
-                        attention_mask = inputres["attention_mask"].to(args.device)
-                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                        tagpreds = entmodel._generative_step_for_tagger(input)
-                        allentitylist = tagpreds[0].split(',')
-                        if allentitylist == []:
-                            allentitylist = ["none"]
-                        input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                        allresofvalid[tempdata] = input_guidance
-                logger.info(len(allresofvalid))
-                #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
-                with open(respath, "wb") as f:
-                    pickle.dump(allresofvalid, f)
-                    logger.info("saved the T5 valid entities")
-                valid_dataset.set_allent_for_valid()
-                torch.cuda.empty_cache()
-                del entmodel, enttokenizer
-                gc.collect()
-
+                    alldata = valid_dataset.data
+                    #logger.info("valid size: ", len(alldata))
+                    print("valid size: ", len(alldata))
+                    allresofvalid = {}
+                    with torch.no_grad():
+                        for step in range(len(alldata)):
+                            onedata = alldata[step]
+                            inputdata = onedata[0]
+                            tempdata = re.sub(' +', ' ', inputdata)
+                            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                            input_ids = inputres["input_ids"].to(args.device)
+                            attention_mask = inputres["attention_mask"].to(args.device)
+                            input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                            tagpreds = entmodel._generative_step_for_tagger(input)
+                            allentitylist = tagpreds[0].split(',')
+                            if allentitylist == []:
+                                allentitylist = ["none"]
+                            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                            allresofvalid[tempdata] = input_guidance
+                    logger.info(len(allresofvalid))
+                    #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                    with open(respath, "wb") as f:
+                        pickle.dump(allresofvalid, f)
+                        logger.info("saved the T5 valid entities")
+                    torch.cuda.empty_cache()
+                    del entmodel, enttokenizer
+                    gc.collect()
+                    valid_dataset.set_allent_for_valid()
+            
             ########## 2nd prompt tuning stage: summarization
             model.to(args.device)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
