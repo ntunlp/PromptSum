@@ -116,7 +116,7 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
         test_sampler = SequentialSampler(test_dataset)
         test_dataloader = get_dataloader_tag(4, test_dataset, 8, 512, test_dataset.tokenizer.pad_token_id, test_sampler)
 
-        allckpt = torch.load("./T5PromptNER/bestckpt")
+        allckpt = torch.load("./prompt_tuning_ckpt_conll/bestckpt")
         model.promptnumber = allckpt["promptnumber"]
         model.promptembedding = allckpt["promptembedding"]
 

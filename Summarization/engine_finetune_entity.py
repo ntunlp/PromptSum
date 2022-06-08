@@ -96,7 +96,7 @@ def finetune_model_tagger(trainfile, validfile, args):
         ifuseconll = True
         if ifuseconll:
             print("Loading the the CONLL NER model!")
-            allckpt = torch.load("./T5PromptNER/bestckpt")
+            allckpt = torch.load("./prompt_tuning_ckpt_conll/bestckpt")
             model.promptnumber = allckpt["promptnumber"]
             model.promptembedding = allckpt["promptembedding"]
         else:

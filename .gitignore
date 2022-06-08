@@ -1,12 +1,3 @@
-src/__pycache__
-src/*log*
-src/t5_ckpt
-src/saved_models/*
-src/temp/*
-src/tagger/__pycache__
-src/tagger/sumdata
-src/tagger/out_base
-src/tagger/output
 Summarization/__pycache__
 Summarization/*log*
 Summarization/log
@@ -15,6 +6,8 @@ Summarization/tagger/__pycache__
 Summarization/tagger/sumdata
 Summarization/tagger/out_base
 Summarization/tagger/output
-Summarization/T5PromptNER/__pycache__
+Summarization/tagger_ckpt/*
+Summarization/unused/*
+Summarization/prompt_tuning_ckpt_conll/__pycache__
 Summarization/t5_tagger_pretraining_data/*
 Summarization/t5_tagger_pretrained_ckpt/*

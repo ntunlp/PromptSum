@@ -40,7 +40,11 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                                       args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler, args)
     valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
-
+    if args.big_testset:
+        test_sampler = SequentialSampler(args.test_dataset)
+        test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.batch_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
+    
     base_optimizer_arguments = {
         "lr": args.lr_summary,
         "clip_threshold": args.max_grad_norm_summary,
@@ -141,7 +145,21 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             # do after every epoch
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
-
+    # after everything, do it with test:
+    if args.big_testset:
+        result_dict = {
+                        'epoch': [],
+                        'val_mean_rouge': [],
+                        "best_val_mean_rouge": 0.0,
+                        "val_rouge1": 0.0,
+                        "val_rouge2": 0.0,
+                        "val_rougeL": 0.0,
+                        "precision": 0.0,
+                        "recall": 0.0,
+                        "f1": 0.0
+                    }
+        result_dict['epoch'] = i
+        dooneeval(model, test_dataloader, scaler, result_dict, logger, i, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
@@ -182,7 +200,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
-            logger.info(step)
+            # logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),

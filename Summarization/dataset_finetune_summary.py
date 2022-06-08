@@ -440,11 +440,12 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
         list of tuples (train_dataset, valid_dataset)
     '''
     datasets = []
+      
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
                                                counterfactual_removal=args.counterfactual_removal)
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
 
@@ -475,5 +476,24 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
         valid_path = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         convert_data_to_txt(train_data_new, train_path, args)
         convert_data_to_txt(valid_data_new, valid_path, args)
+    # convert to original seed
+    np.random.seed(args.seed)
+
+
+def subsample_2k_testset(dataset_args, file_path, seed, args):
+    '''
+    Function that subsamples a 2k test set that can be reused 
+    args:
+        file_path: directory to save the testset
+        seed: random seed to sample with
+    '''
+    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    valid_data = data['validation']
+    len_valid = len(valid_data)
+    np.random.seed(seed)
+    indices = np.random.choice(range(len_valid), 2000)
+    valid_data_new = valid_data.select(indices)
+    # save
+    convert_data_to_txt(valid_data_new, file_path, args)
     # convert to original seed
     np.random.seed(args.seed)
