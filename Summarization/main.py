@@ -68,7 +68,7 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="ccdv/cnn_dailymail")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
-                        default=100, help="number of data points for training AND validation")
+                        default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
