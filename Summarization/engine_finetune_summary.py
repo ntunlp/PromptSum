@@ -86,6 +86,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         return result_dict
 
     global_step = 0
+
+    if args.big_testset:
+        # save the model on the best validation set
+        args.save_model = True
     for i in range(args.max_epoch_summary):
         thisevalstep = args.eval_step
         logger.info(i)
@@ -147,6 +151,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             model.train()
     # after everything, do it with test:
     if args.big_testset:
+        # load the best ckpt
+        best_val_ckpt = torch.load(args.save_model_path)
+        # no need to save again
+        args.save_model = False
         result_dict = {
                         'epoch': [],
                         'val_mean_rouge': [],
@@ -159,7 +167,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                         "f1": 0.0
                     }
         result_dict['epoch'] = i
-        dooneeval(model, test_dataloader, scaler, result_dict, logger, i, args)
+        dooneeval(best_val_ckpt, test_dataloader, scaler, result_dict, logger, i, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
