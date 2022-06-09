@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -428,7 +428,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt:
+            if args.use_pretrain_ckpt and args.model != "T5Finetune":
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
