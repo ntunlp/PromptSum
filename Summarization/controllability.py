@@ -42,6 +42,8 @@ def set_args():
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
                             default='./log', help="The path to log dir")
+    parser.add_argument("--save_model_path", dest="save_model_path", type=str,
+                            default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='controlling', help="The file name of log file")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -75,8 +77,10 @@ def set_args():
     
     args = parser.parse_args()
     ## SET HERE FOR PRETRAIN
-    args.pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
-    args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
+    # args.pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
+    # args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
+    args.pretrain_ckpt="/data/hailin/PromptSumm/006_bestckpt_full_model"
+    args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/006_bestckpt_prompt"
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     highlights = [True, False, False, False, False, False, False]
     
@@ -259,7 +263,7 @@ def main(args):
     model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
     seed = 0
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    args.save_model_path = f'fewshot_{args.few_shot}_seed_{seed}_ckpt'
+    # args.save_model_path = f'fewshot_{args.few_shot}_seed_{seed}_ckpt'
     ckptsum = torch.load(args.save_model_path)
     model.promptnumber = ckptsum["promptnumber"]
     model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
