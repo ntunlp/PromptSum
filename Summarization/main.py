@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+#os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -66,7 +66,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default= root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="ccdv/cnn_dailymail")
+                        default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=10, help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -235,15 +235,15 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
-                        default=True, help="whether finetune a T5 tagger using the fewshot summarization data")
+                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_false",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain", action='store_false',

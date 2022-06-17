@@ -156,16 +156,16 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         # no need to save again
         args.save_model = False
         result_dict = {
-                        'epoch': [],
-                        'val_mean_rouge': [],
-                        "best_val_mean_rouge": 0.0,
-                        "val_rouge1": 0.0,
-                        "val_rouge2": 0.0,
-                        "val_rougeL": 0.0,
-                        "precision": 0.0,
-                        "recall": 0.0,
-                        "f1": 0.0
-                    }
+            'epoch': [],
+            'val_mean_rouge': [],
+            "best_val_mean_rouge": 0.0,
+            "val_rouge1": 0.0,
+            "val_rouge2": 0.0,
+            "val_rougeL": 0.0,
+            "precision": 0.0,
+            "recall": 0.0,
+            "f1": 0.0
+        }
         result_dict['epoch'] = i
         dooneeval(best_val_ckpt, test_dataloader, scaler, result_dict, logger, i, args)
     torch.cuda.empty_cache()
