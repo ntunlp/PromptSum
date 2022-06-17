@@ -5,11 +5,10 @@ import argparse
 import gc
 import time
 import logging
-import datasets
 
 gc.enable()
 
-from datasets import load_metric
+from datasets import load_dataset, load_metric
 import spacy
 from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
@@ -354,7 +353,7 @@ def main(args):
     os.makedirs(args.save_dir , exist_ok=True)
 
     dataset_args = [args.dataset_name, args.dataset_version]
-    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
 
     train_data = data['train']
     valid_data = data['validation']
@@ -365,6 +364,23 @@ def main(args):
 
     train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
     valid_path = args.save_dir + 'seed_{}/valid.txt'.format(args.seed)
+    train_data_new = []
+    for i in tqdm(range(len(train_data[list(train_data.keys())[0]]))):
+        t = {}
+        for k in train_data.keys():
+            t[k] = train_data[k][i]
+        train_data_new.append(t)
+    train_data = train_data_new
+    print(len(train_data))
+    valid_data_new = []
+    for i in tqdm(range(len(valid_data[list(valid_data.keys())[0]]))):
+        t = {}
+        for k in valid_data.keys():
+            t[k] = valid_data[k][i]
+        valid_data_new.append(t)
+    valid_data = valid_data_new
+    print(len(valid_data))
+
     convert_data_to_txt(train_data, train_path, args)
     convert_data_to_txt(valid_data, valid_path, args)
 
