@@ -417,14 +417,16 @@ def main(args):
       
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
-        # read datasets
-        datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, [args.seed])
+
+        # datasets
+        train_dataset = T5SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
+                                               counterfactual_removal=args.counterfactual_removal)
+        valid_dataset = T5SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
-
-        (train_dataset, valid_dataset, seed) = datasets[0]
 
         # base model
         if 'Bart' in args.model:
