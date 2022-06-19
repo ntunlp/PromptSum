@@ -42,7 +42,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
     if args.big_testset or args.full_testset:
         test_sampler = SequentialSampler(args.test_dataset)
-        test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.batch_size_per_gpu_summary, args.max_length,
+        test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.valid_batch_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
     
     base_optimizer_arguments = {
