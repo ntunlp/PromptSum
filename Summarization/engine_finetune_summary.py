@@ -40,7 +40,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                                       args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler, args)
     valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
-    if args.big_testset:
+    if args.big_testset or args.full_testset:
         test_sampler = SequentialSampler(args.test_dataset)
         test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.batch_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
@@ -150,11 +150,14 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
     # after everything, do it with test:
-    if args.big_testset:
+    if args.big_testset or args.full_testset:
         # load the best ckpt
-        best_val_ckpt = torch.load(args.save_model_path)
+        best_val_ckpt = torch.load(args.model_save_path + 'bestckpt')
+        model.promptnumber = best_val_ckpt["promptnumber"]
+        model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
         # no need to save again
         args.save_model = False
+        # initialize new result_dict to save results
         result_dict = {
             'epoch': [],
             'val_mean_rouge': [],
@@ -262,12 +265,14 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['f1'] = f1
 
         if args.save_model:
+            if not os.path.exists(args.model_save_path):
+                os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
             ckpt = {
                 "promptnumber": model_to_save.promptnumber,
                 "promptembedding": model_to_save.promptembedding
             }
-            torch.save(ckpt, args.save_model_path)
+            torch.save(ckpt, args.model_save_path + 'bestckpt')
     
     return result_dict
 

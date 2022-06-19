@@ -72,6 +72,14 @@ def set_args():
                         default=1.0, help="length penalty")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
+    parser.add_argument("--prompt_number", dest="prompt_number", type=int,
+                        default=300, help="The number of prompt")
+    parser.add_argument("--use_pretrain_ckpt", action='store_false',
+                        default=True, help="whether to load the pre-training ckpt before fine-tuning")
+    parser.add_argument("--pretrain_ckpt", type=str,
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
+    parser.add_argument("--pretrain_prompt_ckpt", type=str,
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     
@@ -79,8 +87,6 @@ def set_args():
     ## SET HERE FOR PRETRAIN
     # args.pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
     # args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
-    args.pretrain_ckpt="/data/hailin/PromptSumm/006_bestckpt_full_model"
-    args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/006_bestckpt_prompt"
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     highlights = [True, False, False, False, False, False, False]
     
@@ -117,9 +123,6 @@ def set_logger(args):
 def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
     model.eval()
     model = model.to(args.device)
-    valid_sampler = SequentialSampler(valid_dataset)
-    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
-                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
     all_ents = []
     if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
         if args.infer_val_entities:
@@ -189,6 +192,25 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             del entmodel, enttokenizer
             gc.collect()
             valid_dataset.set_allent_for_valid()
+    else:
+        all_ents = []
+        if args.counterfactual_removal != False:
+            new_allent = {}
+        for key, value in valid_dataset.allent.items():
+            input_guidance_list = value.split(',')
+            if args.counterfactual_removal != False:
+                for c_r in range(int(args.counterfactual_removal)):
+                    if len(input_guidance_list) > 2:
+                        input_guidance_list.pop(random.randrange(len(input_guidance_list)))
+            input_guidance = args.separator.join(input_guidance_list)
+            all_ents.append(input_guidance)
+            if args.counterfactual_removal != False:
+                new_allent[key] = input_guidance
+        if args.counterfactual_removal != False:
+            valid_dataset.allent = new_allent
+    valid_sampler = SequentialSampler(valid_dataset)
+    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
+                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
     all_inputs = []
     allytrue = []
     allypred = []
@@ -203,8 +225,6 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             for k in range(inputs["ents_ids"].shape[0]):
                 # print(inputs['input_ids'][k])
                 allinp.append(tokenizer.decode(inputs['input_ids'][k]))
-                for l in range(inputs["ents_ids"].shape[1]):
-                    ent = inputs["ents_ids"][k,l].item()
             # print('allinp: ', allinp)
             all_inputs += allinp
             if scaler is not None:
@@ -239,13 +259,15 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
         "rouge2": 100 * np.mean(r2s),
         "rougeLsum": 100 * np.mean(rls)
     }
-    logger.info(f'----Validation Results Summary counterfactual_removal: {args.counterfactual_removal}----')
-    logger.info(len(allypred))
-    logger.info(rouge_score)
+    # logger.info(len(allypred))
+    # logger.info(rouge_score)
     p, r, f1 = entity_eval(allytrue, allypred)
+    logger.info(f'----Validation Results Summary counterfactual_removal: {args.counterfactual_removal}----')
     logger.info(f'entity-level p: {p}, r: {r}, f1: {f1}')
+    logger.info(f'ROUGE score r1: {rouge_score["rouge1"]}, r2: {rouge_score["rouge2"]}, r3: {rouge_score["rougeLsum"]}')
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
     logger.info(f'mean-rouge: {mean_rouge}')
+    logger.info(f'----EVAL FINISHED----')
     # print('INPUTS: ', inputs)
     return all_inputs, all_ents, labels, summaries
 
@@ -257,20 +279,30 @@ def main(args):
         device = torch.device("cpu")
     args.device = device
     logger.info(f"device {args.device}")
-    # First load the trained ckpt
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-    seed = 0
-    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    # args.save_model_path = f'fewshot_{args.few_shot}_seed_{seed}_ckpt'
-    ckptsum = torch.load(args.save_model_path)
-    model.promptnumber = ckptsum["promptnumber"]
-    model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
     allgentasktokens = [f"summerization{args.dataset}"]
     thistaskname = "cnn daily mail" if args.dataset=='cnndm' else args.dataset
     thistaskfold = args.dataset
     args.taskfold = thistaskfold
+    # First load the trained ckpt
+    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+    promptnumber = args.prompt_number
+    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+    model.set_prompt_embedding(promptnumber, promptembedding)
+    # model weights
+    if args.use_pretrain_ckpt and args.model != "T5Finetune":
+        ckptsum = torch.load(args.pretrain_ckpt)
+        dicsum = {}
+        for x in ckptsum.keys():
+            if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
+                dicsum[x[7:]] = ckptsum[x]
+        model.load_state_dict(dicsum)
+    seed = 0
+    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    ckptsum = torch.load(args.save_model_path)
+    model.promptnumber = ckptsum["promptnumber"]
+    model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
     few_shot_seeds = [0]
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
