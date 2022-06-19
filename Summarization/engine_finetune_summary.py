@@ -170,7 +170,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "f1": 0.0
         }
         result_dict['epoch'] = args.max_epoch_summary
-        dooneeval(model, test_dataloader, scaler, result_dict, logger, i, args)
+        dooneeval(model, test_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
