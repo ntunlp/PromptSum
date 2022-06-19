@@ -7,6 +7,7 @@ Summarization/tagger/sumdata
 Summarization/tagger/out_base
 Summarization/tagger/output
 Summarization/tagger_ckpt/*
+Summarization/summary_ckpt/*
 Summarization/unused/*
 Summarization/prompt_tuning_ckpt_conll/__pycache__
 Summarization/t5_tagger_pretraining_data/*

@@ -19,7 +19,7 @@ from nltk.corpus import stopwords
 
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0,
-                 counterfactual_removal=False):
+                 counterfactual_removal=False, save_path=None):
         super(T5SummarizationDataset, self).__init__()
 
         self.filename = filename
@@ -28,7 +28,10 @@ class T5SummarizationDataset(Dataset):
         self.gentasktoken = newtgentasktokens
         self.answertoken = answertoken
         self.args = args
-        self.save_path = args.few_shot_save_dir
+        if save_path != None:
+            self.save_path = save_path
+        else:
+            self.save_path = args.few_shot_save_dir
         self.seed = seed
 
         self.data = []
@@ -194,6 +197,12 @@ class T5SummarizationDataset(Dataset):
                     if tempdata in self.allent.keys():
                         input_guidance = self.allent[tempdata]
                     else:
+                        print("*"*50)
+                        for k in self.allent.keys():
+                            print(k)
+                        print("*"*10)
+                        print(tempdata)
+                        raise Exception
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
                 else:
                     if self.args.guidance_mode == 'target':

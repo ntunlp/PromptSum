@@ -137,7 +137,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
 
                 if args.local_rank in [0, -1] and global_step % args.log_step_finetune == 0:
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
-                        global_step, global_step / step_tot, np.average(allloss)))
+                        global_step, global_step / max(1,step_tot), np.average(allloss)))
 
                 if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
                     print("not eval!!!")

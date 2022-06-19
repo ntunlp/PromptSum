@@ -73,9 +73,9 @@ def set_args():
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=1, help="number of seeds to sample for training AND validation")
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
-                        default=100, help="max sentence length")
+                        default=20, help="max sentence length")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=10, help="max sentence length")
+                        default=5, help="max sentence length")
 
     # model
     ##### input
@@ -419,9 +419,10 @@ def main(args):
         logger.info("3/ Prompt tuning the summarization model...")
 
         # datasets
-        train_dataset = T5SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
-                                               counterfactual_removal=args.counterfactual_removal)
-        valid_dataset = T5SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        train_dataset = T5SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                               counterfactual_removal=args.counterfactual_removal, save_path = args.save_dir)
+        valid_dataset = T5SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed, 
+                                                save_path = args.save_dir)
 
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         result_dict_total = {}
@@ -495,7 +496,7 @@ def main(args):
 
                 # just prompt
                 #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
                 print(onepath)
                 oneckpt = torch.load(onepath)
                 entmodel.promptnumber = oneckpt["promptnumber"]
@@ -528,7 +529,7 @@ def main(args):
                         allresofvalid[tempdata] = input_guidance
                 logger.info(len(allresofvalid))
                 #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
                 with open(respath, "wb") as f:
                     pickle.dump(allresofvalid, f)
                     logger.info("saved the T5 valid entities")
