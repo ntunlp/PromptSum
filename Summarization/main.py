@@ -433,7 +433,7 @@ def main(args):
                 model.set_prompt_embedding(promptnumber, promptembedding)
             elif args.model == 'T5MixPrompt':
                 logger.info('\nMix prompt tuning')
-                model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+                model = ModelMixPrompt(args, basemodel, tokenizer, args.model
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             else:
@@ -519,7 +519,7 @@ def main(args):
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
                     with open(respath, "wb") as f:
                         pickle.dump(allresofvalid, f)
-                        logger.info("saved the T5 valid entities")
+                        logger.info("saved the T5 valid entities to: {}".format(respath))
                     torch.cuda.empty_cache()
                     # del entmodel, enttokenizer
                     gc.collect()
@@ -554,7 +554,7 @@ def main(args):
                             respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)
-                            logger.info("saved the T5 test entities")
+                            logger.info("saved the T5 test entities to: {}".format(respath))
                         torch.cuda.empty_cache()
                         del entmodel, enttokenizer
                         gc.collect()

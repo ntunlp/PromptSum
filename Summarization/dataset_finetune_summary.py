@@ -36,6 +36,7 @@ class T5SummarizationDataset(Dataset):
 
         self.data = []
         self.data = self.getalldata(self.filename)
+        self.data = self.data[:20]
         self.num_entries = len(self.data)
 
         self.split = split
@@ -197,12 +198,6 @@ class T5SummarizationDataset(Dataset):
                     if tempdata in self.allent.keys():
                         input_guidance = self.allent[tempdata]
                     else:
-                        print("*"*50)
-                        for k in self.allent.keys():
-                            print(k)
-                        print("*"*10)
-                        print(tempdata)
-                        raise Exception
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
                 else:
                     if self.args.guidance_mode == 'target':
@@ -426,14 +421,20 @@ class SmartBatchingCollate:
 
 def convert_data_to_txt(train_data, new_train_path, args):
     all_train_texts, all_train_summaries = [], []
+    none_texts = 0
     for idx in range(len(train_data)):
         text = train_data[idx][args.text_key]
         text = " ".join(text.split("\n"))
+        if text in ["", " ", "  "]:
+            text = "None"
+            none_texts += 1
         summary = train_data[idx][args.summary_key]
         summary = " ".join(summary.split("\n"))
         all_train_texts.append(text)
         all_train_summaries.append(summary)
     print("writing to: {}".format(new_train_path))
+    print("Total size: {}".format(len(all_train_texts)))
+    print("Missing sources: {}".format(none_texts))
     with open(new_train_path, "w") as f:
         for idx in range(len(all_train_texts)):
             to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
