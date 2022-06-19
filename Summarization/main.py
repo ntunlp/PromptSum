@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -44,8 +44,8 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     #root = "/data/qin/"
-    data_root = "/data/ruochen/"
-    # data_root = "/data/mathieu/"
+    # data_root = "/data/ruochen/"
+    data_root = "/data/mathieu/"
     root = "/data/mathieu/"
 
     # general stuff
