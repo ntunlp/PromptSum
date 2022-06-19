@@ -169,8 +169,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "recall": 0.0,
             "f1": 0.0
         }
-        result_dict['epoch'] = i
-        dooneeval(best_val_ckpt, test_dataloader, scaler, result_dict, logger, i, args)
+        result_dict['epoch'] = args.max_epoch_summary
+        dooneeval(model, test_dataloader, scaler, result_dict, logger, i, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
