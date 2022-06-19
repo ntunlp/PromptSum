@@ -200,7 +200,9 @@ def set_args():
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
                         default=30000, help="how many steps to start eval")
     parser.add_argument("--big_testset", dest="big_testset", type=bool,
-                        default=False, help="whether or not to evaluate using the 2k testset")                  
+                        default=False, help="whether or not to evaluate using the 2k testset")    
+    parser.add_argument("--full_testset", dest="full_testset", type=bool,
+                        default=False, help="whether or not to evaluate using the full testset")                 
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -385,7 +387,17 @@ def main(args):
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-      
+        
+        print('args.full_testset: ', args.full_testset)
+        if args.full_testset:
+            data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+            valid_data = data['validation']
+            # save
+            args.test_file = args.data_dir + args.dataset + '/full_test.txt'
+            convert_data_to_txt(valid_data, args.test_file, args)
+            # load
+            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+        
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
