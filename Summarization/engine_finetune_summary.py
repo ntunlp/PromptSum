@@ -212,6 +212,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
             # logger.info(step)
+            if step % args.log_step_finetune == 0:
+                logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
