@@ -169,8 +169,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "recall": 0.0,
             "f1": 0.0
         }
-        result_dict['epoch'] = i
-        dooneeval(best_val_ckpt, test_dataloader, scaler, result_dict, logger, i, args)
+        result_dict['epoch'] = args.max_epoch_summary
+        dooneeval(model, test_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,
     gc.collect()
@@ -212,6 +212,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
             # logger.info(step)
+            if step % args.log_step_finetune == 0:
+                logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
