@@ -489,11 +489,14 @@ def subsample_2k_testset(dataset_args, file_path, seed, args):
     '''
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
     valid_data = data['validation']
-    len_valid = len(valid_data)
-    np.random.seed(seed)
-    indices = np.random.choice(range(len_valid), 2000)
-    valid_data_new = valid_data.select(indices)
-    # save
-    convert_data_to_txt(valid_data_new, file_path, args)
-    # convert to original seed
-    np.random.seed(args.seed)
+    if args.full_testset:
+        convert_data_to_txt(valid_data, file_path, args)
+    else:
+        len_valid = len(valid_data)
+        np.random.seed(seed)
+        indices = np.random.choice(range(len_valid), 2000)
+        valid_data_new = valid_data.select(indices)
+        # save
+        convert_data_to_txt(valid_data_new, file_path, args)
+        # convert to original seed
+        np.random.seed(args.seed)

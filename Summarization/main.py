@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
@@ -38,12 +38,14 @@ from models_summarization.model_mixture import *
 from models_summarization.model_mixture_discrete_in_decoder import *
 from models_summarization.model_mixture_double_discrete import *
 
+from pathlib import Path
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     #root = "/data/qin/"
-    #data_root = "/data/ruochen/"
+    # data_root = "/data/ruochen/"
+    data_root = "/data/mathieu/"
     root = "/data/mathieu/"
 
     # general stuff
@@ -64,7 +66,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
@@ -199,10 +201,8 @@ def set_args():
                         default=True)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
                         default=30000, help="how many steps to start eval")
-    parser.add_argument("--big_testset", dest="big_testset", type=bool,
-                        default=False, help="whether or not to evaluate using the 2k testset")    
-    parser.add_argument("--full_testset", dest="full_testset", type=bool,
-                        default=False, help="whether or not to evaluate using the full testset")                 
+    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")    
+    parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")                 
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -214,9 +214,9 @@ def set_args():
 
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
-                        default=False, help="whether to save the model or not")
-    parser.add_argument("--save_model_path", dest="save_model_path", type=str,
-                        default="", help="the path where to save the model")
+                        default=True, help="whether to save the model or not")
+    # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
+    #                     default="", help="the path where to save the model") #this is default false
 
     # Overall pipeline
     ##### pre-training
@@ -237,9 +237,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -281,7 +281,8 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
-
+    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
+    Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
     return args
 
 
@@ -390,11 +391,12 @@ def main(args):
         
         print('args.full_testset: ', args.full_testset)
         if args.full_testset:
-            data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-            valid_data = data['validation']
-            # save
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            convert_data_to_txt(valid_data, args.test_file, args)
+            print(args.test_file)
+            # check if we have already generated it
+            if not os.path.isfile(args.test_file):
+                print('creating')
+                subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
             args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
@@ -409,6 +411,7 @@ def main(args):
 
         count = 0
         for (train_dataset, valid_dataset, seed) in datasets:
+            args.model_save_path = args.model_save_folder + f'seed_{seed}/'
             count += 1
             if count <=0:
                 continue

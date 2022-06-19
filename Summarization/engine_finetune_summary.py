@@ -152,7 +152,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
         # load the best ckpt
-        best_val_ckpt = torch.load(args.save_model_path)
+        best_val_ckpt = torch.load(args.model_save_path + 'bestckpt')
         model.promptnumber = best_val_ckpt["promptnumber"]
         model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
         # no need to save again
@@ -265,12 +265,14 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['f1'] = f1
 
         if args.save_model:
+            if not os.path.exists(args.model_save_path):
+                os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
             ckpt = {
                 "promptnumber": model_to_save.promptnumber,
                 "promptembedding": model_to_save.promptembedding
             }
-            torch.save(ckpt, args.save_model_path)
+            torch.save(ckpt, args.model_save_path + 'bestckpt')
     
     return result_dict
 
