@@ -6,7 +6,7 @@ pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_33
 
 ## 10-shot
 echo "start 10-shot baseline-1: all-params finetune summary"
-python main.py --few_shot 10 --model T5Finetune --finetune_summary --lr_summary 5e-5 --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
+python main.py --few_shot 10 --model T5Finetune --finetune_summary --lr_summary 5e-5 --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 2
 echo "end 10-shot baseline-1: all-params finetune summary"
 
 echo "start 10-shot baseline-2: simple prompt-tune summary"
