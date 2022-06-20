@@ -270,11 +270,16 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            ckpt = {
-                "promptnumber": model_to_save.promptnumber,
-                "promptembedding": model_to_save.promptembedding
-            }
-            torch.save(ckpt, args.model_save_path + 'bestckpt')
+            if args.model == 'T5Finetune':
+                torch.save(model_to_save.state_dict(), args.model_save_path + 'full_weights')
+                print("saved the full model weights!")
+            else:
+                ckpt = {
+                    "promptnumber": model_to_save.promptnumber,
+                    "promptembedding": model_to_save.promptembedding
+                }
+                torch.save(ckpt, args.model_save_path + 'bestckpt')
+                print("saved the model prompt!")
     
     return result_dict
 
