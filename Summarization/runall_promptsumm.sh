@@ -14,7 +14,7 @@ echo "end 10-shot prompt-tune_entity"
 echo "start 10-shot prompt-tune_summary"
 #python main.py --few_shot 10 --finetune_summary --infer_val_entities --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt
 #python main.py --few_shot 10 --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60
-python main.py --few_shot 10 --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --full_testset --max_epoch_summary 0 --dataset_name xsum
+#python main.py --few_shot 10 --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --full_testset --max_epoch_summary 0 --dataset_name xsum
 echo "end 10-shot prompt-tune_summary"
 
 echo "start 10-shot prompt-tune_summary oracle"
@@ -29,6 +29,7 @@ echo "end 64-shot prompt-tune_entity"
 
 echo "start 64-shot prompt-tune_summary"
 #python main.py --few_shot 64 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt 
+#python main.py --few_shot 64 --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --full_testset --max_epoch_summary 0 
 echo "end 64-shot prompt-tune_summary"
 
 echo "start 64-shot prompt-tune_summary oracle"
@@ -43,6 +44,7 @@ echo "end 100-shot prompt-tune_entity"
 
 echo "start 100-shot prompt-tune_summary"
 #python main.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt 
+python main.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --full_testset --max_epoch_summary 0
 echo "end 100-shot prompt-tune_summary"
 
 echo "start 100-shot prompt-tune_summary oracle"

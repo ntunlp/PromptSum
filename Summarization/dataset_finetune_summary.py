@@ -36,7 +36,7 @@ class T5SummarizationDataset(Dataset):
 
         self.data = []
         self.data = self.getalldata(self.filename)
-        self.data = self.data[:20]
+        #self.data = self.data[:20]
         self.num_entries = len(self.data)
 
         self.split = split
