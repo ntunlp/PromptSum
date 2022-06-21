@@ -2140,3 +2140,12 @@ The ent model has 307200 trainable parameters
 move to device!
 before filtering: 1000 entries
 after filtering: 530 entries
+----Validation Results Summary counterfactual_removal: False----
+entity-level p: 41.19496855345913, r: 27.530248577418387, f1: 31.350336963047983
+ROUGE score r1: 35.59938299921794, r2: 13.435961528078137, r3: 28.17784845053855
+mean-rouge: 25.737730992611542
+----EVAL FINISHED----
+Loading the pre-trained NER model!
+The ent model has 307200 trainable parameters
+move to device!
+before filtering: 530 entries
