@@ -151,10 +151,16 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             model.train()
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
-        # load the best ckpt
-        best_val_ckpt = torch.load(args.model_save_path + 'bestckpt')
-        model.promptnumber = best_val_ckpt["promptnumber"]
-        model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+        if args.model == 'T5Finetune':
+            path = args.model_save_path + 'full_weights'
+            model.load_state_dict(torch.load(path))
+            print("loaded the full model weights!", path)
+        else:
+            path = args.model_save_path + 'bestckpt'
+            best_val_ckpt = torch.load(path)
+            model.promptnumber = best_val_ckpt["promptnumber"]
+            model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+            print("loaded the model prompt!", path)
         # no need to save again
         args.save_model = False
         # initialize new result_dict to save results
