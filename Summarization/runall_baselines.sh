@@ -11,7 +11,11 @@ echo "start 10-shot baseline-1: all-params finetune summary"
 echo "end 10-shot baseline-1: all-params finetune summary"
 
 echo "start 10-shot baseline-2: simple prompt-tune summary"
-#python main.py --few_shot 10 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
+# CUDA_VISIBLE_DEVICES=7 python main.py --few_shot 10 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary
+echo "end 10-shot baseline-2: simple prompt-tune summary"
+
+echo "evaluate 10-shot baseline-2: simple prompt-tune summary"
+CUDA_VISIBLE_DEVICES=5 python main.py --few_shot 10 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary --max_epoch_summary 0 --full_testset
 echo "end 10-shot baseline-2: simple prompt-tune summary"
 
 echo "start 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
@@ -29,7 +33,7 @@ echo "start 64-shot baseline-1: all-params finetune summary"
 echo "end 64-shot baseline-1: all-params finetune summary"
 
 echo "start 64-shot baseline-2: simple prompt-tune summary"
-#python main.py --few_shot 64 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
+# CUDA_VISIBLE_DEVICES=7 python main.py --few_shot 64 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary
 echo "end 64-shot baseline-2: simple prompt-tune summary"
 
 echo "start 64-shot baseline-3: simple prompt-tune summary with pretrained ckpt"

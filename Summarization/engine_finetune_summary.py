@@ -271,7 +271,6 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
-
         if args.save_model:
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)

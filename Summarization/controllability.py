@@ -10,6 +10,7 @@ from engine_finetune_entity import *
 from engine_finetune_summary import *
 from models_summarization.model_mixture import *
 from nltk.tokenize import sent_tokenize
+from pathlib import Path
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
@@ -42,8 +43,8 @@ def set_args():
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
                             default='./log', help="The path to log dir")
-    parser.add_argument("--save_model_path", dest="save_model_path", type=str,
-                            default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
+    # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
+    #                         default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='controlling', help="The file name of log file")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -80,8 +81,19 @@ def set_args():
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
+    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 1k testset")  
+    parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")     
+    parser.add_argument("--seed", dest="seed", type=int,
+                        default=42, help="seed for network")
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
+    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
+    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
+    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
+    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
+    test_keys = ["test", "test", "", "test", "test", "test"]
+    highlights = [True, False, False, False, False, False, False]
+    max_summary_lengths = [128, 64, 64, 128, 256, 64]
     
     args = parser.parse_args()
     ## SET HERE FOR PRETRAIN
@@ -96,6 +108,13 @@ def set_args():
         args.dataset = 'cnndm'
     else:
         args.dataset = args.dataset_name
+    args.highlights = highlights[idx]
+    args.max_summary_length = max_summary_lengths[idx]
+    args.dataset_version = dataset_versions[idx]
+    args.text_key = text_keys[idx]
+    args.summary_key = summary_keys[idx]
+    args.validation_key = validation_keys[idx]
+    args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
     return args
@@ -154,48 +173,74 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             logger.info("move to device!")
             model.eval()
 
-            alldata = valid_dataset.data
-            #logger.info("valid size: ", len(alldata))
-            print("valid size: ", len(alldata))
-            allresofvalid = {}
-            with torch.no_grad():
-                for step in range(len(alldata)):
-                    onedata = alldata[step]
-                    inputdata = onedata[0]
-                    tempdata = re.sub(' +', ' ', inputdata)
-                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                    input_ids = inputres["input_ids"].to(args.device)
-                    attention_mask = inputres["attention_mask"].to(args.device)
-                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                    tagpreds = entmodel._generative_step_for_tagger(input)
-                    allentitylist = tagpreds[0].split(',')
-                    if allentitylist == []:
-                        allentitylist = ["none"]
-                    # if counterfactual_removal, remove them
-                    input_guidance_list = list(dict.fromkeys(allentitylist))
-                    if args.counterfactual_removal != False:
-                        for c_r in range(int(args.counterfactual_removal)):
-                            if len(input_guidance_list) > 2:
-                                input_guidance_list.pop(random.randrange(len(input_guidance_list)))
-                        input_guidance = args.separator.join(input_guidance_list)
-                        allresofvalid[tempdata] = input_guidance
-                    else:
-                        input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                        allresofvalid[tempdata] = input_guidance
-                    all_ents.append(input_guidance)
-            logger.info(len(allresofvalid))
-            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
-            with open(respath, "wb") as f:
-                pickle.dump(allresofvalid, f)
-                logger.info("saved the T5 valid entities")
-            torch.cuda.empty_cache()
-            del entmodel, enttokenizer
-            gc.collect()
-            valid_dataset.set_allent_for_valid()
-    else:
-        all_ents = []
-        if args.counterfactual_removal != False:
-            new_allent = {}
+            if args.big_testset:
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent_control.pkl'
+                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testidx_control.pkl'
+            else:
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident_control.pkl'
+                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valididx_control.pkl'
+            if not os.path.isfile(respath):
+                alldata = valid_dataset.data
+                #logger.info("valid size: ", len(alldata))
+                print("valid size: ", len(alldata))
+                allresofvalid = {}
+                indices = []
+                with torch.no_grad():
+                    for step in range(len(alldata)):
+                        onedata = alldata[step]
+                        inputdata = onedata[0]
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(args.device)
+                        attention_mask = inputres["attention_mask"].to(args.device)
+                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                        tagpreds = entmodel._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        if allentitylist == []:
+                            allentitylist = ["none"]
+                        input_guidance_list = list(dict.fromkeys(allentitylist))
+                        #filter to only >=2
+                        if len(input_guidance_list) >= 2:
+                            input_guidance = args.separator.join(input_guidance_list)
+                            allresofvalid[tempdata] = input_guidance
+                            all_ents.append(input_guidance)
+                            indices.append(step)
+                logger.info(len(allresofvalid))
+                with open(respath, "wb") as f:
+                    pickle.dump(allresofvalid, f)
+                    logger.info("saved the T5 valid entities")
+                with open(idxpath, "wb") as f:
+                    pickle.dump(indices, f)
+                    logger.info("saved the T5 valid indices")
+                torch.cuda.empty_cache()
+                del entmodel, enttokenizer
+                gc.collect()
+            else:
+                # we already have it
+                with open(respath, "rb") as f:
+                    allresofvalid = pickle.load(f)
+                allents = allresofvalid.values()
+                with open(idxpath, "rb") as f:
+                    indices = pickle.load(f)
+            # # remove 
+            # if args.counterfactual_removal != False:
+            #     # first filter to entities >=2
+            #     for c_r in range(int(args.counterfactual_removal)):
+            #         if len(input_guidance_list) > 2:
+            #             input_guidance_list.pop(random.randrange(len(input_guidance_list)))
+            #     input_guidance = args.separator.join(input_guidance_list)
+            #     allresofvalid[tempdata] = input_guidance
+                
+            # valid_dataset.set_allent_for_valid(respath)
+    # filter down valid dataset using indices
+    logger.info(f'before filtering: {valid_dataset.num_entries} entries')
+    valid_dataset.data =[valid_dataset.data[i] for i in indices]
+    valid_dataset.num_entries = len(valid_dataset.data)
+    logger.info(f'after filtering: {valid_dataset.num_entries} entries')
+    valid_dataset.allent = allresofvalid
+    if args.counterfactual_removal != False:
+        new_allent = {}
+        allents = []
         for key, value in valid_dataset.allent.items():
             input_guidance_list = value.split(',')
             if args.counterfactual_removal != False:
@@ -203,11 +248,9 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
                     if len(input_guidance_list) > 2:
                         input_guidance_list.pop(random.randrange(len(input_guidance_list)))
             input_guidance = args.separator.join(input_guidance_list)
-            all_ents.append(input_guidance)
-            if args.counterfactual_removal != False:
-                new_allent[key] = input_guidance
-        if args.counterfactual_removal != False:
-            valid_dataset.allent = new_allent
+            allents.append(input_guidance)
+            new_allent[key] = input_guidance
+        valid_dataset.allent = new_allent
     valid_sampler = SequentialSampler(valid_dataset)
     valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
@@ -298,11 +341,19 @@ def main(args):
             if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
                 dicsum[x[7:]] = ckptsum[x]
         model.load_state_dict(dicsum)
+
     seed = 0
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    ckptsum = torch.load(args.save_model_path)
+    
+    ## LOAD CKPT
+    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
+    if args.model != 'T5MixPrompt':
+        args.model_save_folder += f'{args.model}/'
+    args.model_save_path = args.model_save_folder + f'seed_{seed}/'
+    ckptsum = torch.load(args.model_save_path + 'bestckpt')
     model.promptnumber = ckptsum["promptnumber"]
     model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
+
     few_shot_seeds = [0]
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
@@ -314,24 +365,28 @@ def main(args):
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
     tokenizer.add_tokens(['[SEP]'])
+    # if big dataset, change the validation set
+    print('args.big_testset: ', args.big_testset)
+    if args.big_testset:
+        valid_file_name = args.data_dir + args.dataset + '/1k_test.txt'
+        # check if we have already generated it
+        if not os.path.isfile(valid_file_name):
+            dataset_args = [args.dataset_name, args.dataset_version]
+            subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, n = 1000)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    else:
+        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
+        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
+    scaler = None
     # For each sentence
     # predict as is
     args.counterfactual_removal = False
-    valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
-    scaler = None
     inputs0, all_ents0, labels0, summaries0 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
     # remove one entity
     args.counterfactual_removal = 1
-    valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
-    scaler = None
     inputs1, all_ents1, labels1, summaries1 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
     # remove two entities
     args.counterfactual_removal = 2
-    valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
-    scaler = None
     inputs2, all_ents2, labels2, summaries2 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
     for i in range(len(labels0)):
         logger.info('-----')

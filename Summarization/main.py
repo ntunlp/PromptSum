@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = '2'
+# os.environ["CUDA_VISIBLE_DEVICES"] = '5'
 import pickle
 import argparse
 import gc
@@ -44,8 +44,8 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     #root = "/data/qin/"
-    # data_root = "/data/ruochen/"
-    data_root = "/data/mathieu/"
+    data_root = "/data/ruochen/"
+    # data_root = "/data/mathieu/"
     root = "/data/mathieu/"
 
     # general stuff
@@ -282,6 +282,8 @@ def set_args():
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
+    if args.model != 'T5MixPrompt':
+        args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
     return args
 
@@ -411,7 +413,10 @@ def main(args):
 
         count = 0
         for (train_dataset, valid_dataset, seed) in datasets:
+            logger.info('SEED {}'.format(seed))
             args.model_save_path = args.model_save_folder + f'seed_{seed}/'
+            logger.info('args.model_save_path {}'.format(args.model_save_path))
+            logger.info('args.save_model {}'.format(args.save_model))
             count += 1
             if count <=0:
                 continue
@@ -495,39 +500,39 @@ def main(args):
                     model.eval()
 
                     #doing valid
-                    if args.max_epoch_summary > 0:
-                        alldata = valid_dataset.data
-                        #logger.info("valid size: ", len(alldata))
-                        print("valid size: ", len(alldata))
-                        allresofvalid = {}
-                        with torch.no_grad():
-                            for step in range(len(alldata)):
-                                onedata = alldata[step]
-                                inputdata = onedata[0]
-                                tempdata = re.sub(' +', ' ', inputdata)
-                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                input_ids = inputres["input_ids"].to(args.device)
-                                attention_mask = inputres["attention_mask"].to(args.device)
-                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                tagpreds = entmodel._generative_step_for_tagger(input)
-                                allentitylist = tagpreds[0].split(',')
-                                if allentitylist == []:
-                                    allentitylist = ["none"]
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                allresofvalid[tempdata] = input_guidance
-                        logger.info(len(allresofvalid))
-                        #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
-                        respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
-                        with open(respath, "wb") as f:
-                            pickle.dump(allresofvalid, f)
-                            logger.info("saved the T5 valid entities to: {}".format(respath))
-                        torch.cuda.empty_cache()
-                        # del entmodel, enttokenizer
-                        gc.collect()
-                        valid_dataset.set_allent_for_valid(respath)
-
+                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                    if not os.path.isfile(respath):
+                        if args.max_epoch_summary > 0:
+                            alldata = valid_dataset.data
+                            #logger.info("valid size: ", len(alldata))
+                            print("valid size: ", len(alldata))
+                            allresofvalid = {}
+                            with torch.no_grad():
+                                for step in range(len(alldata)):
+                                    onedata = alldata[step]
+                                    inputdata = onedata[0]
+                                    tempdata = re.sub(' +', ' ', inputdata)
+                                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                                    input_ids = inputres["input_ids"].to(args.device)
+                                    attention_mask = inputres["attention_mask"].to(args.device)
+                                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                                    tagpreds = entmodel._generative_step_for_tagger(input)
+                                    allentitylist = tagpreds[0].split(',')
+                                    if allentitylist == []:
+                                        allentitylist = ["none"]
+                                    input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                                    allresofvalid[tempdata] = input_guidance
+                            logger.info(len(allresofvalid))
+                            #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
+                            with open(respath, "wb") as f:
+                                pickle.dump(allresofvalid, f)
+                                logger.info("saved the T5 valid entities to: {}".format(respath))
+                            torch.cuda.empty_cache()
+                            # del entmodel, enttokenizer
+                            gc.collect()
                     #doing test
                     else:
+                        valid_dataset.set_allent_for_valid(respath)
                         if args.big_testset or args.full_testset:
                             #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
                             if args.big_testset:
@@ -564,6 +569,7 @@ def main(args):
                             args.test_dataset.set_allent_for_valid(respath)
             
             ########## 2nd prompt tuning stage: summarization
+            # if not os.path.isfile(args.model_save_path + 'bestckpt'):
             model.to(args.device)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             logger.info("The model has {} trainable parameters".format(n_params))

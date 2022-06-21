@@ -60,10 +60,10 @@ class T5SummarizationDataset(Dataset):
                     self.allent = self.handleentfile(entpath)
 
         # counterfactual training
-        self.counterfactual_removal = args.counterfactual_removal
-        if self.counterfactual_removal:
-            self.counterfactual_remove()
-            print("# After augmenting, Data points in this split: {}".format(len(self.data)))
+        # self.counterfactual_removal = args.counterfactual_removal
+        # if self.counterfactual_removal:
+        #     self.counterfactual_remove()
+        #     print("# After augmenting, Data points in this split: {}".format(len(self.data)))
 
     def handleentfile(self, entpath):
         fe = open(entpath, 'r')
@@ -199,6 +199,8 @@ class T5SummarizationDataset(Dataset):
                         input_guidance = self.allent[tempdata]
                     else:
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
+                        # print(tempdata)
+                        # raise Exception('end')
                 else:
                     if self.args.guidance_mode == 'target':
                         tempdata = re.sub(' +', ' ', inputdata)
@@ -206,6 +208,8 @@ class T5SummarizationDataset(Dataset):
                             input_guidance = self.allent[tempdata]
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
+                            # print(tempdata)
+                            # raise Exception('end')
                     else:
                         # tempdata = re.sub(' +', ' ', inputdata)
                         # inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
@@ -230,18 +234,19 @@ class T5SummarizationDataset(Dataset):
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
-                            print(
-                                "For valid: we can not find inputdata in the dictionary!! There should be some errors!")
+                            print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
+                            # print(tempdata)
+                            # raise Exception('end')
 
-            # if counterfactual_removed, remove removed_ents in the input_guidance
-            if self.counterfactual_removal:
-                if self.removed_ents[idx] != None:
-                    for ent in self.removed_ents:
-                        print('input_guidance: ', input_guidance)
-                        input_guidance = input_guidance.replace(ent.text, '')
-                        print('input_guidance2: ', input_guidance)
-                        print('removed_ents[idx]: ', self.removed_ents[idx])
-                        raise Exception('end')
+            # # if counterfactual_removed, remove removed_ents in the input_guidance
+            # if self.counterfactual_removal:
+            #     if self.removed_ents[idx] != None:
+            #         for ent in self.removed_ents:
+            #             print('input_guidance: ', input_guidance)
+            #             input_guidance = input_guidance.replace(ent.text, '')
+            #             print('input_guidance2: ', input_guidance)
+            #             print('removed_ents[idx]: ', self.removed_ents[idx])
+            #             raise Exception('end')
 
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
@@ -459,8 +464,9 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
       
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
-                                               counterfactual_removal=args.counterfactual_removal)
+        # train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
+        #                                        counterfactual_removal=args.counterfactual_removal)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
@@ -496,7 +502,7 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     np.random.seed(args.seed)
 
 
-def subsample_2k_testset(dataset_args, file_path, seed, args):
+def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000):
     '''
     Function that subsamples a 2k test set that can be reused 
     args:
@@ -510,7 +516,7 @@ def subsample_2k_testset(dataset_args, file_path, seed, args):
     else:
         len_valid = len(valid_data)
         np.random.seed(seed)
-        indices = np.random.choice(range(len_valid), 2000)
+        indices = np.random.choice(range(len_valid), n)
         valid_data_new = valid_data.select(indices)
         # save
         convert_data_to_txt(valid_data_new, file_path, args)
