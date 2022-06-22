@@ -347,12 +347,15 @@ class SmartBatchingCollate:
         right = True
         if "DID" in self.args.model:
             right = False
-        ents_ids, ents_mask = self.pad_sequence(
-            ents,
-            max_sequence_length=self._max_guidance_length,
-            pad_token_id=self._pad_token_id,
-            right=right
-        )
+        ents_ids = target_ids
+        ents_mask = target_mask
+        if self.args.model != "T5Finetune":
+            ents_ids, ents_mask = self.pad_sequence(
+                ents,
+                max_sequence_length=self._max_guidance_length,
+                pad_token_id=self._pad_token_id,
+                right=right
+            )
         if "DID" in self.args.model:
             sep_ids = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device) * \
                       self.tokenizer.encode("[SEP]")[0]
@@ -390,7 +393,10 @@ class SmartBatchingCollate:
         return padded_sequences, attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right=True):
-        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        try:
+            max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        except TypeError:
+            max_batch_len = 1
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
