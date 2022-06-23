@@ -12,6 +12,7 @@ from models_summarization.model_mixture import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 import random
+import copy
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
@@ -132,7 +133,43 @@ def set_logger(args):
     fh = logging.FileHandler(args.log_name)
     logger.addHandler(fh)
 
-def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
+def hallucinated(entity_chain, input, spacy_nlp):
+    '''
+    Returns: 1. non-hallucinated entity chains with hallucination removed
+            2. boolean on whether it was hallucinated or not
+    '''
+    input_guidance_list = entity_chain.split(',')
+    ents_true = spacy_nlp(input).ents
+    ents_true = [ent.text for ent in ents_true]
+    hallucinated = [ent for ent in input_guidance_list if ent not in ents_true]
+    if len(hallucinated)>0:
+        non_hallucinated = [ent for ent in input_guidance_list if ent in ents_true]
+        return ','.join(non_hallucinated), True
+    else:
+        return None, False
+
+def count_hallucination_percentage(allytrue, allypred, spacy_nlp):
+    hallucinated_count = 0
+    all_count = 0
+    for i, ytrue in enumerate(allytrue):
+        ents_true = spacy_nlp(ytrue).ents
+        ents_true = [ent.text for ent in ents_true]
+        ypred = allypred[i]
+        ents_pred = spacy_nlp(ypred).ents
+        ents_pred = [ent.text for ent in ents_pred]
+        hallucinated_ents = [ent for ent in ents_pred if ent not in ents_true]
+        hallucinated_count += len(hallucinated_ents)
+        all_count += len(ents_pred)
+    return hallucinated_count/all_count
+
+def new_valid_dataset(valid_dataset, indices, ents):
+    valid_dataset_new = copy.deepcopy(valid_dataset)
+    valid_dataset_new.data =[valid_dataset_new.data[i] for i in indices]
+    valid_dataset_new.num_entries = len(valid_dataset_new.data)
+    valid_dataset_new.allent = ents
+    return valid_dataset_new
+
+def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed = 0):
     model.eval()
     model = model.to(args.device)
     all_ents = []
@@ -167,178 +204,134 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             model.eval()
 
             if args.big_testset:
-                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent_control.pkl'
-                # idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent_control.pkl'
-                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testidx_control.pkl'
+                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
             else:
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident_control.pkl'
-                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valididx_control.pkl'
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
             logger.info(f'respath: {respath}')
             if not os.path.isfile(respath):
                 logger.info('generating')
-                if args.dataset == 'cnndm':
-                    logger.info('Filtering for CNNDM')
-                    # inferring
-                    #already inferred 
-                    respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                    with open(respath_full, 'rb') as f:
-                        full_dict = pickle.load(f)
-                    # need to filter
-                    step = 0
-                    allresofvalid = {}
-                    indices = []
-                    for key, value in full_dict.items():
-                        input_guidance_list = value.split(',')
-                        if len(input_guidance_list) >= 2:
-                            input_guidance = args.separator.join(input_guidance_list)
-                            allresofvalid[key] = input_guidance
-                            all_ents.append(input_guidance)
-                            indices.append(step)
-                        step += 1
-                    # subsample to 1k
-                    random.seed(0)
-                    indices = random.sample(indices, 1000)
-                    newallresofvalid = {}
-                    for i, (key, value) in enumerate(full_dict.items()):
-                        if i in indices:
-                            newallresofvalid[key] = value
-                    allresofvalid = newallresofvalid
-                    logger.info(len(allresofvalid))
-                    with open(respath, "wb") as f:
-                        pickle.dump(allresofvalid, f)
-                        logger.info("saved the T5 valid entities")
-                    with open(idxpath, "wb") as f:
-                        pickle.dump(indices, f)
-                        logger.info("saved the T5 valid indices")
-                    torch.cuda.empty_cache()
-                    del entmodel, enttokenizer
-                    gc.collect()
-                else:
-                    #XSUM INFER
-                    alldata = valid_dataset.data
-                    allresofvalid = {}
-                    all_ents = []
-                    with torch.no_grad():
-                        for step in range(len(alldata)):
-                            onedata = alldata[step]
-                            inputdata = onedata[0]
-                            tempdata = re.sub(' +', ' ', inputdata)
-                            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                            input_ids = inputres["input_ids"].to(args.device)
-                            attention_mask = inputres["attention_mask"].to(args.device)
-                            input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                            tagpreds = entmodel._generative_step_for_tagger(input)
-                            allentitylist = tagpreds[0].split(',')
-                            if allentitylist == []:
-                                input_guidance = 'none'
-                            else:
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                            allresofvalid[tempdata] = input_guidance
-                            all_ents.append(input_guidance)
-                            indices.append(step)
-                    logger.info(len(allresofvalid))
-                    with open(respath, "wb") as f:
-                        pickle.dump(allresofvalid, f)
-                        logger.info("saved the T5 valid entities")
-                    with open(idxpath, "wb") as f:
-                        pickle.dump(indices, f)
-                        logger.info("saved the T5 valid indices")
-                    torch.cuda.empty_cache()
-                    del entmodel, enttokenizer
-                    gc.collect()
+                #XSUM INFER
+                alldata = valid_dataset.data
+                allresofvalid = {}
+                all_ents = []
+                with torch.no_grad():
+                    for step in range(len(alldata)):
+                        onedata = alldata[step]
+                        inputdata = onedata[0]
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(args.device)
+                        attention_mask = inputres["attention_mask"].to(args.device)
+                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                        tagpreds = entmodel._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        if allentitylist == []:
+                            input_guidance = 'none'
+                        else:
+                            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                        allresofvalid[tempdata] = input_guidance
+                        all_ents.append(input_guidance)
+                logger.info(len(allresofvalid))
+                with open(respath, "wb") as f:
+                    pickle.dump(allresofvalid, f)
+                    logger.info("saved the T5 valid entities")
+                torch.cuda.empty_cache()
+                del entmodel, enttokenizer
+                gc.collect()
             else:
                 # we already have it
                 with open(respath, "rb") as f:
                     allresofvalid = pickle.load(f)
                 all_ents = list(allresofvalid.values())
-                with open(idxpath, "rb") as f:
-                    indices = pickle.load(f)
-    # filter down valid dataset using indices
-    if args.big_testset and valid_dataset.num_entries!= 1000 and valid_dataset.num_entries!=2000:
-        logger.info(f'before filtering: {valid_dataset.num_entries} entries')
-        valid_dataset.data =[valid_dataset.data[i] for i in indices]
-        valid_dataset.num_entries = len(valid_dataset.data)
-        logger.info(f'after filtering: {valid_dataset.num_entries} entries')
     valid_dataset.allent = allresofvalid
-    if args.counterfactual_removal != False:
-        new_allent = {}
-        all_ents = []
-        for key, value in valid_dataset.allent.items():
-            input_guidance_list = value.split(',')
-            if args.counterfactual_removal != False:
-                for c_r in range(int(args.counterfactual_removal)):
-                    # if len(input_guidance_list) > 2:
-                    input_guidance_list.pop(random.randrange(len(input_guidance_list)))
-            if len(input_guidance_list)>0:
-                input_guidance = args.separator.join(input_guidance_list)
-            else:
-                input_guidance = 'none'
-            all_ents.append(input_guidance)
-            new_allent[key] = input_guidance
-            # logger.info(f'original: {value}')
-            # logger.info(f'popped: {input_guidance}')
-        valid_dataset.allent = new_allent
-    valid_sampler = SequentialSampler(valid_dataset)
-    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
-                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
-    all_inputs = []
-    allytrue = []
-    allypred = []
-    with torch.no_grad():
-        for step, batch in enumerate(valid_dataloader):
-            # logger.info(step)
-            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                      "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
-            allinp = []
-            for k in range(inputs["ents_ids"].shape[0]):
-                # print(inputs['input_ids'][k])
-                allinp.append(tokenizer.decode(inputs['input_ids'][k]))
-            if scaler is not None:
-                with autocast():
+    # split into nh and h datasets
+    dic = {'nh_indices': [], 'nh_ents': {},
+             'h_indices': [], 'h_ents': {}, 'hr_ents': {}}
+    for i, data in enumerate(valid_dataset.data):
+        inputdata = data[0]
+        tempdata = re.sub(' +', ' ', inputdata)
+        try:
+            entity_chain = valid_dataset.allent[tempdata]
+        except:
+            logger.info(f'DATA: {data}')
+            logger.info(f'cannot find :{tempdata}')
+            logger.info(f'dict :{valid_dataset.allent}')
+            raise Exception('end')
+        non_halents, hal = hallucinated(entity_chain, inputdata, spacy_nlp)
+        if hal:
+            dic['h_indices'].append(i)
+            dic['h_ents'][tempdata] = entity_chain
+            dic['hr_ents'][tempdata] = non_halents
+        else:
+            dic['nh_indices'].append(i)
+            dic['nh_ents'][tempdata] = entity_chain
+    valid_dataset_nh = new_valid_dataset(valid_dataset, dic['nh_indices'], dic['nh_ents'])
+    valid_dataset_h = new_valid_dataset(valid_dataset, dic['h_indices'], dic['h_ents'])
+    valid_dataset_hr = new_valid_dataset(valid_dataset, dic['h_indices'], dic['hr_ents'])
+    logger.info(f'{valid_dataset_h.num_entries} hallucinated examples')
+    logger.info(f'{valid_dataset_nh.num_entries} NON-hallucinated examples')
+    names = ['NOT HALLUCINATED', 'HALLUCINATED AS-IS', 'HALLUCINATED WITH HALLUCINATION REMOVED']
+    for idx, valid_dataset in enumerate([valid_dataset_nh, valid_dataset_h, valid_dataset_hr]):
+        valid_sampler = SequentialSampler(valid_dataset)
+        valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
+                                        args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
+        all_inputs = []
+        allytrue = []
+        allypred = []
+        with torch.no_grad():
+            for step, batch in enumerate(valid_dataloader):
+                # logger.info(step)
+                inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                        "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                        "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
+                        "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
+                allinp = []
+                for k in range(inputs["ents_ids"].shape[0]):
+                    # print(inputs['input_ids'][k])
+                    allinp.append(tokenizer.decode(inputs['input_ids'][k]))
+                if scaler is not None:
+                    with autocast():
+                        sen, target, preds = model._generative_step(inputs)
+                        tarres, predres = target, preds
+                else:
                     sen, target, preds = model._generative_step(inputs)
                     tarres, predres = target, preds
-            else:
-                sen, target, preds = model._generative_step(inputs)
-                tarres, predres = target, preds
-            all_inputs += allinp
-            allytrue.extend(tarres)
-            allypred.extend(predres)
-    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
-    r1s, r2s, rls = [], [], []
-    labels = []
-    summaries = []
-    for j in range(len(allytrue)):
-        label = allytrue[j]
-        summary = allypred[j]
-        if args.highlights:
-            label = "\n".join(sent_tokenize(label))
-            summary = "\n".join(sent_tokenize(summary))
-        rouge_score = scorer.score(label, summary)
-        labels.append(label)
-        summaries.append(summary)
-        r1s.append(rouge_score["rouge1"].fmeasure)
-        r2s.append(rouge_score["rouge2"].fmeasure)
-        rls.append(rouge_score["rougeLsum"].fmeasure)
-    rouge_score = {
-        "rouge1": 100 * np.mean(r1s),
-        "rouge2": 100 * np.mean(r2s),
-        "rougeLsum": 100 * np.mean(rls)
-    }
-    # logger.info(len(allypred))
-    # logger.info(rouge_score)
-    p, r, f1 = entity_eval(allytrue, allypred)
-    logger.info(f'----Validation Results Summary counterfactual_removal: {args.counterfactual_removal}----')
-    logger.info(f'entity-level p: {p}, r: {r}, f1: {f1}')
-    logger.info(f'ROUGE score r1: {rouge_score["rouge1"]}, r2: {rouge_score["rouge2"]}, r3: {rouge_score["rougeLsum"]}')
-    mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
-    logger.info(f'mean-rouge: {mean_rouge}')
-    logger.info(f'----EVAL FINISHED----')
-    # print('INPUTS: ', inputs)
-    logger.info(f'ents {args.counterfactual_removal}: {all_ents}')
-    return all_inputs, all_ents, labels, summaries
+                all_inputs += allinp
+                allytrue.extend(tarres)
+                allypred.extend(predres)
+        scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
+        r1s, r2s, rls = [], [], []
+        labels = []
+        summaries = []
+        for j in range(len(allytrue)):
+            label = allytrue[j]
+            summary = allypred[j]
+            if args.highlights:
+                label = "\n".join(sent_tokenize(label))
+                summary = "\n".join(sent_tokenize(summary))
+            rouge_score = scorer.score(label, summary)
+            labels.append(label)
+            summaries.append(summary)
+            r1s.append(rouge_score["rouge1"].fmeasure)
+            r2s.append(rouge_score["rouge2"].fmeasure)
+            rls.append(rouge_score["rougeLsum"].fmeasure)
+        rouge_score = {
+            "rouge1": 100 * np.mean(r1s),
+            "rouge2": 100 * np.mean(r2s),
+            "rougeLsum": 100 * np.mean(rls)
+        }
+        p, r, f1 = entity_eval(allytrue, allypred)
+        # percentage of hallucinated entities
+        percent_hal = count_hallucination_percentage(allytrue, allypred, spacy_nlp)
+
+        logger.info(f'--------{names[idx]}--------')
+        logger.info(f'entity-level p: {p}, r: {r}, f1: {f1}')
+        logger.info(f'ROUGE score r1: {rouge_score["rouge1"]}, r2: {rouge_score["rouge2"]}, r3: {rouge_score["rougeLsum"]}')
+        mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
+        logger.info(f'mean-rouge: {mean_rouge}')
+        logger.info(f'Percentage of hallucination in predictions: {percent_hal*100}%')
+        logger.info(f'--------EVAL FINISHED--------')
 
 
 def main(args):
@@ -383,7 +376,6 @@ def main(args):
     model.promptnumber = ckptsum["promptnumber"]
     model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
 
-    few_shot_seeds = [0]
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
@@ -413,23 +405,9 @@ def main(args):
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
     scaler = None
-    # For each sentence
-    # predict as is
-    args.counterfactual_removal = False
-    inputs0, all_ents0, labels0, summaries0 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
-    # remove one entity
-    args.counterfactual_removal = 1
-    inputs1, all_ents1, labels1, summaries1 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
-    # remove two entities
-    args.counterfactual_removal = 2
-    inputs2, all_ents2, labels2, summaries2 = eval(model, valid_dataset, scaler, logger, args, tokenizer)
-    for i in range(len(labels0)):
-        logger.info('-----')
-        logger.info(f'INPUT: {inputs0[i]}')
-        logger.info(f'LABEL: {labels0[i]}')
-        logger.info(f'ENTS: {all_ents0[i]}; SUMMARY: {summaries0[i]}')
-        logger.info(f'ENTS: {all_ents1[i]}; SUMMARY: {summaries1[i]}')
-        logger.info(f'ENTS: {all_ents2[i]}; SUMMARY: {summaries2[i]}')
+    spacy_nlp = spacy.load("en_core_web_sm")
+    eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp)
+
 if __name__ == "__main__":
     args = set_args()
     set_logger(args)

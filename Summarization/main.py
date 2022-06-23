@@ -283,7 +283,11 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':
-        args.model_save_folder += f'{args.model}/'
+        if args.model == 'T5SoftPrompt' and args.use_pretrain_ckpt:
+            args.model_save_folder += f'{args.model}_v3/'
+            logger.info(args.model_save_folder)
+        else:
+            args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
     return args
 
@@ -390,7 +394,7 @@ def main(args):
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-        
+            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
         print('args.full_testset: ', args.full_testset)
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
@@ -401,7 +405,7 @@ def main(args):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
             args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-        
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
@@ -567,12 +571,62 @@ def main(args):
                                 del entmodel, enttokenizer
                                 gc.collect()
                             args.test_dataset.set_allent_for_valid(respath)
-            
+            # counterfactual removal to enhance training
+            if args.counterfactual_removal != False:
+                allents = train_dataset.allent.copy()
+                inputdata = [i[0] for i in train_dataset.data]
+                targetdata = [i[1] for i in train_dataset.data]
+                newinputdata = inputdata.copy()
+                newtargetdata = targetdata.copy()
+                # for each instance, check of length >= 1
+                for idx, input in enumerate(inputdata):
+                    tempdata = re.sub(' +', ' ', input)
+                    input_guidance = allents[tempdata]
+                    input_guidance_list = input_guidance.split(',')
+                    if len(input_guidance_list) >= 0:
+                        removed_ents = []
+                        # if so , remove n entities, form a new instance
+                        for c_r in range(int(args.counterfactual_removal)):
+                            removed_ent = input_guidance_list.pop(random.randrange(len(input_guidance_list)))
+                            removed_ents.append(removed_ent)
+                        if len(input_guidance_list)>0:
+                            input_guidance = args.separator.join(input_guidance_list)
+                        else:
+                            input_guidance = 'none'
+                        # split summaries into sentences
+                        sents = tokenizer.tokenize(targetdata[idx])
+                        if len(sents) > 2:
+                            for i, sent in enumerate(sents):
+                                removed = [ent for ent in input_guidance_list if ent in sent]
+                                not_removed = [ent for ent in input_guidance_list if ent not in removed]
+                                # if this list is not empty
+                                if len(removed) > 0 and len(not_removed) > 1 :
+                                     # append new instances to data
+                                    newtargetdata.append(' '.join(sents).replace(sent, ''))
+                                    newinput = 'REMOVED{i} '+ tempdata
+                                    newinputdata.append(newinput)
+                                    # append new instances to dictionary
+                                    train_dataset.allent[newinput] = args.separator.join(not_removed)
+                                    # logger.info(f'NEWINPUT: {newinput}')
+                                    # logger.info(f'allents[newinput]: {allents[newinput]}')
+                # change self.data
+                logger.info(f'Before counterfactual augmentation: {train_dataset.num_entries} entries')
+                train_dataset.data = [(newinputdata[i], newtargetdata[i]) for i in range(len(newinputdata))]
+                # logger.info('BEFORE CHANGING')
+                # logger.info(train_dataset.allent)
+                # train_dataset.allent = allents
+                # logger.info('AFTER CHANGING')
+                # logger.info(train_dataset.allent)
+                train_dataset.num_entries = len(train_dataset.data)
+                logger.info(f'After counterfactual augmentation: {train_dataset.num_entries} entries')
             ########## 2nd prompt tuning stage: summarization
             # if not os.path.isfile(args.model_save_path + 'bestckpt'):
             model.to(args.device)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             logger.info("The model has {} trainable parameters".format(n_params))
+
+            logger.info(f'train_dataset.num_entries: {train_dataset.num_entries}')
+            logger.info(f'valid_dataset.num_entries: {valid_dataset.num_entries}')
 
             result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
             logger.info("Finish training")
