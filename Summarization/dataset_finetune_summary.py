@@ -1,3 +1,4 @@
+from ast import excepthandler
 import sys
 
 sys.path.append("../..")
@@ -18,8 +19,7 @@ import random
 from nltk.corpus import stopwords
 
 class T5SummarizationDataset(Dataset):
-    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0,
-                 counterfactual_removal=False, save_path=None):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
         super(T5SummarizationDataset, self).__init__()
 
         self.filename = filename
@@ -59,12 +59,6 @@ class T5SummarizationDataset(Dataset):
                     entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
                     self.allent = self.handleentfile(entpath)
 
-        # counterfactual training
-        self.counterfactual_removal = args.counterfactual_removal
-        if self.counterfactual_removal:
-            self.counterfactual_remove()
-            print("# After augmenting, Data points in this split: {}".format(len(self.data)))
-
     def handleentfile(self, entpath):
         fe = open(entpath, 'r')
         allres = {}
@@ -100,13 +94,15 @@ class T5SummarizationDataset(Dataset):
             linelist = oneline.split("\t")
             i += 1
             onedata = []
-            onedata.append(linelist[0])
-            onedata.append(linelist[1])
-            if len(linelist) > 2:
-                onedata.append(linelist[2])
-            alldata.append(onedata)
+            try:
+                onedata.append(linelist[0])
+                onedata.append(linelist[1])
+                if len(linelist) > 2:
+                    onedata.append(linelist[2])
+                alldata.append(onedata)
+            except:
+                continue
         f.close()
-
         return alldata
 
     def set_tagger_tokenizer(self, tagger, tokenizer):
@@ -199,6 +195,9 @@ class T5SummarizationDataset(Dataset):
                         input_guidance = self.allent[tempdata]
                     else:
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
+                        print(tempdata)
+                        print(self.allent)
+                        raise Exception('end')
                 else:
                     if self.args.guidance_mode == 'target':
                         tempdata = re.sub(' +', ' ', inputdata)
@@ -206,43 +205,19 @@ class T5SummarizationDataset(Dataset):
                             input_guidance = self.allent[tempdata]
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
+                            print(tempdata)
+                            print(self.allent)
+                            raise Exception('end')
                     else:
-                        # tempdata = re.sub(' +', ' ', inputdata)
-                        # inputres = self.tagtokenizer.batch_encode_plus([tempdata], padding=True, max_length=self.maxlen, truncation=True, return_tensors="pt")
-                        # input_ids = inputres["input_ids"].to(self.args.device)
-                        # attention_mask = inputres["attention_mask"].to(self.args.device)
-                        # input = {"input_ids": input_ids, "attention_mask":attention_mask}
-                        # taginput,tagpreds = self.tagger._generative_step_for_tagger(input)
-                        # allentitylist = tagpreds[0].split(',')
-                        # if allentitylist == []:
-                        #    allentitylist = ["none"]
-                        #
-                        # #input_guidance = self.args.separator.join(list(set(allentitylist)))
-                        # input_guidance = self.args.separator.join(list(dict.fromkeys(allentitylist)))
-                        # #input_guidance = self.args.separator.join(allentitylist)
-                        #
-                        # # inputents = self.spacy_nlp(inputdata).ents
-                        # # inputents = [ent.text for ent in inputents]
-                        # # inputents.extend(allentitylist)
-                        # # input_guidance = self.args.separator.join(inputents)
-
                         tempdata = re.sub(' +', ' ', inputdata)
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
-                            print(
-                                "For valid: we can not find inputdata in the dictionary!! There should be some errors!")
-
-            # if counterfactual_removed, remove removed_ents in the input_guidance
-            if self.counterfactual_removal:
-                if self.removed_ents[idx] != None:
-                    for ent in self.removed_ents:
-                        print('input_guidance: ', input_guidance)
-                        input_guidance = input_guidance.replace(ent.text, '')
-                        print('input_guidance2: ', input_guidance)
-                        print('removed_ents[idx]: ', self.removed_ents[idx])
-                        raise Exception('end')
-
+                            print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
+                            # print(tempdata)
+                            # raise Exception('end')
+            # after finding it, I remove the 'REMOVEDN' argument:
+            inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
@@ -263,43 +238,6 @@ class T5SummarizationDataset(Dataset):
     def __len__(self):
 
         return self.num_entries
-
-    def counterfactual_remove(self):
-        '''
-        Function to add counterfactually removed instances to data
-        input:
-            data: list of (text, summary) tuples
-        '''
-        inputdata = [i[0] for i in self.data]
-        targetdata = [i[1] for i in self.data]
-        new_inputdata = inputdata
-        new_targetdata = targetdata
-        removed_ents = [None] * len(inputdata)
-        tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
-        for i in range(len(inputdata)):
-            ents_x = self.spacy_nlp(inputdata[i]).ents
-            ents_x = [ent.text for ent in ents_x]
-            ents_y = self.spacy_nlp(targetdata[i]).ents
-            ents_y = [ent.text for ent in ents_y]
-            ents_intersection = [ent for ent in ents_x if ent in ents_y]
-            ents_intersection = list(dict.fromkeys(ents_intersection))
-            # split summaries into sentences
-            sents = tokenizer.tokenize(targetdata[i])
-            if len(sents) > 1:
-                for sent in sents:
-                    # for each sentence, find its entities
-                    ents = self.spacy_nlp(sent).ents
-                    # if it's in the intersection list
-                    removed = [ent.text for ent in ents if ent.text in ents_intersection]
-                    # if this list is not empty
-                    if len(removed) > 0:
-                        # construct counterfactual example
-                        new_targetdata.append(' '.join(sents).replace(sent, ''))
-                        new_inputdata.append(inputdata[i])
-                        removed_ents.append(removed)
-        # change self.data
-        self.data = [(new_inputdata[i], new_targetdata[i]) for i in range(len(new_inputdata))]
-        self.removed_ents = removed_ents
 
     def find_salient_sents(self, text, n):
         sents = nltk.sent_tokenize(text)
@@ -349,13 +287,18 @@ class SmartBatchingCollate:
             right = False
         ents_ids = target_ids
         ents_mask = target_mask
-        if self.args.model != "T5Finetune":
-            ents_ids, ents_mask = self.pad_sequence(
-                ents,
-                max_sequence_length=self._max_guidance_length,
-                pad_token_id=self._pad_token_id,
-                right=right
-            )
+        if self.args.model == "T5MixPrompt":
+            try:
+                ents_ids, ents_mask = self.pad_sequence(
+                    ents,
+                    max_sequence_length=self._max_guidance_length,
+                    pad_token_id=self._pad_token_id,
+                    right=right
+                )
+            except:
+                print(f'batch: {batch}')
+                print(f'ents: {ents}')
+                raise Exception('end')
         if "DID" in self.args.model:
             sep_ids = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device) * \
                       self.tokenizer.encode("[SEP]")[0]
@@ -402,7 +345,11 @@ class SmartBatchingCollate:
         attention_masks = []
         attend, no_attend = 1, 0
         for sequence in sequence_batch:
-            new_sequence = list(sequence[:max_len])
+            try:
+                new_sequence = list(sequence[:max_len])
+            except:
+                #0-d tensor
+                new_sequence = [sequence.item()]
 
             attention_mask = [attend] * len(new_sequence)
             pad_length = max_len - len(new_sequence)
@@ -459,8 +406,7 @@ def read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_see
       
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed,
-                                               counterfactual_removal=args.counterfactual_removal)
+        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
@@ -496,7 +442,7 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     np.random.seed(args.seed)
 
 
-def subsample_2k_testset(dataset_args, file_path, seed, args):
+def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000):
     '''
     Function that subsamples a 2k test set that can be reused 
     args:
@@ -510,7 +456,7 @@ def subsample_2k_testset(dataset_args, file_path, seed, args):
     else:
         len_valid = len(valid_data)
         np.random.seed(seed)
-        indices = np.random.choice(range(len_valid), 2000)
+        indices = np.random.choice(range(len_valid), n)
         valid_data_new = valid_data.select(indices)
         # save
         convert_data_to_txt(valid_data_new, file_path, args)

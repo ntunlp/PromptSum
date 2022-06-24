@@ -157,6 +157,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             print("loaded the full model weights!", path)
         else:
             path = args.model_save_path + 'bestckpt'
+            if args.counterfactual_removal:
+                path = f'{path}_counterfactual'
             best_val_ckpt = torch.load(path)
             model.promptnumber = best_val_ckpt["promptnumber"]
             model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
@@ -271,7 +273,6 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
-
         if args.save_model:
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
@@ -282,6 +283,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("saved the full model weights!", path)
             else:
                 path = args.model_save_path + 'bestckpt'
+                if args.counterfactual_removal:
+                    path = f'{path}_counterfactual'
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding
