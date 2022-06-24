@@ -504,7 +504,7 @@ def subsample_2k_testset(dataset_args, file_path, seed, args):
         seed: random seed to sample with
     '''
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    valid_data = data['validation']
+    valid_data = data['test']
     if args.full_testset:
         convert_data_to_txt(valid_data, file_path, args)
     else:
