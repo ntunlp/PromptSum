@@ -19,7 +19,7 @@ echo "end 10-shot baseline-1: all-params finetune summary"
 # echo "end 10-shot baseline-2: simple prompt-tune summary"
 
 echo "start 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
-CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 10 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
+#CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 10 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
 echo "end 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 
 # echo "start 10-shot baseline-4: mix prompt-tune summary with no entity chain"
@@ -50,21 +50,21 @@ echo "end 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 
 
 ## 100-shot
-# echo "start 100-shot baseline-1: all-params finetune summary"
-# # python main.py --few_shot 100 --model T5Finetune --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --full_testset --max_epoch_summary 0
-# echo "end 100-shot baseline-1: all-params finetune summary"
+echo "start 100-shot baseline-1: all-params finetune summary"
+python main.py --dataset_name ccdv/cnn_dailymail --num_seeds 1 --few_shot 100 --model T5Finetune --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --full_testset --max_epoch_summary 0
+echo "end 100-shot baseline-1: all-params finetune summary"
 
-# echo "start 100-shot baseline-2: simple prompt-tune summary"
-# #python main.py --few_shot 100 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary
-# echo "end 100-shot baseline-2: simple prompt-tune summary"
+#echo "start 100-shot baseline-2: simple prompt-tune summary"
+#python main.py --dataset_name ccdv/cnn_dailymail --num_seeds 1 --few_shot 100 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary --full_testset --max_epoch_summary 0
+#echo "end 100-shot baseline-2: simple prompt-tune summary"
 
 # echo "evaluate 100-shot baseline-2: simple prompt-tune summary"
 # # CUDA_VISIBLE_DEVICES=4 python main.py --few_shot 100 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary --max_epoch_summary 0 --full_testset
 # echo "end 100-shot baseline-2: simple prompt-tune summary"
 
-echo "start 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
-CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 100 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
-echo "end 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
+#echo "start 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
+#CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 100 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
+#echo "end 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 
 # echo "start 100-shot baseline-4: mix prompt-tune summary with no entity chain"
 # #python main.py --few_shot 100 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy
@@ -99,10 +99,10 @@ echo "end 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 # CUDA_VISIBLE_DEVICES=2 python main.py --few_shot 100 --model T5SoftPrompt --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --finetune_summary --max_epoch_summary 0 --full_testset --dataset_name ccdv/cnn_dailymail
 # echo "end 100-shot baseline-2: simple prompt-tune summary"
 
-echo "start 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt CNNDM"
-CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 10 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --dataset_name ccdv/cnn_dailymail
-echo "end 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
+#echo "start 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt CNNDM"
+#CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 10 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --dataset_name ccdv/cnn_dailymail
+#echo "end 10-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 
-echo "start 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt CNNDM"
-CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 100 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --dataset_name ccdv/cnn_dailymail
-echo "end 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
+#echo "start 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt CNNDM"
+#CUDA_VISIBLE_DEVICES=7 python main.py --finetune_summary --few_shot 100 --model T5SoftPrompt --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --dataset_name ccdv/cnn_dailymail
+#echo "end 100-shot baseline-3: simple prompt-tune summary with pretrained ckpt"

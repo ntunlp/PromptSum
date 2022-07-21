@@ -293,7 +293,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 torch.save(ckpt, path)
                 print("saved the model prompt!", path)
     # abstractivness
-    if self.args.eval_abstractiveness:
+    if args.eval_abstractiveness:
         new_unigrams, new_bigrams, new_trigrams = [], [], []
         for i in tqdm(range(len(allysrc))):
             text_words = allysrc[i].lower()
@@ -302,7 +302,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             text_trigrams = [[text_words[j], text_words[j + 1], text_words[j + 2]] for j in range(len(text_words) - 2)]
             text_quadrigrams = [[text_words[j], text_words[j + 1], text_words[j + 2], text_words[j + 3]] for j in range(len(text_words) - 3)]
 
-            summary_words = val_summaries[i].lower()
+            summary_words = allypred[i].lower()
             summary_words = word_tokenize(summary_words)
             unigrams, bigrams, trigrams = 0, 0, 0
             for j in range(len(summary_words)):
@@ -312,7 +312,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     if not([summary_words[j], summary_words[j + 1]] in text_bigrams):
                         bigrams += 1
                 if j < len(summary_words) - 2:
-                    if not([summary_words[j], summaryd_words[j + 1], summary_words[j + 2]] in text_trigrams):
+                    if not([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
                         trigrams += 1
             unigrams /= max(1, len(summary_words))
             bigrams /= max(1, len(summary_words)-1)
@@ -321,7 +321,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             new_bigrams.append(bigrams)
             new_trigrams.append(trigrams)
         print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}%".format(
-            np.mean(new_unigrams), np.mean(new_bigrams), np.mean(new_trigrams)
+            100*np.mean(new_unigrams), 100*np.mean(new_bigrams), 100*np.mean(new_trigrams)
         ))
 
     return result_dict

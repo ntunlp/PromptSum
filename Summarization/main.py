@@ -203,7 +203,7 @@ def set_args():
                         default=30000, help="how many steps to start eval")
     parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")    
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")                 
-    parser.add_argument("--eval_abstractiveness", dest="stemmer", type=bool,
+    parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
