@@ -51,7 +51,7 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
     parser.add_argument("--cuda", dest="cuda", type=str,
-                        default="0", help="gpu id")
+                        default="2", help="gpu id")
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--exp_id", dest="exp_id", type=str,
@@ -68,8 +68,8 @@ def set_args():
                         default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
-    parser.add_argument("--few_shot", dest="few_shot", type=int,
-                        default=10, help="number of data points for training AND validation")
+    parser.add_argument("--few_shot", dest="few_shot", type=str,
+                        default="10", help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
@@ -256,7 +256,8 @@ def set_args():
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
-    
+
+    args.few_shot = int(args.few_shot)
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
