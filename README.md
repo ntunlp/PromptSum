@@ -1,18 +1,34 @@
 # PromptSumms
-cool prompting for summarization!
+Cool prompting for parameter-efficient few-shot summarization!
 
-# Running command
+# Bash script
 
-!!! Don't forget to change the "root" variable at the top of args !!!
+!!! Don't forget to change the "root" variable at the top of args in main.py!!!
 
-### 1: Pre-training stage
-CUDA_VISIBLE_DEVICES=? python main.py --pretrain --pretrain_all_weights
+### Pre-training 
+CUDA_VISIBLE_DEVICES=? bash run_pretraining.sh
 
-### 2: Entity soft prompt tuning stage
-CUDA_VISIBLE_DEVICES=? python main.py --finetune_entity --use_pretrain_ckpt=True
+### Baselines (few-shot)
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_baselines.sh
 
-### 3: Summary soft prompt tuning stage
-CUDA_VISIBLE_DEVICES=? python main.py --finetune_summary --use_pretrain_ckpt=True
+### PromptSum (few-shot) 
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_promptsum.sh
+
+### PromptSum with entity oracle (few-shot)
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_oracle.sh
+
+### PromptSum (full-shot)
+CUDA_VISIBLE_DEVICES=? bash run_fullshot_promptsum.sh
+
+### Controlling experiments (few-shot)
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_controlling.sh
+
+### Counterfactual experiments (few-shot)
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_counterfactual.sh
+
+### Hallucinations experiments (few-shot)
+CUDA_VISIBLE_DEVICES=? bash runall_kshot_hallucinations.sh
+
 
 ## Contents
 - [PromptSumm](#PromptSumm)
