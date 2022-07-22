@@ -81,7 +81,7 @@ def finetune_model_tagger(trainfile, validfile, args):
         print("Loading the pre-trained NER model!")
 
         # model weights
-        ckpt = torch.load(args.pretrain_ckpt)
+        ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
         dic = {}
         for x in ckpt.keys():
             if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
