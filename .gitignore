@@ -1,4 +1,5 @@
 .DS_Store
+.idea/*
 
 Summarization/.DS_Store
 Summarization/__pycache__
