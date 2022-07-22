@@ -1,9 +1,11 @@
-# PromptSumms
+# PromptSum
 Cool prompting for parameter-efficient few-shot summarization!
 
-# Bash script
+# Bash scripts
 
 !!! Don't forget to change the "root" variable at the top of args in main.py!!!
+
+Run the corresponding bash script for each use case:
 
 ### Pre-training 
 CUDA_VISIBLE_DEVICES=? bash run_pretraining.sh
