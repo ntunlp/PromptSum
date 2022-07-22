@@ -8,25 +8,25 @@ Cool prompting for parameter-efficient few-shot summarization!
 ### Pre-training 
 CUDA_VISIBLE_DEVICES=? bash run_pretraining.sh
 
-### Baselines (few-shot)
+### Baselines (few-shot, 3 seeds)
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_baselines.sh
 
-### PromptSum (few-shot) 
+### PromptSum (few-shot, 3 seeds) 
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_promptsum.sh
 
-### PromptSum with entity oracle (few-shot)
+### PromptSum with entity oracle (few-shot, 3 seeds)
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_oracle.sh
 
-### PromptSum (full-shot)
+### PromptSum (full-shot, 1 seed)
 CUDA_VISIBLE_DEVICES=? bash run_fullshot_promptsum.sh
 
-### Controlling experiments (few-shot)
+### Controlling experiments (few-shot, 1 seed)
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_controlling.sh
 
-### Counterfactual experiments (few-shot)
+### Counterfactual experiments (few-shot, 1 seed)
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_counterfactual.sh
 
-### Hallucinations experiments (few-shot)
+### Hallucinations experiments (few-shot, 1 seed)
 CUDA_VISIBLE_DEVICES=? bash runall_kshot_hallucinations.sh
 
 
