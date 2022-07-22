@@ -43,8 +43,6 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    #root = "/data/qin/"
-    data_root = "/data/mathieu/"
     root = "/data/mathieu/"
 
     # general stuff
@@ -65,7 +63,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
@@ -215,8 +213,6 @@ def set_args():
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
                         default=True, help="whether to save the model or not")
-    # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
-    #                     default="", help="the path where to save the model") #this is default false
 
     # Overall pipeline
     ##### pre-training

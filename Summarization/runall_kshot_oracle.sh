@@ -21,6 +21,6 @@ echo "start k-shot prompt-tune_summary oracle"
 python main.py --dataset_name $dataset --few_shot $k_shot --finetune_summary --guidance_mode target --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60
 echo "end k-shot prompt-tune_summary oracle"
 
-#echo "start k-shot full test set eval - uncomment following line and comment out previous two blocks"
+#echo "start k-shot full TEST SET eval - uncomment following line and comment out previous two blocks"
 #python main.py --dataset_name $dataset --few_shot $k_shot --finetune_summary --guidance_mode target --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --full_testset --max_epoch_summary 0
-#echo "end k-shot full test set eval - uncomment following line and comment out previous two blocks"
+#echo "end k-shot full TEST SET eval - uncomment following line and comment out previous two blocks"
