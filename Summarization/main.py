@@ -365,8 +365,7 @@ def main(args):
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
         subsample(dataset_args, args, tokenizer, few_shot_seeds)
-    print(args.pretrain_ckpt)
-    print(args.pretrain_prompt_ckpt)
+
     ########## pre-training?
     if args.pretrain:
         logger.info("\n"+ "*"*50)
@@ -425,6 +424,7 @@ def main(args):
             count += 1
             if count <=0:
                 continue
+
             # base model
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
@@ -491,7 +491,6 @@ def main(args):
                     entmodel.load_state_dict(dic)
     
                     # just prompt
-                    #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
                     onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
                     print(onepath)
                     oneckpt = torch.load(onepath)
@@ -509,7 +508,6 @@ def main(args):
                     if not os.path.isfile(respath):
                         if args.max_epoch_summary > 0:
                             alldata = valid_dataset.data
-                            #logger.info("valid size: ", len(alldata))
                             print("valid size: ", len(alldata))
                             allresofvalid = {}
                             with torch.no_grad():
@@ -528,25 +526,21 @@ def main(args):
                                     input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
                                     allresofvalid[tempdata] = input_guidance
                             logger.info(len(allresofvalid))
-                            #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
                             with open(respath, "wb") as f:
                                 pickle.dump(allresofvalid, f)
                                 logger.info("saved the T5 valid entities to: {}".format(respath))
                             torch.cuda.empty_cache()
-                            # del entmodel, enttokenizer
                             gc.collect()
                     #doing test
                     else:
                         valid_dataset.set_allent_for_valid(respath)
                         if args.big_testset or args.full_testset:
-                            #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
                             if args.big_testset:
                                 respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                             elif args.full_testset:
                                 respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
                             if not os.path.isfile(respath):
                                 alldata = args.test_dataset.data
-                                #logger.info("valid size: ", len(alldata))
                                 print("test size: ", len(alldata))
                                 allresofvalid = {}
                                 with torch.no_grad():
@@ -590,10 +584,6 @@ def main(args):
                         for c_r in range(int(args.counterfactual_removal)):
                             removed_ent = input_guidance_list.pop(random.randrange(len(input_guidance_list)))
                             removed_ents.append(removed_ent)
-                        if len(input_guidance_list)>0:
-                            input_guidance = args.separator.join(input_guidance_list)
-                        else:
-                            input_guidance = 'none'
                         # split summaries into sentences
                         sents = tokenizer.tokenize(targetdata[idx])
                         if len(sents) > 2:
@@ -608,16 +598,9 @@ def main(args):
                                     newinputdata.append(newinput)
                                     # append new instances to dictionary
                                     train_dataset.allent[newinput] = args.separator.join(not_removed)
-                                    # logger.info(f'NEWINPUT: {newinput}')
-                                    # logger.info(f'allents[newinput]: {allents[newinput]}')
                 # change self.data
                 logger.info(f'Before counterfactual augmentation: {train_dataset.num_entries} entries')
                 train_dataset.data = [(newinputdata[i], newtargetdata[i]) for i in range(len(newinputdata))]
-                # logger.info('BEFORE CHANGING')
-                # logger.info(train_dataset.allent)
-                # train_dataset.allent = allents
-                # logger.info('AFTER CHANGING')
-                # logger.info(train_dataset.allent)
                 train_dataset.num_entries = len(train_dataset.data)
                 logger.info(f'After counterfactual augmentation: {train_dataset.num_entries} entries')
             ########## 2nd prompt tuning stage: summarization
@@ -649,8 +632,5 @@ if __name__ == "__main__":
     set_logger(args)
     logger.info(args)
     main(args)
-
-
-
 
 
