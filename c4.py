@@ -34,11 +34,12 @@ _CITATION = """
 
 _URL = "https://github.com/allenai/allennlp/discussions/5056"
 
-_VARIANTS = ["en", "realnewslike", "en.noblocklist", "en.noclean"]
+_VARIANTS = ["en", "realnewslike", "realnewslike_v2", "en.noblocklist", "en.noclean"]
 
 _N_SHARDS_PER_SPLIT = {
     "en": {"train": 1024, "validation": 8},
     "realnewslike": {"train": 512, "validation": 1},
+    "realnewslike_v2": {"train": 512, "validation": 1},
     "en.noblocklist": {"train": 1024, "validation": 8},
     "en.noclean": {"train": 7168, "validation": 64},
 }
@@ -75,9 +76,11 @@ class C4(datasets.GeneratorBasedBuilder):
                 _DATA_URL.format(name=self.config.name, split=split, index=index, n_shards=n_shards)
                 for index in range(n_shards)
             ]
-        train_downloaded_files = glob.glob(os.path.join(_DATA_DIR, self.config.name, 'c4-train*.json.gz'))
-        validation_downloaded_files = glob.glob(os.path.join(_DATA_DIR, self.config.name, 'c4-validation*.json.gz'))
-        train_downloaded_files = random.sample(train_downloaded_files, subsample['train'])
+        train_downloaded_files = glob.glob(os.path.join(_DATA_DIR, "realnewslike", 'c4-train*.json.gz'))
+        validation_downloaded_files = glob.glob(os.path.join(_DATA_DIR, "realnewslike", 'c4-validation*.json.gz'))
+        sampled_files = random.sample(train_downloaded_files, subsample['train'])
+        train_downloaded_files = [_file for _file in train_downloaded_files if _file not in sampled_files]
+
         validation_downloaded_files = random.sample(validation_downloaded_files, subsample['val'])
         return [
             datasets.SplitGenerator(name=datasets.Split.TRAIN, gen_kwargs={"filepaths": train_downloaded_files}),

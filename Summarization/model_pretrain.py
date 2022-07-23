@@ -14,11 +14,12 @@ class T5forPretrain(nn.Module):
         self.args = args
         self.model = model
         ### load ckpt
-        t5ckpt = torch.load(args.lm_adapted_path)
-        self.model.load_state_dict(t5ckpt)
-        if not (args.pretrain and args.pretrain_all_weights):
-            for name, param in self.model.named_parameters():
-                param.requires_grad = False
+        if args.no_lm_adapted_load:
+            t5ckpt = torch.load(args.lm_adapted_path)
+            self.model.load_state_dict(t5ckpt)
+            if not (args.pretrain and args.pretrain_all_weights):
+                for name, param in self.model.named_parameters():
+                    param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0
@@ -144,13 +145,16 @@ class T5forPretrain(nn.Module):
         prompt_embed_repeat = self.promptembeddingforsum.repeat(input_embed_part.size(0), 1, 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumberforsum), 1).to(self.args.device)
         if self.args.pretrain_with_ent_chain:
-            input_embed_part_2 = self.model.encoder.embed_tokens(batch["entity_ids"])
+            input_embed_part_2 = self.model.encoder.embed_tokens(generated_ids)
+            # make mask for generated_ids on the fly (0 is the pad id, kinda hacky here)
+            preds_mask = (generated_ids>0).to(batch['entity_mask'].dtype)
+            preds_mask[:,0] = batch['entity_mask'][:,0]
             if self.args.concat_mode == 'concat_right':
                 allembedding = torch.cat([input_embed_part, prompt_embed_repeat, input_embed_part_2], 1)
-                all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt, batch['entity_mask']], 1)
+                all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt, preds_mask], 1)
             elif self.args.concat_mode == 'concat_left':
                 allembedding = torch.cat([input_embed_part_2, prompt_embed_repeat, input_embed_part], 1)
-                all_attention_mask = torch.cat([batch['entity_mask'], mask_prompt, batch["attention_mask"]], 1)
+                all_attention_mask = torch.cat([preds_mask, mask_prompt, batch["attention_mask"]], 1)
         else:
             if self.args.concat_mode == 'concat_right':
                 allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)

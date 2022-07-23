@@ -80,12 +80,13 @@ def set_args():
                         default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt", "T5MixPromptDID",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt', 'BartMixPromptUnfreeze'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large, google/pegasus-large}")
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                         default="/export/home/prompting/lm_adapted_models/t5.1.1.lm100k.large/pytorch_model.bin",
                         help="The path of lm_adapted model")
+    parser.add_argument("--no_lm_adapted_load", action="store_false")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default="/export/home/cache",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
@@ -140,6 +141,13 @@ def set_args():
                         default=False, help="whether to use huggingface dataset for pretraining")
     parser.add_argument("--pretrain_with_ent_chain", dest="pretrain_with_ent_chain", action='store_true',
                         default=False, help="whether to pretrain with ent chain as input")
+    parser.add_argument("--load_pretrain_ckpt", dest="load_pretrain_ckpt", action='store_true',
+                        default=False, help="whether to load previously learned pretrain ckpt")
+    parser.add_argument("--pretrain_ckpt_path", dest="pretrain_ckpt_path", type=str,
+                        default="", help="pretrain ckpt path")
+    parser.add_argument("--skip_steps_pretrain", dest="skip_steps_pretrain", type=int,
+                        default=0, help="number of steps to skip for continual training")                 
+                        
                         
     ##### entity prompt tuning
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
@@ -298,15 +306,19 @@ def set_logger(args):
 
 
 def main(args):
-    device = torch.device("cpu")
-    if len(args.cuda) > 0 and torch.cuda.is_available():
+    # set cuda
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
+    if args.local_rank == -1:
         device = torch.device("cuda")
-    if args.local_rank != -1:
+    else:
+        torch.cuda.set_device(args.local_rank+1)
+        device = torch.device("cuda", args.local_rank+1)
         torch.distributed.init_process_group(backend="nccl")
+        
+        # if args.n_gpu == 0:
+        #     args.n_gpu = 1
+    args.n_gpu = len(args.cuda.split(","))-1
     args.device = device
-    logger.info(f"device {args.device}")
-    args.n_gpu = len(args.cuda.split(","))
-
     seed_everything(args)
 
     # log train
@@ -324,10 +336,13 @@ def main(args):
     args.taskfold = thistaskfold
 
     # load tokenizer 
-    if 'Bart' in args.model:
+    if args.model_name == 'google/pegasus-large':
+        tokenizer = AutoTokenizer.from_pretrained("google/pegasus-large", cache_dir = args.cache_path)
+    elif 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     else:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)

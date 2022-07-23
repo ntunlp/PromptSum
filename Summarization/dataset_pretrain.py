@@ -85,7 +85,7 @@ class T5DatasetPretrain(Dataset):
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         entityres = self.tokenizer.batch_encode_plus([entitydata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), entityres["input_ids"].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), entityres["input_ids"].squeeze(dim=0)
 
     def __len__(self):
 

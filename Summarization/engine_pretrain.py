@@ -13,6 +13,7 @@ import pickle
 from transformers import (AdamW, BertConfig, BertForTokenClassification, BertTokenizer, get_linear_schedule_with_warmup)
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from torch.utils import data
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
@@ -26,6 +27,7 @@ from nltk.tokenize import sent_tokenize
 from datasets import load_from_disk
 from dataset_pretrain import *
 from model_pretrain import *
+from model_pretrain_pegasus import *
 from utils import VirtualList, Nop
 
 logger = logging.getLogger('root')
@@ -55,9 +57,14 @@ def pretrain_model(dataset_args, args):
     eval_step = args.eval_step
     model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-    model = T5forPretrain(args, t5model, tokenizer)
+    if model_name == 'google/pegasus-large':
+        tokenizer = AutoTokenizer.from_pretrained("google/pegasus-large", cache_dir = args.cache_path)
+        t5model = AutoModelForSeq2SeqLM.from_pretrained("google/pegasus-large", cache_dir = args.cache_path)
+        model = PegasusforPretrain(args, t5model, tokenizer)
+    else:
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
+        model = T5forPretrain(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
@@ -69,6 +76,20 @@ def pretrain_model(dataset_args, args):
         model.promptembedding = allckpt["promptembedding"]
         model.promptnumberforsum = allckpt["promptnumber"]
         model.promptembeddingforsum = allckpt["promptembedding"]
+    elif args.load_pretrain_ckpt:
+        output_dir = f"t5_tagger_pretrained_ckpt/{args.pretrain_ckpt_path}"
+        logger.info(f'loading pretrain model from path: {output_dir}')
+        # load model weights
+        model_ckpt = torch.load(os.path.join(output_dir, "bestckpt_full_model"))
+        model_state_dict = {}
+        for k,v in model_ckpt.items():
+            if k not in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]:
+                model_state_dict[k.replace('module.','')] = v
+        model.load_state_dict(model_state_dict)
+        # load prompt
+        allckpt = torch.load(os.path.join(output_dir, "bestckpt_prompt"))
+        model.set_prompt_embedding(allckpt["promptnumber"], allckpt["promptembedding"])
+        model.set_prompt_embedding_sum(allckpt["promptnumberforsum"], allckpt["promptembeddingforsum"])
     else:
         promptnumber = args.prompt_number # 300
         taskname = "name entity recognition"
@@ -86,19 +107,19 @@ def pretrain_model(dataset_args, args):
     spacy_nlp = spacy.load("en_core_web_sm")
 
     # data
-    full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    train_data = full_data['train']
-    valid_data = full_data['validation']
-    train_texts = [x[args.text_key] for x in train_data]
-    val_texts = [x[args.text_key] for x in valid_data]
-    p = np.random.permutation(len(val_texts))
-    val_texts = [val_texts[x] for x in p]
-    val_texts = val_texts[:1000]
-    logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
-    if args.debug_pretrain:
-        train_texts = train_texts[:10]
-        val_texts = val_texts[:10]
-        logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
+    # full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    # train_data = full_data['train']
+    # valid_data = full_data['validation']
+    # train_texts = [x[args.text_key] for x in train_data]
+    # val_texts = [x[args.text_key] for x in valid_data]
+    # p = np.random.permutation(len(val_texts))
+    # val_texts = [val_texts[x] for x in p]
+    # val_texts = val_texts[:1000]
+
+    # if args.debug_pretrain:
+    #     train_texts = train_texts[:10]
+    #     val_texts = val_texts[:10]
+    #     logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
 
     # build data
     if args.build_salient_entities:
@@ -143,6 +164,7 @@ def pretrain_model(dataset_args, args):
                 val_ents = val_ents[:10]
                 logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
 
+    logger.info(f"training examples: {len(train_texts)}, validation examples: {len(val_texts)}")
     # datasets
     train_dataset = T5DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
     valid_dataset = T5DatasetPretrain(val_texts, val_ents, valid_target, max_seq_length, tokenizer, args)
@@ -194,8 +216,9 @@ def pretrain_model(dataset_args, args):
     }
     global_step = 0
     output_dir = f"t5_tagger_pretrained_ckpt/{args.exp_id}"
-    logger.info("\nEpoch 0 validation:")
-    dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
+    # logger.info("\nEpoch 0 validation:")
+    # if args.local_rank in [0, -1]:
+    #     dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, 0, output_dir, args)
     lossentcoff = 1.0
     losssumcoff = 1.0
     for i in range(num_train_epochs):
@@ -205,6 +228,11 @@ def pretrain_model(dataset_args, args):
         alllossent = []
         alllosssum = []
         for step, batch in enumerate(train_dataloader):
+            if i == 0 and step < (args.skip_steps_pretrain * args.gradient_accumulation_steps_pretrain):
+                global_step = step // args.gradient_accumulation_steps_pretrain
+                if step % 1000 == 0:
+                    logger.info(f'skipping {step} steps')
+                continue
             # logger.info(step)
             inputs_all = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                           "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),

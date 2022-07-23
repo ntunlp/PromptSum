@@ -1,12 +1,21 @@
- python -m torch.distributed.launch --nproc_per_node 1 --master_port 29527 main.py \
+ python -m torch.distributed.launch --nproc_per_node 7 --master_port 29525 main.py \
     --pretrain \
     --valid_size_per_gpu_pretrain 20 \
-    --batch_size_per_gpu_pretrain 2 \
-    --cuda 1 \
-    --exp_id 012 \
-    --log_name 012 \
+    --batch_size_per_gpu_pretrain 3 \
+    --cuda 0,1,2,3,4,5,6,7 \
+    --exp_id 014_c \
+    --log_name 014_c \
     --pretrain_all_weights \
     --prompt_number 300 \
-    --gradient_accumulation_steps_pretrain 2 \
+    --gradient_accumulation_steps_pretrain 1 \
+    --skip_steps_pretrain 0 \
+    --eval_start_step 0 \
+    --load_pretrain_ckpt \
+    --pretrain_ckpt_path 014 \
     --use_huggingface_dataset \
-    --pretrain_dataset_path /export/home/PromptSumm/Summarization/t5_tagger_pretraining_data/c4_realnewslike \
+    --pretrain_with_ent_chain \
+    --pretrain_dataset_path /export/home/PromptSumm/Summarization/t5_tagger_pretraining_data/realnewslike_v2 \
+    --model_name google/pegasus-large \
+    --no_lm_adapted_load \
+    --eval_step 10000 \
+    --max_epoch_pretrain 5\
