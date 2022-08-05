@@ -13,6 +13,7 @@ from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -70,9 +71,16 @@ def finetune_model_tagger(trainfile, validfile, args):
     log_step = args.log_step_finetune
     model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-    model = T5forFinetuneEntity(t5model, tokenizer, args)
+    if 't5' in args.model_name:
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
+        model = T5forFinetuneEntity(t5model, tokenizer, args)
+    elif 'pegasus' in args.model_name:
+        t5model = PegasusForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
+        model = T5forFinetuneEntity(t5model, tokenizer, args)
+    else:
+        raise Exception('Model not implemented yet')
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
@@ -304,10 +312,16 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     for i in range(len(alltrainfile)):
         # model
-        model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name,
-                                                             cache_dir="/data/mathieu/hf_models/t5-v1-large/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        if 't5' in args.model_name:
+            model_name = "google/t5-v1_1-large"
+            t5model = T5ForConditionalGeneration.from_pretrained(model_name,cache_dir=args.cache_path)
+            tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir=args.cache_path)
+        elif 'pegasus' in args.model_name:
+            model_name = "google/pegasus-v1_1-large"
+            t5model = PegasusForConditionalGeneration.from_pretrained(model_name,cache_dir=args.cache_path)
+            tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir=args.cache_path)
+        else:
+            raise Exception('Model not implemented yet')
         model = T5forNER(args, t5model, tokenizer)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))

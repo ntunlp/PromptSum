@@ -1,5 +1,5 @@
 import os
-# os.environ["CUDA_VISIBLE_DEVICES"] = '5'
+os.environ["CUDA_VISIBLE_DEVICES"] = '5'
 import pickle
 import argparse
 import gc
@@ -16,6 +16,7 @@ from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -44,6 +45,7 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     root = "/data/mathieu/"
+    data_root = "/data/ruochen/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -63,7 +65,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
@@ -79,9 +81,11 @@ def set_args():
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
                         default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
+                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                        default="google/t5-v1_1-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base", 
+                        "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -89,7 +93,7 @@ def set_args():
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default=root + "hf_models/t5-v1-large/",
-                        help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
+                        help="The path of huggingface cache: /data/mathieu/hf_models/t5-v1-large/, /data/ruochen/hf_models/bart-base/, /data/ruochen/hf_models/pegasus-large/")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     # prompt
@@ -238,10 +242,10 @@ def set_args():
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
-                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+                        default=False, help="whether finetune a tagger using the fewshot summarization data")
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
-                        default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+                        default=False, help="whether finetune a tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_false",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain", action='store_false',
@@ -326,15 +330,22 @@ def main(args):
             f.write(str(time.ctime()) + "\n")
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
-
-    allgentasktokens = ["summerizationcnndm"]
-    thistaskname = "cnn daily mail"
-    thistaskfold = "cnndm"
-    args.taskfold = thistaskfold
+    if args.dataset == 'cnndm':
+        allgentasktokens = ["summerizationcnndm"]
+        thistaskname = "cnn daily mail"
+        thistaskfold = "cnndm"
+        args.taskfold = thistaskfold
+    else:
+        allgentasktokens = ["summerization"+args.dataset]
+        thistaskname = args.dataset
+        thistaskfold = args.dataset
+        args.taskfold = thistaskfold
 
     # load tokenizer 
     if 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    if 'Pegasus' in args.model:
+        tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     else:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
@@ -424,20 +435,22 @@ def main(args):
             # base model
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            elif 'Pegasus' in args.model:
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model == 'T5Finetune':
+            if args.model == 'T5Finetune' or args.model == 'PegasusFinetune':
                 logger.info('\nFinetuning')
                 model = ModelFinetune(args, basemodel, tokenizer, args.model)
-            elif args.model == 'T5SoftPrompt':
+            elif args.model == 'T5SoftPrompt' or args.model == 'PegasusSoftPrompt':
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
                 model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model == 'T5MixPrompt':
+            elif args.model == 'T5MixPrompt' or args.model == 'PegasusMixPrompt':
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
@@ -449,7 +462,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and args.model != "T5Finetune":
+            if args.use_pretrain_ckpt and args.model != "T5Finetune" and args.model != "PegasusFinetune":
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
