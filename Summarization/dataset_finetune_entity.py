@@ -28,7 +28,12 @@ def get_data(few_shot_seeds, save_path, args):
     spacy_nlp = spacy.load("en_core_web_sm")
     alltrainfile = []
     allvalidfile = []
+    few_shot_seeds = [0]
+    i = 0
     for seed in few_shot_seeds:
+        if i > 0:
+            break
+        i += 1
         train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
         valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
         handler_train = open(train_file_name, "r")
@@ -65,7 +70,8 @@ def get_data(few_shot_seeds, save_path, args):
 
         handler_train.close()
         handler_valid.close()
-        doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
+        # doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
+        doc_sum_path = f'{save_path}seed_{0}/data_for_bert_{0}/'
         if not os.path.exists(doc_sum_path):
             os.makedirs(doc_sum_path, exist_ok=True)
 
@@ -215,7 +221,8 @@ def getdocandent(docfile, sum_y_pred):
     f.close()
     resfortrain = []
     resforvalid = []
-    trainsize = len(alldoc) // 2
+    # trainsize = len(alldoc) // 2
+    trainsize = 100
     allres = []
     for i in range(len(alldoc)):
         if i < trainsize:
@@ -234,7 +241,8 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     fout = open(docwithlabel_train, 'w')
     fout_1 = open(docwithlabel_vaid, 'w')
 
-    halfsize = len(alldocandlabel) // 2
+    # halfsize = len(alldocandlabel) // 2
+    halfsize = 100
     for aa in range(len(alldocandlabel)):
         onedata = alldocandlabel[aa]
         if aa < halfsize:

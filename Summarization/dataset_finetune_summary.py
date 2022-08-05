@@ -56,7 +56,8 @@ class T5SummarizationDataset(Dataset):
 
             else:
                 if self.args.guidance_mode == 'target':
-                    entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
+                    # entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
+                    entpath = f'{self.save_path}seed_{0}/data_for_bert_{0}/valident.txt'
                     self.allent = self.handleentfile(entpath)
 
     def handleentfile(self, entpath):
@@ -186,7 +187,8 @@ class T5SummarizationDataset(Dataset):
                     #         print('e.label_: ',e.label_)
                     #         raise Exception('end')
                     ents = [ent.text for ent in ents]
-                input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+                # input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+                input_guidance = ','.join(list(dict.fromkeys(ents))) 
             else: #use bert_tagger
                 ####for train
                 if self.split.startswith("train"):
@@ -195,9 +197,9 @@ class T5SummarizationDataset(Dataset):
                         input_guidance = self.allent[tempdata]
                     else:
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
-                        print(tempdata)
-                        print(self.allent)
-                        raise Exception('end')
+                        # print(tempdata)
+                        # print(self.allent)
+                        # raise Exception('end')
                 else:
                     if self.args.guidance_mode == 'target':
                         tempdata = re.sub(' +', ' ', inputdata)
@@ -205,9 +207,9 @@ class T5SummarizationDataset(Dataset):
                             input_guidance = self.allent[tempdata]
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
-                            print(tempdata)
-                            print(self.allent)
-                            raise Exception('end')
+                            # print(tempdata)
+                            # print(self.allent)
+                            # raise Exception('end')
                     else:
                         tempdata = re.sub(' +', ' ', inputdata)
                         if tempdata in self.allent.keys():
@@ -215,6 +217,7 @@ class T5SummarizationDataset(Dataset):
                         else:
                             print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
                             # print(tempdata)
+                            # print(self.allent)
                             # raise Exception('end')
             # after finding it, I remove the 'REMOVEDN' argument:
             inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
@@ -442,7 +445,7 @@ def subsample(dataset_args, args, tokenizer, few_shot_seeds):
     np.random.seed(args.seed)
 
 
-def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000):
+def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000, valid = False):
     '''
     Function that subsamples a 2k test set that can be reused 
     args:
@@ -450,7 +453,10 @@ def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000):
         seed: random seed to sample with
     '''
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    valid_data = data['test']
+    if valid:
+        valid_data = data['validation']
+    else:
+        valid_data = data['test']
     if args.full_testset:
         convert_data_to_txt(valid_data, file_path, args)
     else:

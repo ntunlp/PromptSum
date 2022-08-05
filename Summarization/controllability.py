@@ -12,6 +12,7 @@ from models_summarization.model_mixture import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 import random
+import copy
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
@@ -136,130 +137,141 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
     model.eval()
     model = model.to(args.device)
     all_ents = []
-    if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
-        if args.infer_val_entities:
-            ########## predict the validation entity chains with the 1st prompt tuning stage model
-            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
-            logger.info("Loading the pre-trained NER model!")
+    # if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+    if args.infer_val_entities:
+        ########## predict the validation entity chains with the 1st prompt tuning stage model
+        entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+        enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+        entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+        logger.info("Loading the pre-trained NER model!")
 
-            # model weights
-            ckpt = torch.load(args.pretrain_ckpt)
-            dic = {}
-            for x in ckpt.keys():
-                if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                    dic[x[7:]] = ckpt[x]
-            entmodel.load_state_dict(dic)
+        # model weights
+        ckpt = torch.load(args.pretrain_ckpt)
+        dic = {}
+        for x in ckpt.keys():
+            if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                dic[x[7:]] = ckpt[x]
+        entmodel.load_state_dict(dic)
 
-            # just prompt
-            #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-            print(onepath)
-            oneckpt = torch.load(onepath)
-            entmodel.promptnumber = oneckpt["promptnumber"]
-            entmodel.promptembedding = oneckpt["promptembedding"]
-        
-            n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-            logger.info("The ent model has {} trainable parameters".format(n_params))
-            entmodel.to(args.device)
-            logger.info("move to device!")
-            model.eval()
+        # just prompt
+        #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
+        onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+        print(onepath)
+        oneckpt = torch.load(onepath)
+        entmodel.promptnumber = oneckpt["promptnumber"]
+        entmodel.promptembedding = oneckpt["promptembedding"]
+    
+        n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
+        logger.info("The ent model has {} trainable parameters".format(n_params))
+        entmodel.to(args.device)
+        logger.info("move to device!")
+        model.eval()
 
-            if args.big_testset:
-                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent_control.pkl'
-                # idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent_control.pkl'
-                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testidx_control.pkl'
+        if args.big_testset:
+            # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent_control.pkl'
+            # idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
+            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent_control.pkl'
+            idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testidx_control.pkl'
+        else:
+            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident_control.pkl'
+            idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valididx_control.pkl'
+        logger.info(f'respath: {respath}')
+        if not os.path.isfile(respath):
+            logger.info('generating')
+            if args.dataset == 'cnndm':
+                logger.info('Filtering for CNNDM')
+                # inferring
+                #already inferred 
+                respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                with open(respath_full, 'rb') as f:
+                    full_dict = pickle.load(f)
+                # need to filter
+                step = 0
+                allresofvalid = {}
+                indices = []
+                for key, value in full_dict.items():
+                    input_guidance_list = value.split(',')
+                    if len(input_guidance_list) >= 2:
+                        input_guidance = args.separator.join(input_guidance_list)
+                        allresofvalid[key] = input_guidance
+                        all_ents.append(input_guidance)
+                        indices.append(step)
+                    step += 1
+                # subsample to 1k
+                random.seed(0)
+                indices = random.sample(indices, 1000)
+                newallresofvalid = {}
+                for i, (key, value) in enumerate(full_dict.items()):
+                    if i in indices:
+                        newallresofvalid[key] = value
+                allresofvalid = newallresofvalid
+                logger.info(len(allresofvalid))
+                with open(respath, "wb") as f:
+                    pickle.dump(allresofvalid, f)
+                    logger.info("saved the T5 valid entities")
+                with open(idxpath, "wb") as f:
+                    pickle.dump(indices, f)
+                    logger.info("saved the T5 valid indices")
+                torch.cuda.empty_cache()
+                del entmodel, enttokenizer
+                gc.collect()
             else:
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident_control.pkl'
-                idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valididx_control.pkl'
-            logger.info(f'respath: {respath}')
-            if not os.path.isfile(respath):
-                logger.info('generating')
-                if args.dataset == 'cnndm':
-                    logger.info('Filtering for CNNDM')
-                    # inferring
-                    #already inferred 
-                    respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                    with open(respath_full, 'rb') as f:
-                        full_dict = pickle.load(f)
-                    # need to filter
-                    step = 0
-                    allresofvalid = {}
-                    indices = []
-                    for key, value in full_dict.items():
-                        input_guidance_list = value.split(',')
-                        if len(input_guidance_list) >= 2:
-                            input_guidance = args.separator.join(input_guidance_list)
-                            allresofvalid[key] = input_guidance
-                            all_ents.append(input_guidance)
-                            indices.append(step)
-                        step += 1
-                    # subsample to 1k
-                    random.seed(0)
-                    indices = random.sample(indices, 1000)
-                    newallresofvalid = {}
-                    for i, (key, value) in enumerate(full_dict.items()):
-                        if i in indices:
-                            newallresofvalid[key] = value
-                    allresofvalid = newallresofvalid
-                    logger.info(len(allresofvalid))
-                    with open(respath, "wb") as f:
-                        pickle.dump(allresofvalid, f)
-                        logger.info("saved the T5 valid entities")
-                    with open(idxpath, "wb") as f:
-                        pickle.dump(indices, f)
-                        logger.info("saved the T5 valid indices")
-                    torch.cuda.empty_cache()
-                    del entmodel, enttokenizer
-                    gc.collect()
-                else:
-                    #XSUM INFER
-                    alldata = valid_dataset.data
-                    allresofvalid = {}
-                    all_ents = []
-                    with torch.no_grad():
-                        for step in range(len(alldata)):
-                            onedata = alldata[step]
-                            inputdata = onedata[0]
-                            tempdata = re.sub(' +', ' ', inputdata)
-                            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                            input_ids = inputres["input_ids"].to(args.device)
-                            attention_mask = inputres["attention_mask"].to(args.device)
-                            input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                            tagpreds = entmodel._generative_step_for_tagger(input)
-                            allentitylist = tagpreds[0].split(',')
-                            if allentitylist == []:
-                                input_guidance = 'none'
-                            else:
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                            allresofvalid[tempdata] = input_guidance
-                            all_ents.append(input_guidance)
-                            indices.append(step)
-                    logger.info(len(allresofvalid))
-                    with open(respath, "wb") as f:
-                        pickle.dump(allresofvalid, f)
-                        logger.info("saved the T5 valid entities")
-                    with open(idxpath, "wb") as f:
-                        pickle.dump(indices, f)
-                        logger.info("saved the T5 valid indices")
-                    torch.cuda.empty_cache()
-                    del entmodel, enttokenizer
-                    gc.collect()
-            else:
-                # we already have it
-                with open(respath, "rb") as f:
-                    allresofvalid = pickle.load(f)
-                all_ents = list(allresofvalid.values())
-                with open(idxpath, "rb") as f:
-                    indices = pickle.load(f)
+                #XSUM INFER
+                alldata = valid_dataset.data
+                allresofvalid = {}
+                all_ents = []
+                with torch.no_grad():
+                    for step in range(len(alldata)):
+                        onedata = alldata[step]
+                        inputdata = onedata[0]
+                        tempdata = re.sub(' +', ' ', inputdata)
+                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                        input_ids = inputres["input_ids"].to(args.device)
+                        attention_mask = inputres["attention_mask"].to(args.device)
+                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                        tagpreds = entmodel._generative_step_for_tagger(input)
+                        allentitylist = tagpreds[0].split(',')
+                        if allentitylist == []:
+                            input_guidance = 'none'
+                        else:
+                            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                        allresofvalid[tempdata] = input_guidance
+                        all_ents.append(input_guidance)
+                        indices.append(step)
+                logger.info(len(allresofvalid))
+                with open(respath, "wb") as f:
+                    pickle.dump(allresofvalid, f)
+                    logger.info("saved the T5 valid entities")
+                with open(idxpath, "wb") as f:
+                    pickle.dump(indices, f)
+                    logger.info("saved the T5 valid indices")
+                torch.cuda.empty_cache()
+                del entmodel, enttokenizer
+                gc.collect()
+        else:
+            # we already have it
+            with open(respath, "rb") as f:
+                allresofvalid = pickle.load(f)
+            all_ents = list(allresofvalid.values())
+            with open(idxpath, "rb") as f:
+                indices = pickle.load(f)
+    valid_dataset.allent = allresofvalid
     # filter down valid dataset using indices
-    if args.big_testset and valid_dataset.num_entries!= 1000 and valid_dataset.num_entries!=2000:
+    if args.big_testset and args.filtered == False:
+        if args.dataset == 'xsum':
+            inputs = [x[0] for x in valid_dataset.data]
+            tempdatas = [re.sub(' +', ' ', input) for input in inputs]
+            indices = []
+            # loop through testents
+            for key, value in allresofvalid.items():
+                # find it in tempdatas
+                idx = tempdatas.index(key)
+                indices.append(idx)
         logger.info(f'before filtering: {valid_dataset.num_entries} entries')
         valid_dataset.data =[valid_dataset.data[i] for i in indices]
         valid_dataset.num_entries = len(valid_dataset.data)
         logger.info(f'after filtering: {valid_dataset.num_entries} entries')
+        args.filtered = True
     valid_dataset.allent = allresofvalid
     if args.counterfactual_removal != False:
         new_allent = {}
@@ -276,12 +288,30 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
                 input_guidance = 'none'
             all_ents.append(input_guidance)
             new_allent[key] = input_guidance
-            # logger.info(f'original: {value}')
-            # logger.info(f'popped: {input_guidance}')
         valid_dataset.allent = new_allent
-    valid_sampler = SequentialSampler(valid_dataset)
-    valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
-                                      args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
+    original_input = [i[0] for i in valid_dataset.data]
+    if args.model == 'T5SoftPrompt':
+        valid_dataset_copied = copy.deepcopy(valid_dataset)
+        new_data = []
+        for i, (inputdata, targetdata) in enumerate(valid_dataset.data):
+            # get entities
+            try:
+                tempdata = re.sub(' +', ' ', inputdata)
+                entity_guidance = valid_dataset.allent[tempdata]
+            except:
+                logger.info(tempdata)
+                logger.info(valid_dataset.allent)
+                raise Exception('end')
+            newinputdata = inputdata + entity_guidance
+            new_data.append((newinputdata, targetdata))
+        valid_dataset_copied.data = new_data
+        valid_sampler = SequentialSampler(valid_dataset_copied)
+        valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset_copied, args.valid_size_per_gpu_summary, args.max_length,
+                                        args.max_guidance_length, valid_dataset_copied.tokenizer.pad_token_id, valid_sampler, args)
+    else:
+        valid_sampler = SequentialSampler(valid_dataset)
+        valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
+                                        args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
     all_inputs = []
     allytrue = []
     allypred = []
@@ -337,11 +367,14 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
     logger.info(f'mean-rouge: {mean_rouge}')
     logger.info(f'----EVAL FINISHED----')
     # print('INPUTS: ', inputs)
-    logger.info(f'ents {args.counterfactual_removal}: {all_ents}')
+    # logger.info(f'ents {args.counterfactual_removal}: {all_ents}')
+    if args.model == 'T5SoftPrompt':
+        del valid_dataset_copied
     return all_inputs, all_ents, labels, summaries
 
 
 def main(args):
+    args.filtered = False
     if torch.cuda.is_available():
         device = torch.device("cuda")
     else:
@@ -355,10 +388,17 @@ def main(args):
     # First load the trained ckpt
     tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
-    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
-    model.set_prompt_embedding(promptnumber, promptembedding)
+    if args.model == 'T5SoftPrompt':
+        logger.info('\nSoft prompt tuning')
+        model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
+        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+        model.set_prompt_embedding(promptnumber, promptembedding)
+    elif args.model == 'T5MixPrompt':
+        logger.info('\nMix prompt tuning')
+        model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+        model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
     if args.use_pretrain_ckpt and args.model != "T5Finetune":
         ckptsum = torch.load(args.pretrain_ckpt)
@@ -397,16 +437,13 @@ def main(args):
     # if big dataset, change the validation set
     print('args.big_testset: ', args.big_testset)
     if args.big_testset:
-        if args.dataset == 'cnndm':
-            valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
-            args.full_testset = True
-        else:
-            valid_file_name = args.data_dir + args.dataset + '/2k_test.txt'
+        valid_file_name = args.data_dir + args.dataset + '/full_valid.txt'
+        args.full_testset = True
 
         # check if we have already generated it
         if not os.path.isfile(valid_file_name):
             dataset_args = [args.dataset_name, args.dataset_version]
-            subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
+            subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, valid = True)
         valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     else:
@@ -435,5 +472,3 @@ if __name__ == "__main__":
     set_logger(args)
     logger.info(args)
     main(args)
-
-

@@ -204,8 +204,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             model.eval()
 
             if args.big_testset:
-                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
+                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
+                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
             else:
                 respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
             logger.info(f'respath: {respath}')
@@ -389,11 +389,8 @@ def main(args):
     # if big dataset, change the validation set
     print('args.big_testset: ', args.big_testset)
     if args.big_testset:
-        if args.dataset == 'cnndm':
-            valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
-            args.full_testset = True
-        else:
-            valid_file_name = args.data_dir + args.dataset + '/2k_test.txt'
+        valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
+        args.full_testset = True
 
         # check if we have already generated it
         if not os.path.isfile(valid_file_name):
