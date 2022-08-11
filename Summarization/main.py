@@ -466,7 +466,7 @@ def main(args):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
-                ckptsum = torch.load(args.pretrain_ckpt)
+                ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                 dicsum = {}
                 for x in ckptsum.keys():
 
