@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '5'
+#os.environ["CUDA_VISIBLE_DEVICES"] = '5'
 import pickle
 import argparse
 import gc
@@ -45,7 +45,7 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     root = "/data/mathieu/"
-    data_root = "/data/ruochen/"
+    data_root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -442,15 +442,15 @@ def main(args):
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model == 'T5Finetune' or args.model == 'PegasusFinetune':
+            if args.model in ['T5Finetune', 'PegasusFinetune']:
                 logger.info('\nFinetuning')
                 model = ModelFinetune(args, basemodel, tokenizer, args.model)
-            elif args.model == 'T5SoftPrompt' or args.model == 'PegasusSoftPrompt':
+            elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
                 model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model == 'T5MixPrompt' or args.model == 'PegasusMixPrompt':
+            elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
@@ -462,7 +462,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and args.model != "T5Finetune" and args.model != "PegasusFinetune":
+            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
@@ -483,16 +483,21 @@ def main(args):
 
             model.eval()
             ####add t5 tagger
-            if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+            if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
                 if args.infer_val_entities:
                     ########## predict the validation entity chains with the 1st prompt tuning stage model
-                    entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                    enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                    entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+                    if args.model == "T5MixPrompt":
+                        entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                        enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                        entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+                    elif args.model == "PegasusMixPrompt":
+                        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                        enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                        entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                     logger.info("Loading the pre-trained NER model!")
 
                     # model weights
-                    ckpt = torch.load(args.pretrain_ckpt)
+                    ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                     dic = {}
                     for x in ckpt.keys():
                         if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):

@@ -8,24 +8,24 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 
 
 
-class T5forFinetuneEntity(nn.Module):
+class ModelforFinetuneEntity(nn.Module):
     def __init__(self, model, tokenizer, args):
-        super(T5forFinetuneEntity, self).__init__()
+        super(ModelforFinetuneEntity, self).__init__()
         self.args = args
         self.model = model
         if 't5' in args.model_name:
             ### load ckpt
-            t5ckpt = torch.load(args.lm_adapted_path)
-            self.model.load_state_dict(t5ckpt)
+            ckpt = torch.load(args.lm_adapted_path)
+            self.model.load_state_dict(ckpt)
         elif 'pegasus' in args.model_name:
             ### load ckpt
-            t5ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+            ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
             # many times it has module.model. as starting, which is extra
             newdict = {}
-            for key in list(t5ckpt.keys()):
+            for key in list(ckpt.keys()):
                 if key.startswith('module.model.'):
                     newkey = key.replace('module.model.', '')
-                    newdict[newkey] = t5ckpt[key]
+                    newdict[newkey] = ckpt[key]
                 # else:
                 #     newdict[key] = t5ckpt[key] #this is "module.promptembedding", "module.promptembeddingforsum", not needed
             self.model.load_state_dict(newdict)

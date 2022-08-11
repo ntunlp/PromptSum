@@ -74,11 +74,11 @@ def finetune_model_tagger(trainfile, validfile, args):
     if 't5' in args.model_name:
         t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
         tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-        model = T5forFinetuneEntity(t5model, tokenizer, args)
+        model = ModelforFinetuneEntity(t5model, tokenizer, args)
     elif 'pegasus' in args.model_name:
         t5model = PegasusForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
         tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-        model = T5forFinetuneEntity(t5model, tokenizer, args)
+        model = ModelforFinetuneEntity(t5model, tokenizer, args)
     else:
         raise Exception('Model not implemented yet')
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -135,6 +135,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length,
                                           valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
+    print(len(train_dataloader), len(valid_dataloader))
     #####the path of tuned model
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
@@ -189,6 +190,7 @@ def finetune_model_tagger(trainfile, validfile, args):
 
     if args.zero_shot:
         dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args)
+
         return result_dict
 
     global_step = 0

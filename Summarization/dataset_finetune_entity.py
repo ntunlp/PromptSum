@@ -18,7 +18,7 @@ from utils import *
 from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
 
 from dataset_pretrain import *
-from model_finetune_entity import T5forFinetuneEntity
+from model_finetune_entity import ModelforFinetuneEntity
 
 
 
@@ -221,8 +221,10 @@ def getdocandent(docfile, sum_y_pred):
     f.close()
     resfortrain = []
     resforvalid = []
-    # trainsize = len(alldoc) // 2
-    trainsize = 100
+    trainsize = len(alldoc) // 2
+    print("alldoc", len(alldoc))
+    print("train size", trainsize)
+    #trainsize = 100
     allres = []
     for i in range(len(alldoc)):
         if i < trainsize:
@@ -241,8 +243,8 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     fout = open(docwithlabel_train, 'w')
     fout_1 = open(docwithlabel_vaid, 'w')
 
-    # halfsize = len(alldocandlabel) // 2
-    halfsize = 100
+    halfsize = len(alldocandlabel) // 2
+    #halfsize = 100
     for aa in range(len(alldocandlabel)):
         onedata = alldocandlabel[aa]
         if aa < halfsize:
