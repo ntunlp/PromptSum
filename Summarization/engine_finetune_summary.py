@@ -82,7 +82,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     }
 
     if args.zero_shot:
-        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
+        if args.full_testset:
+            dooneeval(model, test_dataloader, scaler, result_dict, logger, 0, args)
+        else:
+            dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
         return result_dict
 
     global_step = 0

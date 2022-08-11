@@ -186,6 +186,11 @@ def finetune_model_tagger(trainfile, validfile, args):
         'val_rl': [],
         'best_val_meanR': Best_val_meanR
     }
+
+    if args.zero_shot:
+        dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args)
+        return result_dict
+
     global_step = 0
     for i in range(startepoch, startepoch + num_train_epochs):
         thisevalstep = 1000000
