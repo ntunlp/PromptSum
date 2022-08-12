@@ -71,7 +71,7 @@ def get_data(few_shot_seeds, save_path, args):
         handler_train.close()
         handler_valid.close()
         # doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
-        doc_sum_path = f'{save_path}seed_{0}/data_for_bert_{0}/'
+        doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
         if not os.path.exists(doc_sum_path):
             os.makedirs(doc_sum_path, exist_ok=True)
 
