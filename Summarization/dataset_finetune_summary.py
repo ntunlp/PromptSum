@@ -13,10 +13,13 @@ import nltk
 import random
 import re
 import pickle
+import random
+
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
-import random
 from nltk.corpus import stopwords
+
+
 
 class T5SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
@@ -53,7 +56,6 @@ class T5SummarizationDataset(Dataset):
                 ####load entity file for training data
                 entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/trainent.txt'
                 self.allent = self.handleentfile(entpath)
-
             else:
                 if self.args.guidance_mode == 'target':
                     # entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/valident.txt'
@@ -116,7 +118,6 @@ class T5SummarizationDataset(Dataset):
 
         # guidance
         input_guidance = "None"
-        pred_guidance = "None"
         
         stop_words = set(stopwords.words('english'))
         # 1st option: based on entities
@@ -181,11 +182,6 @@ class T5SummarizationDataset(Dataset):
                             break
                 else:
                     ents = self.spacy_nlp(inputdata).ents
-                    # for e in ents:
-                    #     if e.text.lower() in stop_words:
-                    #         print('e.text: ', e.text)
-                    #         print('e.label_: ',e.label_)
-                    #         raise Exception('end')
                     ents = [ent.text for ent in ents]
                 # input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
                 input_guidance = ','.join(list(dict.fromkeys(ents))) 
@@ -197,9 +193,6 @@ class T5SummarizationDataset(Dataset):
                         input_guidance = self.allent[tempdata]
                     else:
                         print("we can not find inputdata in the dictionary!! There should be some errors!")
-                        # print(tempdata)
-                        # print(self.allent)
-                        # raise Exception('end')
                 else:
                     if self.args.guidance_mode == 'target':
                         tempdata = re.sub(' +', ' ', inputdata)
@@ -207,36 +200,26 @@ class T5SummarizationDataset(Dataset):
                             input_guidance = self.allent[tempdata]
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
-                            print(tempdata)
-                            print(self.allent)
-                            raise Exception('end')
                     else:
                         tempdata = re.sub(' +', ' ', inputdata)
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
                             print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
-                            print(tempdata)
-                            print(self.allent)
-                            raise Exception('end')
             # after finding it, I remove the 'REMOVEDN' argument:
             inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
         # 2nd option: based on salient sentences
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
             input_guidance = salient_sents
-        print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance, " aaaaaaa ", pred_guidance)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,
                                                     return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen,
                                                      truncation=True, return_tensors="pt")
         inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen,
                                                         truncation=True, return_tensors="pt")
-        predentsres = self.tokenizer.batch_encode_plus([pred_guidance], padding=False, max_length=self.maxlen,
-                                                       truncation=True, return_tensors="pt")
 
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze(), \
-               predentsres['input_ids'].squeeze()
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze()
 
     def __len__(self):
 
@@ -270,7 +253,7 @@ class SmartBatchingCollate:
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-        sequences, targets, ents, predents = list(zip(*batch))
+        sequences, targets, ents = list(zip(*batch))
 
         # input
         input_ids, attention_mask = self.pad_sequence(
@@ -300,20 +283,8 @@ class SmartBatchingCollate:
                 print(f'batch: {batch}')
                 print(f'ents: {ents}')
                 raise Exception('end')
-        predents_ids, predents_mask = self.pad_sequence(
-            predents,
-            max_sequence_length=self._max_guidance_length,
-            pad_token_id=self._pad_token_id,
-            right=right
-        )
-        # print(input_ids.shape, target_ids.shape, ents_ids.shape, predents_ids.shape)
-        print("*"*30)
-        print(ents_ids.shape)
-        print(ents_ids[0])
-        print("A"*30)
-        print(predents_ids.shape)
-        print(predents_ids[0])
-        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, predents_ids, predents_mask
+
+        output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
 
         return output
 

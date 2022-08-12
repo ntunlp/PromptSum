@@ -84,7 +84,7 @@ class ModelFinetune(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         
-        return input,target,preds
+        return input, target, preds
 
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:

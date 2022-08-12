@@ -26,7 +26,6 @@ class ModelMixPrompt(nn.Module):
                 if not("shared" in name):
                     param.requires_grad = False
             else:
-                #raise Exception
                 param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
@@ -40,7 +39,7 @@ class ModelMixPrompt(nn.Module):
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None,
-            ent_ids=None, ent_mask=None, predent_ids=None, predent_mask=None
+            ent_ids=None, ent_mask=None
     ):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(input_ids)
@@ -85,9 +84,7 @@ class ModelMixPrompt(nn.Module):
             labels=lm_labels,
             decoder_attention_mask=batch['target_mask'],
             ent_ids=batch["ents_ids"],
-            ent_mask=batch["ents_mask"],
-            predent_ids=batch["predents_ids"],
-            predent_mask=batch["predents_mask"]
+            ent_mask=batch["ents_mask"]
         )
         loss = outputs[0]
         
@@ -165,7 +162,7 @@ class ModelMixPrompt(nn.Module):
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
         
-        return input,target,preds
+        return input, target, preds
 
     def ids_to_clean_text(self, generated_ids):
         gen_text = self.tokenizer.batch_decode(

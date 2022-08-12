@@ -103,8 +103,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                      "predents_ids": batch[4].to(args.device), "predents_mask": batch[5].to(args.device)}
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             for k in range(inputs["ents_ids"].shape[0]):
                 for l in range(inputs["ents_ids"].shape[1]):
                     ent = inputs["ents_ids"][k,l].item()
@@ -229,8 +228,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                      "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
