@@ -44,8 +44,10 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/mathieu/"
-    data_root = "/data/ruochen/"
+    # root = "/data/mathieu/"
+    # data_root = "/data/ruochen/"
+    root = "/home/ruochen/"
+    data_root = "/home/ruochen/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -122,13 +124,13 @@ def set_args():
     parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
-                        default=1, help="batch size per gpu")
+                        default=10, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
-                        default=4, help="valid size per gpu")
+                        default=20, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
-                        default=8, help="test size per gpu")
+                        default=40, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
-                        default=4, help="gradient accumulation steps")
+                        default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers_pretrain", dest="num_workers_pretrain", type=int,
@@ -150,13 +152,13 @@ def set_args():
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
-                        default=2, help="batch size per gpu")
+                        default=10, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
-                        default=4, help="valid size per gpu")
+                        default=20, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
-                        default=8, help="test size per gpu")
+                        default=20, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
-                        default=2, help="gradient accumulation steps")
+                        default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
@@ -173,13 +175,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=1, help="batch size per gpu")
+                        default=10, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=4, help="valid size per gpu")
+                        default=20, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=8, help="test size per gpu")
+                        default=20, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=8, help="gradient accumulation steps")
+                        default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -314,6 +316,8 @@ def main(args):
     device = torch.device("cpu")
     if len(args.cuda) > 0 and torch.cuda.is_available():
         device = torch.device("cuda")
+    else:
+        raise Excepton('device: ', device)
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
