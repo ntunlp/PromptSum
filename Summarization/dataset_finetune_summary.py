@@ -290,7 +290,7 @@ class SmartBatchingCollate:
             right = False
         ents_ids = target_ids
         ents_mask = target_mask
-        if self.args.model == "T5MixPrompt":
+        if self.args.model == "T5MixPrompt" or "PegasusMixPrompt":
             try:
                 ents_ids, ents_mask = self.pad_sequence(
                     ents,
