@@ -31,8 +31,8 @@ def get_data(few_shot_seeds, save_path, args):
     few_shot_seeds = [0]
     i = 0
     for seed in few_shot_seeds:
-        if i > 0:
-            break
+        # if i > 0:
+        #     break # should generate for all seeds
         i += 1
         train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
         valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)

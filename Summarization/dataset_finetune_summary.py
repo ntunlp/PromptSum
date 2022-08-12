@@ -207,18 +207,18 @@ class T5SummarizationDataset(Dataset):
                             input_guidance = self.allent[tempdata]
                         else:
                             print("we can not find inputdata in the dictionary!! There should be some errors!")
-                            # print(tempdata)
-                            # print(self.allent)
-                            # raise Exception('end')
+                            print(tempdata)
+                            print(self.allent)
+                            raise Exception('end')
                     else:
                         tempdata = re.sub(' +', ' ', inputdata)
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
                             print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
-                            # print(tempdata)
-                            # print(self.allent)
-                            # raise Exception('end')
+                            print(tempdata)
+                            print(self.allent)
+                            raise Exception('end')
             # after finding it, I remove the 'REMOVEDN' argument:
             inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
         # 2nd option: based on salient sentences
