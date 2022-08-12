@@ -286,11 +286,9 @@ class SmartBatchingCollate:
         )
         # guidance
         right = True
-        if "DID" in self.args.model:
-            right = False
         ents_ids = target_ids
         ents_mask = target_mask
-        if self.args.model == "T5MixPrompt" or "PegasusMixPrompt":
+        if self.args.model in ["T5MixPrompt", "PegasusMixPrompt"]:
             try:
                 ents_ids, ents_mask = self.pad_sequence(
                     ents,
@@ -302,12 +300,6 @@ class SmartBatchingCollate:
                 print(f'batch: {batch}')
                 print(f'ents: {ents}')
                 raise Exception('end')
-        if "DID" in self.args.model:
-            sep_ids = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device) * \
-                      self.tokenizer.encode("[SEP]")[0]
-            ents_ids = torch.cat((ents_ids, sep_ids), 1)
-            sep_mask = torch.ones((ents_ids.shape[0], 1), dtype=torch.long, device=ents_ids.device)
-            ents_mask = torch.cat((ents_mask, sep_mask), 1)
         predents_ids, predents_mask = self.pad_sequence(
             predents,
             max_sequence_length=self._max_guidance_length,
