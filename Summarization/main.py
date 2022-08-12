@@ -545,6 +545,8 @@ def main(args):
                                 logger.info("saved the T5 valid entities to: {}".format(respath))
                             torch.cuda.empty_cache()
                             gc.collect()
+                        valid_dataset.set_allent_for_valid(respath)
+                        print('Set valid ents for path: ', respath)
                     #doing test
                     else:
                         valid_dataset.set_allent_for_valid(respath)
