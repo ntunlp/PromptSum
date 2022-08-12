@@ -28,7 +28,7 @@ def get_data(few_shot_seeds, save_path, args):
     spacy_nlp = spacy.load("en_core_web_sm")
     alltrainfile = []
     allvalidfile = []
-    few_shot_seeds = [0]
+    # few_shot_seeds = [0]
     i = 0
     for seed in few_shot_seeds:
         # if i > 0:
