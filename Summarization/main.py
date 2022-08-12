@@ -45,7 +45,7 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     root = "/data/mathieu/"
-    data_root = "/data/ruochen/"
+    data_root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,

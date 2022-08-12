@@ -225,7 +225,7 @@ class T5SummarizationDataset(Dataset):
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
             input_guidance = salient_sents
-        # print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance)
+        print(inputdata, " ****** ", targetdata, " &&&&&& ", input_guidance, " aaaaaaa ", pred_guidance)
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,
                                                     return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen,
@@ -307,6 +307,12 @@ class SmartBatchingCollate:
             right=right
         )
         # print(input_ids.shape, target_ids.shape, ents_ids.shape, predents_ids.shape)
+        print("*"*30)
+        print(ents_ids.shape)
+        print(ents_ids[0])
+        print("A"*30)
+        print(predents_ids.shape)
+        print(predents_ids[0])
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask, predents_ids, predents_mask
 
         return output
