@@ -1,6 +1,8 @@
 .DS_Store
 .idea/*
 
+t5_tagger_pretrained_ckpt/
+
 Summarization/.DS_Store
 Summarization/__pycache__/
 Summarization/*log*
