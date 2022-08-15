@@ -1,5 +1,5 @@
 # PromptSum
-Cool prompting for parameter-efficient few-shot summarization!
+Cool prompting for parameter-efficient few-shot controllable summarization!
 
 # Bash scripts
 
@@ -8,29 +8,42 @@ Cool prompting for parameter-efficient few-shot summarization!
 Run the corresponding bash script for each use case:
 
 ### Pre-training 
-CUDA_VISIBLE_DEVICES=? bash run_pretraining.sh
+bash run_pretraining.sh
 
-### Baselines (few-shot, 3 seeds)
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_baselines.sh
+### 0-shot summarization (3 seeds in validation, 1 seed in test)
+For <ins>PromptSum</ins>:
 
-### PromptSum (few-shot, 3 seeds) 
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_promptsum.sh
+bash runall_zeroshot_promptsum.sh
 
-### PromptSum with entity oracle (few-shot, 3 seeds)
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_oracle.sh
+### Few-shot summarization (3 seeds)
+For the <ins>baselines</ins>:
 
-### PromptSum (full-shot, 1 seed)
-CUDA_VISIBLE_DEVICES=? bash run_fullshot_promptsum.sh
+bash runall_kshot_baselines.sh
 
-### Controlling experiments (few-shot, 1 seed)
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_controlling.sh
+For the <ins>oracle</ins>:
 
-### Counterfactual experiments (few-shot, 1 seed)
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_counterfactual.sh
+bash runall_kshot_oracle.sh
 
-### Hallucinations experiments (few-shot, 1 seed)
-CUDA_VISIBLE_DEVICES=? bash runall_kshot_hallucinations.sh
+For <ins>PromptSum</ins>:
 
+bash runall_kshot_promptsum.sh
+
+For <ins>controllability</ins> experiments:
+
+bash runall_kshot_controllability.sh
+
+For <ins>counterfactual</ins> training experiments:
+
+bash runall_kshot_counterfactual.sh
+
+For <ins>hallucinations</ins> experiments:
+
+bash runall_kshot_hallucination.sh
+
+### Full-shot summarization (1 seed)
+For <ins>PromptSum</ins>:
+
+bash run_fullshot_promptsum.sh
 
 ## Contents
 - [PromptSumm](#PromptSumm)
