@@ -18,13 +18,25 @@ For the <ins>baselines</ins>:
 
 bash runall_kshot_baselines.sh
 
-For the oracle:
+For the <ins>oracle</ins>:
 
 bash runall_kshot_oracle.sh
 
-For PromptSum:
+For <ins>PromptSum</ins>:
 
 bash runall_kshot_promptsum.sh
+
+For <ins>controllability</ins> experiments:
+
+bash runall_kshot_controllability.sh
+
+For <ins>counterfactual</ins> training experiments:
+
+bash runall_kshot_counterfactual.sh
+
+For <ins>hallucinations</ins> experiments:
+
+bash runall_kshot_hallucination.sh
 
 
 
