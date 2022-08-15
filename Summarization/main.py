@@ -511,7 +511,7 @@ def main(args):
                     # just prompt
                     if not(args.zero_shot):
                         onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                        print("Loading the entity prompt from: {}".format(promptonepath))
+                        print("Loading the entity prompt from: {}".format(onepath))
                         oneckpt = torch.load(onepath)
                         entmodel.promptnumber = oneckpt["promptnumber"]
                         entmodel.promptembedding = oneckpt["promptembedding"]

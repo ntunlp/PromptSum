@@ -1,7 +1,7 @@
 ### dataset
 dataset="xsum"
 k_shot="100"
-device="4"
+device="5"
 
 ### backbone model
 ### T5-large backbone
