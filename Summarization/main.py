@@ -317,7 +317,7 @@ def main(args):
     if len(args.cuda) > 0 and torch.cuda.is_available():
         device = torch.device("cuda")
     else:
-        raise Excepton('device: ', device)
+        raise Exception('device: ', device)
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
