@@ -1,5 +1,5 @@
 # PromptSum
-Cool prompting for parameter-efficient few-shot summarization!
+Cool prompting for parameter-efficient few-shot controllable summarization!
 
 # Bash scripts
 
