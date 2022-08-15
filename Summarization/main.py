@@ -505,12 +505,18 @@ def main(args):
                     entmodel.load_state_dict(dic)
     
                     # just prompt
-                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                    print(onepath)
-                    oneckpt = torch.load(onepath)
-                    entmodel.promptnumber = oneckpt["promptnumber"]
-                    entmodel.promptembedding = oneckpt["promptembedding"]
-                
+                    if not(args.zero_shot):
+                        onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                        print("Loading the entity prompt from: {}".format(promptonepath))
+                        oneckpt = torch.load(onepath)
+                        entmodel.promptnumber = oneckpt["promptnumber"]
+                        entmodel.promptembedding = oneckpt["promptembedding"]
+                    else:
+                        print("Zero-shot - loading the prompt from pre-training ckpt")
+                        ckpt = torch.load(args.pretrain_prompt_ckpt)
+                        entmodel.promptnumber = ckpt["promptnumber"]
+                        entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
+
                     n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                     logger.info("The ent model has {} trainable parameters".format(n_params))
                     entmodel.to(args.device)
