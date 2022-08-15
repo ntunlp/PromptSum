@@ -14,7 +14,7 @@ bash run_pretraining.sh
 bash runall_zeroshot_promptsum.sh
 
 ### few-shot summarization (3 seeds)
-For the baselines:
+For the <ins>baselines</ins>:
 
 bash runall_kshot_baselines.sh
 
