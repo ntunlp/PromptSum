@@ -1,7 +1,7 @@
 ### dataset
 dataset="xsum"
 k_shot="100"
-device="3"
+device="4"
 
 ### backbone model
 ### T5-large backbone
@@ -22,15 +22,15 @@ device="3"
 
 
 ### PEGASUS backbone
-pretrain_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+pretrain_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
+pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 ### k-shot
 echo "start k-shot prompt-tune_entity"
-CUDA_VISIBLE_DEVICES=$device python3 main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/ruochen/hf_models/pegasus-large/
+CUDA_VISIBLE_DEVICES=$device python3 main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/qin/hf_models/pegasus-large/
 echo "end k-shot prompt-tune_entity"
 
 echo "start k-shot prompt-tune_summary"
-CUDA_VISIBLE_DEVICES=$device python3 main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/ruochen/hf_models/pegasus-large/
+CUDA_VISIBLE_DEVICES=$device python3 main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/qin/hf_models/pegasus-large/
 echo "end k-shot prompt-tune_summary"
 
 # nohup bash runall_kshot_promptsum.sh > log/014_c_1070k_10shot_promptsumm_xsum.log 2>&1 &
