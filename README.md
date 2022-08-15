@@ -11,9 +11,11 @@ Run the corresponding bash script for each use case:
 bash run_pretraining.sh
 
 ### 0-shot summarization (3 seeds in validation, 1 seed in test)
+For <ins>PromptSum</ins>:
+
 bash runall_zeroshot_promptsum.sh
 
-### few-shot summarization (3 seeds)
+### Few-shot summarization (3 seeds)
 For the <ins>baselines</ins>:
 
 bash runall_kshot_baselines.sh
@@ -38,7 +40,10 @@ For <ins>hallucinations</ins> experiments:
 
 bash runall_kshot_hallucination.sh
 
+### Full-shot summarization (1 seed)
+For <ins>PromptSum</ins>:
 
+bash run_fullshot_promptsum.sh
 
 ## Contents
 - [PromptSumm](#PromptSumm)
