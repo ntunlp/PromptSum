@@ -119,7 +119,6 @@ def finetune_model_tagger(trainfile, validfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
-
     train_dataset = T5DatasetPretrainConll(trainfile, max_seq_length, tokenizer)
     valid_dataset = T5DatasetPretrainConll(validfile, max_seq_length, tokenizer)
 
@@ -173,8 +172,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     model.train()
 
     startepoch = 0
-    Best_F1 = 0.0
-    Best_val_meanR = 0.0
+    Best_F1, Best_val_meanR = 0.0, 0.0
 
     logger.info("Begin train...")
 

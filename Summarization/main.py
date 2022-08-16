@@ -27,6 +27,7 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
+from dataset import *
 from dataset_finetune_entity import *
 from dataset_finetune_summary import *
 from engine_pretrain import *
@@ -378,7 +379,7 @@ def main(args):
     # if files don't exist, subsample
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
-        subsample(dataset_args, args, tokenizer, few_shot_seeds)
+        subsample(dataset_args, few_shot_seeds, args)
 
     ########## pre-training?
     if args.pretrain:
@@ -423,7 +424,7 @@ def main(args):
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
-        datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
+        datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         result_dict_total = {}
         for k in keys:
@@ -532,9 +533,17 @@ def main(args):
 
                     # inferring the entities on the val or test set
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                    if args.big_testset:
+                        respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
+                    elif args.full_testset:
+                        respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
                     if not(os.path.isfile(respath) and args.reuse_entity_file):
-                        alldata = valid_dataset.data
-                        print("valid size: ", len(alldata))
+                        if args.big_testset or args.full_testset:
+                            alldata = args.test_dataset.data
+                            print("test size: ", len(alldata))
+                        else:
+                            alldata = valid_dataset.data
+                            print("valid size: ", len(alldata))
                         allresofvalid = {}
                         with torch.no_grad():
                             for step in range(len(alldata)):
@@ -557,41 +566,13 @@ def main(args):
                             logger.info("saved the T5 valid entities to: {}".format(respath))
                         torch.cuda.empty_cache()
                         gc.collect()
-                    valid_dataset.set_allent_for_valid(respath)
-                    print('Set valid ents for path: ', respath)
 
                     if args.big_testset or args.full_testset:
-                        if args.big_testset:
-                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
-                        elif args.full_testset:
-                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                        if not(os.path.isfile(respath) and args.reuse_entity_file):
-                            alldata = args.test_dataset.data
-                            print("test size: ", len(alldata))
-                            allresofvalid = {}
-                            with torch.no_grad():
-                                for step in range(len(alldata)):
-                                    onedata = alldata[step]
-                                    inputdata = onedata[0]
-                                    tempdata = re.sub(' +', ' ', inputdata)
-                                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                    input_ids = inputres["input_ids"].to(args.device)
-                                    attention_mask = inputres["attention_mask"].to(args.device)
-                                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                    tagpreds = entmodel._generative_step_for_tagger(input)
-                                    allentitylist = tagpreds[0].split(',')
-                                    if allentitylist == []:
-                                        allentitylist = ["none"]
-                                    input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                    allresofvalid[tempdata] = input_guidance
-                            logger.info(len(allresofvalid))
-                            with open(respath, "wb") as f:
-                                pickle.dump(allresofvalid, f)
-                                logger.info("saved the T5 test entities to: {}".format(respath))
-                            torch.cuda.empty_cache()
-                            del entmodel, enttokenizer
-                            gc.collect()
                         args.test_dataset.set_allent_for_valid(respath)
+                    else:
+                        valid_dataset.set_allent_for_valid(respath)
+                    print('Set valid ents for path: ', respath)
+
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:
                 allents = train_dataset.allent.copy()

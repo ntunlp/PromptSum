@@ -26,8 +26,7 @@ def get_data(few_shot_seeds, save_path, args):
     usetrain = True
     usevalid = True
     spacy_nlp = spacy.load("en_core_web_sm")
-    alltrainfile = []
-    allvalidfile = []
+    alltrainfile, allvalidfile = [], []
     # few_shot_seeds = [0]
     i = 0
     for seed in few_shot_seeds:
@@ -181,7 +180,6 @@ def getfilewithlabel(file, filewithfakelabel):
 
 
 def get_doc_label(sum_y_pred, docfile):
-
     alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred)
 
     allentityfortrain = []

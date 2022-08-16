@@ -37,7 +37,7 @@ class ModelforFinetuneEntity(nn.Module):
         self.promptnumber = 0
         self.promptembedding = None
 
-    def set_prompt_embedding(self,promptnumber,promptembedding):
+    def set_prompt_embedding(self, promptnumber, promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 
