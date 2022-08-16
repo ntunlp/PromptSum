@@ -153,13 +153,13 @@ def set_args():
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
-                        default=10, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
-                        default=20, help="valid size per gpu")
+                        default=10, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
-                        default=20, help="test size per gpu")
+                        default=10, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=5, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
@@ -176,13 +176,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=10, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=20, help="valid size per gpu")
+                        default=10, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=20, help="test size per gpu")
+                        default=10, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=5, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
