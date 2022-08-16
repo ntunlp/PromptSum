@@ -44,8 +44,10 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
+    # root = "/home/qin/"
+    # data_root = "/home/qin/"
     root = "/data/mathieu/"
-    data_root = "/data/mathieu/"
+    data_root = "/data/ruochen/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -243,7 +245,7 @@ def set_args():
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
-    parser.add_argument("--reuse_entity_file", action="store_true",
+    parser.add_argument("--reuse_entity_file", action='store_true',
                         default=False, help="whether to re-use entities already generated")
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
@@ -317,7 +319,7 @@ def main(args):
     if len(args.cuda) > 0 and torch.cuda.is_available():
         device = torch.device("cuda")
     else:
-        raise Excepton('device: ', device)
+        raise Exception('device: ', device)
     if args.local_rank != -1:
         torch.distributed.init_process_group(backend="nccl")
     args.device = device
@@ -512,7 +514,7 @@ def main(args):
                     # just prompt
                     if not(args.zero_shot):
                         onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                        print("Loading the entity prompt from: {}".format(promptonepath))
+                        print("Loading the entity prompt from: {}".format(onepath))
                         oneckpt = torch.load(onepath)
                         entmodel.promptnumber = oneckpt["promptnumber"]
                         entmodel.promptembedding = oneckpt["promptembedding"]
@@ -528,12 +530,44 @@ def main(args):
                     logger.info("move to device!")
                     model.eval()
 
-                    #doing valid
+                    # inferring the entities on the val or test set
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
                     if not(os.path.isfile(respath) and args.reuse_entity_file):
-                        if args.max_epoch_summary > 0:
-                            alldata = valid_dataset.data
-                            print("valid size: ", len(alldata))
+                        alldata = valid_dataset.data
+                        print("valid size: ", len(alldata))
+                        allresofvalid = {}
+                        with torch.no_grad():
+                            for step in range(len(alldata)):
+                                onedata = alldata[step]
+                                inputdata = onedata[0]
+                                tempdata = re.sub(' +', ' ', inputdata)
+                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                                input_ids = inputres["input_ids"].to(args.device)
+                                attention_mask = inputres["attention_mask"].to(args.device)
+                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                                tagpreds = entmodel._generative_step_for_tagger(input)
+                                allentitylist = tagpreds[0].split(',')
+                                if allentitylist == []:
+                                    allentitylist = ["none"]
+                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                                allresofvalid[tempdata] = input_guidance
+                        logger.info(len(allresofvalid))
+                        with open(respath, "wb") as f:
+                            pickle.dump(allresofvalid, f)
+                            logger.info("saved the T5 valid entities to: {}".format(respath))
+                        torch.cuda.empty_cache()
+                        gc.collect()
+                    valid_dataset.set_allent_for_valid(respath)
+                    print('Set valid ents for path: ', respath)
+
+                    if args.big_testset or args.full_testset:
+                        if args.big_testset:
+                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
+                        elif args.full_testset:
+                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                        if not(os.path.isfile(respath) and args.reuse_entity_file):
+                            alldata = args.test_dataset.data
+                            print("test size: ", len(alldata))
                             allresofvalid = {}
                             with torch.no_grad():
                                 for step in range(len(alldata)):
@@ -553,46 +587,11 @@ def main(args):
                             logger.info(len(allresofvalid))
                             with open(respath, "wb") as f:
                                 pickle.dump(allresofvalid, f)
-                                logger.info("saved the T5 valid entities to: {}".format(respath))
+                                logger.info("saved the T5 test entities to: {}".format(respath))
                             torch.cuda.empty_cache()
+                            del entmodel, enttokenizer
                             gc.collect()
-                        valid_dataset.set_allent_for_valid(respath)
-                        print('Set valid ents for path: ', respath)
-                    #doing test
-                    else:
-                        valid_dataset.set_allent_for_valid(respath)
-                        if args.big_testset or args.full_testset:
-                            if args.big_testset:
-                                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
-                            elif args.full_testset:
-                                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                            if not os.path.isfile(respath):
-                                alldata = args.test_dataset.data
-                                print("test size: ", len(alldata))
-                                allresofvalid = {}
-                                with torch.no_grad():
-                                    for step in range(len(alldata)):
-                                        onedata = alldata[step]
-                                        inputdata = onedata[0]
-                                        tempdata = re.sub(' +', ' ', inputdata)
-                                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                        input_ids = inputres["input_ids"].to(args.device)
-                                        attention_mask = inputres["attention_mask"].to(args.device)
-                                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                        tagpreds = entmodel._generative_step_for_tagger(input)
-                                        allentitylist = tagpreds[0].split(',')
-                                        if allentitylist == []:
-                                            allentitylist = ["none"]
-                                        input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                        allresofvalid[tempdata] = input_guidance
-                                logger.info(len(allresofvalid))
-                                with open(respath, "wb") as f:
-                                    pickle.dump(allresofvalid, f)
-                                    logger.info("saved the T5 test entities to: {}".format(respath))
-                                torch.cuda.empty_cache()
-                                del entmodel, enttokenizer
-                                gc.collect()
-                            args.test_dataset.set_allent_for_valid(respath)
+                        args.test_dataset.set_allent_for_valid(respath)
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:
                 allents = train_dataset.allent.copy()
