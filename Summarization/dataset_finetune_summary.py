@@ -363,7 +363,10 @@ def convert_data_to_txt(train_data, new_train_path, args):
     print("Missing sources: {}".format(none_texts))
     with open(new_train_path, "w") as f:
         for idx in range(len(all_train_texts)):
-            to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
+            if args.dataset_name == "samsum":
+                to_write = all_train_texts[idx].replace("\n", " ").replace("\t", " ").replace("\r", " ") + "\t" + all_train_summaries[idx].replace("\n", " ").replace("\t", " ").replace("\r", " ")
+            else:
+                to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
             if idx > 0:
                 to_write = "\n" + to_write
             f.write(to_write)

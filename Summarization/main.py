@@ -243,6 +243,8 @@ def set_args():
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
+    parser.add_argument("--reuse_entity_file", action="store_true",
+                        default=False, help="whether to re-use entities already generated")
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -365,6 +367,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    print("Few shot save dir:", args.few_shot_save_dir)
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -527,7 +530,7 @@ def main(args):
 
                     #doing valid
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
-                    if not os.path.isfile(respath):
+                    if not(os.path.isfile(respath) and args.reuse_entity_file):
                         if args.max_epoch_summary > 0:
                             alldata = valid_dataset.data
                             print("valid size: ", len(alldata))
