@@ -63,8 +63,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
     model.train()
     #scaler = ShardedGradScaler()
-    scheduler = None
-    scaler = None
+    scheduler, scaler = None, None
 
     logger.info("Begin train...")
     logger.info("We will train model in %d steps" % step_tot)
@@ -333,17 +332,13 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
 
 def entity_eval(ytrue, ypred):
     spacy_nlp = spacy.load("en_core_web_sm")
-    all_p = []
-    all_r = []
-    all_f1 = []
+    all_p, all_r, all_f1 = [], [], []
     for i in tqdm(range(len(ytrue))):
         ents_true = spacy_nlp(ytrue[i]).ents
         ents_true = [ent.text for ent in ents_true]
         ents_pred = spacy_nlp(ypred[i]).ents
         ents_pred = [ent.text for ent in ents_pred]
-        p = 0
-        r = 0
-        f1 = 0
+        p, r, f1 = 0, 0, 0
         if len(ents_pred) > 0:
             p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
         else:

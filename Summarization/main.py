@@ -27,6 +27,7 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
+from dataset import *
 from dataset_finetune_entity import *
 from dataset_finetune_summary import *
 from engine_pretrain import *
@@ -46,8 +47,8 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/home/ruochen/"
-    data_root = "/home/ruochen/"
+    root = "/data/mathieu/"
+    data_root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -152,13 +153,13 @@ def set_args():
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
-                        default=10, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
-                        default=20, help="valid size per gpu")
+                        default=10, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
-                        default=20, help="test size per gpu")
+                        default=10, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=5, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
@@ -175,13 +176,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=10, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=20, help="valid size per gpu")
+                        default=10, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=20, help="test size per gpu")
+                        default=10, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=5, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -369,6 +370,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    print("Few shot save dir:", args.few_shot_save_dir)
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -377,7 +379,7 @@ def main(args):
     # if files don't exist, subsample
     if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
         logger.info('subsampling..')
-        subsample(dataset_args, args, tokenizer, few_shot_seeds)
+        subsample(dataset_args, few_shot_seeds, args)
 
     ########## pre-training?
     if args.pretrain:
@@ -422,7 +424,7 @@ def main(args):
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
-        datasets = read_subsampled(args, tokenizer, allgentasktokens, answertoken, few_shot_seeds)
+        datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         result_dict_total = {}
         for k in keys:
@@ -531,9 +533,17 @@ def main(args):
 
                     # inferring the entities on the val or test set
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                    if args.big_testset:
+                        respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
+                    elif args.full_testset:
+                        respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
                     if not(os.path.isfile(respath) and args.reuse_entity_file):
-                        alldata = valid_dataset.data
-                        print("valid size: ", len(alldata))
+                        if args.big_testset or args.full_testset:
+                            alldata = args.test_dataset.data
+                            print("test size: ", len(alldata))
+                        else:
+                            alldata = valid_dataset.data
+                            print("valid size: ", len(alldata))
                         allresofvalid = {}
                         with torch.no_grad():
                             for step in range(len(alldata)):
@@ -556,41 +566,13 @@ def main(args):
                             logger.info("saved the T5 valid entities to: {}".format(respath))
                         torch.cuda.empty_cache()
                         gc.collect()
-                    valid_dataset.set_allent_for_valid(respath)
-                    print('Set valid ents for path: ', respath)
 
                     if args.big_testset or args.full_testset:
-                        if args.big_testset:
-                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
-                        elif args.full_testset:
-                            respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                        if not(os.path.isfile(respath) and args.reuse_entity_file):
-                            alldata = args.test_dataset.data
-                            print("test size: ", len(alldata))
-                            allresofvalid = {}
-                            with torch.no_grad():
-                                for step in range(len(alldata)):
-                                    onedata = alldata[step]
-                                    inputdata = onedata[0]
-                                    tempdata = re.sub(' +', ' ', inputdata)
-                                    inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                    input_ids = inputres["input_ids"].to(args.device)
-                                    attention_mask = inputres["attention_mask"].to(args.device)
-                                    input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                    tagpreds = entmodel._generative_step_for_tagger(input)
-                                    allentitylist = tagpreds[0].split(',')
-                                    if allentitylist == []:
-                                        allentitylist = ["none"]
-                                    input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                    allresofvalid[tempdata] = input_guidance
-                            logger.info(len(allresofvalid))
-                            with open(respath, "wb") as f:
-                                pickle.dump(allresofvalid, f)
-                                logger.info("saved the T5 test entities to: {}".format(respath))
-                            torch.cuda.empty_cache()
-                            del entmodel, enttokenizer
-                            gc.collect()
                         args.test_dataset.set_allent_for_valid(respath)
+                    else:
+                        valid_dataset.set_allent_for_valid(respath)
+                    print('Set valid ents for path: ', respath)
+
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:
                 allents = train_dataset.allent.copy()

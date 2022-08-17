@@ -26,8 +26,7 @@ def get_data(few_shot_seeds, save_path, args):
     usetrain = True
     usevalid = True
     spacy_nlp = spacy.load("en_core_web_sm")
-    alltrainfile = []
-    allvalidfile = []
+    alltrainfile, allvalidfile = [], []
     # few_shot_seeds = [0]
     i = 0
     for seed in few_shot_seeds:
@@ -39,14 +38,13 @@ def get_data(few_shot_seeds, save_path, args):
         handler_train = open(train_file_name, "r")
         handler_valid = open(valid_file_name, "r")
 
-        alldoc = []
-        allsum = []
+        alldoc, allsum = [], []
         if usetrain:
             while True:
                 oneline = handler_train.readline().strip()
                 if not oneline:
                     break
-                onedata = oneline.split('\t')
+                onedata = oneline.split("\t")
                 if len(onedata) != 2:
                     print("train doc sum split error")
                     continue
@@ -59,7 +57,7 @@ def get_data(few_shot_seeds, save_path, args):
                 oneline = handler_valid.readline().strip()
                 if not oneline:
                     break
-                onedata = oneline.split('\t')
+                onedata = oneline.split("\t")
                 if len(onedata) != 2:
                     print("valid doc sum split error")
                     continue
@@ -70,7 +68,6 @@ def get_data(few_shot_seeds, save_path, args):
 
         handler_train.close()
         handler_valid.close()
-        # doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
         doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
         if not os.path.exists(doc_sum_path):
             os.makedirs(doc_sum_path, exist_ok=True)
@@ -183,7 +180,6 @@ def getfilewithlabel(file, filewithfakelabel):
 
 
 def get_doc_label(sum_y_pred, docfile):
-
     alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred)
 
     allentityfortrain = []
