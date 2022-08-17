@@ -135,6 +135,7 @@ def finetune_model_tagger(trainfile, validfile, args):
                                           valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
     print(len(train_dataloader), len(valid_dataloader))
+    
     #####the path of tuned model
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]

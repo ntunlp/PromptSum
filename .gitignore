@@ -22,3 +22,4 @@ Summarization/saved_models
 Summarization/models_summarization/__pycache__/
 Summarization/*controlling_xsum*
 Summarization/*prompt_baseline*
+Summarization/frost_baseline/*

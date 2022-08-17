@@ -39,6 +39,7 @@ def get_data(few_shot_seeds, save_path, args):
         handler_valid = open(valid_file_name, "r")
 
         alldoc, allsum = [], []
+        count = 0
         if usetrain:
             while True:
                 oneline = handler_train.readline().strip()
@@ -52,7 +53,11 @@ def get_data(few_shot_seeds, save_path, args):
                 alldoc.append(onedoc)
                 onesum = re.sub(' +', ' ', onedata[1].replace("\n"," "))
                 allsum.append(onesum)
+                count += 1
+                if count % 10000 == 0:
+                    print("did {}".format(count))
         if usevalid:
+            count = 0
             while True:
                 oneline = handler_valid.readline().strip()
                 if not oneline:
@@ -65,6 +70,9 @@ def get_data(few_shot_seeds, save_path, args):
                 alldoc.append(onedoc)
                 onesum = re.sub(' +', ' ', onedata[1].replace("\n", " "))
                 allsum.append(onesum)
+                count += 1
+                if count % 1000 == 0:
+                    print("did {}".format(count))
 
         handler_train.close()
         handler_valid.close()
@@ -97,10 +105,10 @@ def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
     sum_y_pred = get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args)
 
     #### get label for document
-    alldocandlabel, allentityfortrain, allentityforvalid = get_doc_label(sum_y_pred, docpath)
+    alldocandlabel, allentityfortrain, allentityforvalid = get_doc_label(sum_y_pred, docpath, args)
 
     #### split to train and valid
-    docwithlabeltrain, docwithlabelvalid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid)
+    docwithlabeltrain, docwithlabelvalid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, args)
 
     return docwithlabeltrain, docwithlabelvalid
 
@@ -179,8 +187,8 @@ def getfilewithlabel(file, filewithfakelabel):
     return alldata
 
 
-def get_doc_label(sum_y_pred, docfile):
-    alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred)
+def get_doc_label(sum_y_pred, docfile, args):
+    alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred, args)
 
     allentityfortrain = []
     for i in range(len(resfortrain)):
@@ -206,7 +214,7 @@ def get_doc_label(sum_y_pred, docfile):
     return alldocandlabel, allentityfortrain, allentityforvalid
 
 
-def getdocandent(docfile, sum_y_pred):
+def getdocandent(docfile, sum_y_pred, args):
     f = open(docfile,'r')
     alldoc = []
     while True:
@@ -217,7 +225,10 @@ def getdocandent(docfile, sum_y_pred):
     f.close()
     resfortrain = []
     resforvalid = []
-    trainsize = len(alldoc) // 2
+    if args.few_shot == "full":
+        trainsize = len(alldoc) - args.max_val_size
+    else:
+        trainsize = len(alldoc) // 2
     print("alldoc", len(alldoc))
     print("train size", trainsize)
     #trainsize = 100
@@ -232,25 +243,27 @@ def getdocandent(docfile, sum_y_pred):
     return allres, resfortrain, resforvalid
 
 
-def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid):
+def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, args):
     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
     docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
 
     fout = open(docwithlabel_train, 'w')
     fout_1 = open(docwithlabel_vaid, 'w')
 
-    halfsize = len(alldocandlabel) // 2
-    #halfsize = 100
+    if args.few_shot == "full":
+        trainsize = len(alldocandlabel) - args.max_val_size
+    else:
+        trainsize = len(alldocandlabel) // 2
     for aa in range(len(alldocandlabel)):
         onedata = alldocandlabel[aa]
-        if aa < halfsize:
+        if aa < trainsize:
             fout.write(onedata[0] + "\t" + onedata[1] + "\n")
         else:
             fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
     fout.close()
     fout_1.close()
 
-    ####save train ent
+    ### save train ent
     train_ent = doc_sum_path + "trainent.txt"
     fe = open(train_ent, 'w')
     for i in range(len(allentityfortrain)):
@@ -260,6 +273,7 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
             fe.write(allentityfortrain[i][0] + "\tnone\n")
     fe.close()
 
+    ### save valid ent
     valid_ent = doc_sum_path + "valident.txt"
     fe = open(valid_ent, 'w')
     for i in range(len(allentityforvalid)):

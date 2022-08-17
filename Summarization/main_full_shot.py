@@ -199,7 +199,7 @@ def set_args():
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                         default=50, help="how many steps to log")
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
-                        default=1, help="how many steps to log")
+                        default=100, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
                         default=15000, help="how many steps to eval")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
