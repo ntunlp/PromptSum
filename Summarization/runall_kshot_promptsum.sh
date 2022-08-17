@@ -1,7 +1,7 @@
 ### dataset
 dataset="xsum"
-k_shot="10"
-device="3"
+k_shot="100"
+device="4"
 
 ### backbone model
 ### T5-large backbone
@@ -22,13 +22,13 @@ device="3"
 
 
 ### PEGASUS backbone
-pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+pretrain_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
+pretrain_prompt_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 ### k-shot
 echo "start k-shot prompt-tune_entity"
-CUDA_VISIBLE_DEVICES=$device python main.py --full_testset --reuse_entity_file --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /data/ruochen/hf_models/pegasus-large/
+# CUDA_VISIBLE_DEVICES=$device python main.py --full_testset --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/ruochen/hf_models/pegasus-large/
 echo "end k-shot prompt-tune_entity"
 
 echo "start k-shot prompt-tune_summary"
-CUDA_VISIBLE_DEVICES=$device python main.py --full_testset --reuse_entity_file --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /data/ruochen/hf_models/pegasus-large/
+CUDA_VISIBLE_DEVICES=$device python main.py --full_testset --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path /home/ruochen/hf_models/pegasus-large/
 echo "end k-shot prompt-tune_summary"

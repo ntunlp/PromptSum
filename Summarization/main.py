@@ -46,8 +46,8 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/data/mathieu/"
-    data_root = "/data/ruochen/"
+    root = "/home/ruochen/"
+    data_root = "/home/ruochen/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -128,7 +128,7 @@ def set_args():
     parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
                         default=20, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
-                        default=40, help="test size per gpu")
+                        default=20, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
                         default=1, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
