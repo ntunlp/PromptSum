@@ -73,9 +73,9 @@ def set_args():
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=1, help="number of seeds to sample for training AND validation")
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
-                        default=20, help="max sentence length")
+                        default=20, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=5, help="max sentence length")
+                        default=5, help="max validation set size")
 
     # model
     ##### input
@@ -83,17 +83,19 @@ def set_args():
                         default=512, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
+                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                        default="google/pegasus-large", choices = ["t5-base, google/t5-v1_1-base, facebook/bart-base, "
+                        "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                        default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
+                        default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/t5-v1-large/",
+                        default=root + "hf_models/pegasus-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
@@ -127,7 +129,7 @@ def set_args():
     parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
-                        default=8, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
                         default=4, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
@@ -155,11 +157,11 @@ def set_args():
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
-                        default=8, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
                         default=2, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
-                        default=60, help="max epoch number")
+                        default=5, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
                         default=4, help="dataloader num_workers")
     parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
@@ -178,11 +180,11 @@ def set_args():
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=8, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
                         default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
-                        default=60, help="max epoch number")
+                        default=5, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                         default=0, help="dataloader num_workers")
     parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
@@ -203,8 +205,10 @@ def set_args():
                         default=True)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
                         default=30000, help="how many steps to start eval")
-    parser.add_argument("--big_testset", dest="big_testset", type=bool,
-                        default=False, help="whether or not to evaluate using the 2k testset")                  
+    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
+    parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
+    parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
+                        default=True)
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -216,7 +220,7 @@ def set_args():
 
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
-                        default=False, help="whether to save the model or not")
+                        default=True, help="whether to save the model or not")
     parser.add_argument("--save_model_path", dest="save_model_path", type=str,
                         default="", help="the path where to save the model")
 
@@ -239,12 +243,14 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/013_ent_135k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
+    parser.add_argument("--reuse_entity_file", action='store_true',
+                        default=False, help="whether to re-use entities already generated")
     ######### summary prompt-tuning
     parser.add_argument("--finetune_summary", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -258,7 +264,6 @@ def set_args():
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
     args = parser.parse_args()
-    
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -324,15 +329,22 @@ def main(args):
             f.write(str(time.ctime()) + "\n")
             f.write(str(args) + "\n")
             f.write("----------------------------------------------------------------------------\n")
-
-    allgentasktokens = ["summerizationcnndm"]
-    thistaskname = "cnn daily mail"
-    thistaskfold = "cnndm"
-    args.taskfold = thistaskfold
+    if args.dataset == 'cnndm':
+        allgentasktokens = ["summerizationcnndm"]
+        thistaskname = "cnn daily mail"
+        thistaskfold = "cnndm"
+        args.taskfold = thistaskfold
+    else:
+        allgentasktokens = ["summerization"+args.dataset]
+        thistaskname = args.dataset
+        thistaskfold = args.dataset
+        args.taskfold = thistaskfold
 
     # load tokenizer 
     if 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    elif 'Pegasus' in args.model:
+        tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     else:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
@@ -386,12 +398,6 @@ def main(args):
 
     print(args.pretrain_ckpt)
     print(args.pretrain_prompt_ckpt)
-    ########## pre-training?
-    if args.pretrain:
-        logger.info("\n"+ "*"*50)
-        logger.info("1/ Pre-training...")
-        pretrain_model(dataset_args, args)
-        return
 
     ########## 1st prompt tuning stage (for entity chain)?
     if args.finetune_entity:
@@ -432,20 +438,22 @@ def main(args):
         # base model
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        elif 'Pegasus' in args.model:
+            basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         else:
             basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-        if args.model == 'T5Finetune':
+        if args.model in ['T5Finetune', 'PegasusFinetune']:
             logger.info('\nFinetuning')
             model = ModelFinetune(args, basemodel, tokenizer, args.model)
-        elif args.model == 'T5SoftPrompt':
+        elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
             logger.info('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif args.model == 'T5MixPrompt':
+        elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
             logger.info('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
@@ -457,7 +465,7 @@ def main(args):
         logger.info("The model has {} trainable parameters".format(n_params))
 
         #####load pre-trained model
-        if args.use_pretrain_ckpt and args.model != "T5Finetune":
+        if args.use_pretrain_ckpt and not(args.model != ["T5Finetune", "PegasusFinetune"]):
             logger.info("load pre-trained model for summarization")
 
             # model weights
@@ -478,12 +486,17 @@ def main(args):
 
         model.eval()
         ####add t5 tagger
-        if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+        if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
             if args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
-                entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+                if args.model == "T5MixPrompt":
+                    entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                    enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                    entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+                elif args.model == "PegasusMixPrompt":
+                    entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                    enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                    entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                 logger.info("Loading the pre-trained NER model!")
 
                 # model weights
@@ -508,35 +521,42 @@ def main(args):
                 logger.info("move to device!")
                 model.eval()
 
-                alldata = valid_dataset.data
-                #logger.info("valid size: ", len(alldata))
-                print("valid size: ", len(alldata))
-                allresofvalid = {}
-                with torch.no_grad():
-                    for step in range(len(alldata)):
-                        onedata = alldata[step]
-                        inputdata = onedata[0]
-                        tempdata = re.sub(' +', ' ', inputdata)
-                        inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                        input_ids = inputres["input_ids"].to(args.device)
-                        attention_mask = inputres["attention_mask"].to(args.device)
-                        input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                        tagpreds = entmodel._generative_step_for_tagger(input)
-                        allentitylist = tagpreds[0].split(',')
-                        if allentitylist == []:
-                            allentitylist = ["none"]
-                        input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                        allresofvalid[tempdata] = input_guidance
-                logger.info(len(allresofvalid))
-                #respath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/T5valident.pkl'
                 respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
-                with open(respath, "wb") as f:
-                    pickle.dump(allresofvalid, f)
-                    logger.info("saved the T5 valid entities")
-                torch.cuda.empty_cache()
-                del entmodel, enttokenizer
-                gc.collect()
-                valid_dataset.set_allent_for_valid()
+                if args.big_testset:
+                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
+                elif args.full_testset:
+                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
+                if not (os.path.isfile(respath) and args.reuse_entity_file):
+                    if args.big_testset or args.full_testset:
+                        alldata = args.test_dataset.data
+                        print("test size: ", len(alldata))
+                    else:
+                        alldata = valid_dataset.data
+                        print("valid size: ", len(alldata))
+                        allresofvalid = {}
+                        with torch.no_grad():
+                            for step in range(len(alldata)):
+                                onedata = alldata[step]
+                                inputdata = onedata[0]
+                                tempdata = re.sub(' +', ' ', inputdata)
+                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                                input_ids = inputres["input_ids"].to(args.device)
+                                attention_mask = inputres["attention_mask"].to(args.device)
+                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                                tagpreds = entmodel._generative_step_for_tagger(input)
+                                allentitylist = tagpreds[0].split(',')
+                                if allentitylist == []:
+                                    allentitylist = ["none"]
+                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                                allresofvalid[tempdata] = input_guidance
+                            logger.info(len(allresofvalid))
+                            with open(respath, "wb") as f:
+                                pickle.dump(allresofvalid, f)
+                                logger.info("saved the T5 valid entities")
+                            torch.cuda.empty_cache()
+                            del entmodel, enttokenizer
+                            gc.collect()
+                            valid_dataset.set_allent_for_valid()
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)
