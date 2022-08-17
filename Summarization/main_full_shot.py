@@ -26,6 +26,7 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
+from dataset import * 
 from dataset_finetune_entity import *
 from dataset_finetune_summary import *
 from engine_pretrain import *
@@ -73,9 +74,9 @@ def set_args():
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=1, help="number of seeds to sample for training AND validation")
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
-                        default=20, help="max training set size")
+                        default=1000000, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=5, help="max validation set size")
+                        default=1000, help="max validation set size")
 
     # model
     ##### input
@@ -161,7 +162,7 @@ def set_args():
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
                         default=2, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
-                        default=5, help="max epoch number")
+                        default=3, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
                         default=4, help="dataloader num_workers")
     parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
@@ -221,7 +222,7 @@ def set_args():
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
                         default=True, help="whether to save the model or not")
-    parser.add_argument("--save_model_path", dest="save_model_path", type=str,
+    parser.add_argument("--model_save_path", dest="save_model_path", type=str,
                         default="", help="the path where to save the model")
 
     # Overall pipeline
@@ -288,6 +289,8 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
+
+    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
 
     return args
 
@@ -426,7 +429,7 @@ def main(args):
 
         # datasets
         train_dataset = T5SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                               counterfactual_removal=args.counterfactual_removal, save_path = args.save_dir)
+                                               save_path = args.save_dir)
         valid_dataset = T5SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed, 
                                                 save_path = args.save_dir)
 
@@ -434,6 +437,10 @@ def main(args):
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
+
+        args.model_save_path = args.model_save_folder + f'seed_{args.seed}/'
+        logger.info('args.model_save_path {}'.format(args.model_save_path))
+        logger.info('args.save_model {}'.format(args.save_model))
 
         # base model
         if 'Bart' in args.model:
@@ -500,7 +507,7 @@ def main(args):
                 logger.info("Loading the pre-trained NER model!")
 
                 # model weights
-                ckpt = torch.load(args.pretrain_ckpt)
+                ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                 dic = {}
                 for x in ckpt.keys():
                     if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -556,7 +563,7 @@ def main(args):
                             torch.cuda.empty_cache()
                             del entmodel, enttokenizer
                             gc.collect()
-                            valid_dataset.set_allent_for_valid()
+                            valid_dataset.set_allent_for_valid(respath)
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)
