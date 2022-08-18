@@ -281,7 +281,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if args.model == 'T5Finetune':
+            if args.model in ['T5Finetune', "PegasusFinetune"]:
                 path = args.model_save_path + 'full_weights'
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
