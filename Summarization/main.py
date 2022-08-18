@@ -85,19 +85,19 @@ def set_args():
                         default=512, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base", 
+                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
-                        default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
+                        default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/t5-v1-large/",
+                        default=root + "hf_models/pegasus-large/",
                         help="The path of huggingface cache: /data/mathieu/hf_models/t5-v1-large/, /data/ruochen/hf_models/bart-base/, /data/ruochen/hf_models/pegasus-large/")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
@@ -127,13 +127,13 @@ def set_args():
     parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
-                        default=10, help="batch size per gpu")
+                        default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
-                        default=20, help="valid size per gpu")
+                        default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_pretrain", dest="test_size_per_gpu_pretrain", type=int,
-                        default=20, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_pretrain", dest="gradient_accumulation_steps_pretrain", type=int,
-                        default=1, help="gradient accumulation steps")
+                        default=4, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_pretrain", dest="max_epoch_pretrain", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers_pretrain", dest="num_workers_pretrain", type=int,
@@ -157,11 +157,11 @@ def set_args():
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
                         default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
-                        default=10, help="valid size per gpu")
+                        default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
-                        default=10, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
-                        default=5, help="gradient accumulation steps")
+                        default=2, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
@@ -178,13 +178,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=2, help="batch size per gpu")
+                        default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=10, help="valid size per gpu")
+                        default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=10, help="test size per gpu")
+                        default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=5, help="gradient accumulation steps")
+                        default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -242,9 +242,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -353,7 +353,7 @@ def main(args):
     # load tokenizer 
     if 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    if 'Pegasus' in args.model:
+    elif 'Pegasus' in args.model:
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     else:
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
@@ -612,6 +612,7 @@ def main(args):
                 train_dataset.data = [(newinputdata[i], newtargetdata[i]) for i in range(len(newinputdata))]
                 train_dataset.num_entries = len(train_dataset.data)
                 logger.info(f'After counterfactual augmentation: {train_dataset.num_entries} entries')
+
             ########## 2nd prompt tuning stage: summarization
             # if not os.path.isfile(args.model_save_path + 'bestckpt'):
             model.to(args.device)
