@@ -93,7 +93,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         # save the model on the best validation set
         args.save_model = True
     for i in range(args.max_epoch_summary):
-        thisevalstep = args.eval_step
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
@@ -140,14 +139,15 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / max(1,step_tot), np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
-                    print("not eval!!!")
+                if args.local_rank in [0, -1] and global_step % args.eval_step == 0:
+                    print("Evaluating (within epoch)...")
+                    dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
                     model.train()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            # if i >= 8:
             # do after every epoch
+            print("Evaluating (after epoch)...")
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
     # after everything, do it with test:

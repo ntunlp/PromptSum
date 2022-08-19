@@ -199,13 +199,11 @@ def set_args():
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                         default=50, help="how many steps to log")
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
-                        default=100, help="how many steps to log")
+                        default=200, help="how many steps to log")
     parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=15000, help="how many steps to eval")
+                        default=10000, help="how many steps to eval")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
-    parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
-                        default=30000, help="how many steps to start eval")
     parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
@@ -472,11 +470,11 @@ def main(args):
         logger.info("The model has {} trainable parameters".format(n_params))
 
         #####load pre-trained model
-        if args.use_pretrain_ckpt and not(args.model != ["T5Finetune", "PegasusFinetune"]):
+        if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
             logger.info("load pre-trained model for summarization")
 
             # model weights
-            ckptsum = torch.load(args.pretrain_ckpt)
+            ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
             dicsum = {}
             for x in ckptsum.keys():
 
@@ -540,6 +538,7 @@ def main(args):
                     else:
                         alldata = valid_dataset.data
                         print("valid size: ", len(alldata))
+                        print("HHEEEEEERRRRRREEEEEE")
                         allresofvalid = {}
                         with torch.no_grad():
                             for step in range(len(alldata)):
@@ -555,6 +554,7 @@ def main(args):
                                 if allentitylist == []:
                                     allentitylist = ["none"]
                                 input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                                print(step, input_guidance)
                                 allresofvalid[tempdata] = input_guidance
                             logger.info(len(allresofvalid))
                             with open(respath, "wb") as f:
