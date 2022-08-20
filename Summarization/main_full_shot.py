@@ -538,32 +538,36 @@ def main(args):
                     else:
                         alldata = valid_dataset.data
                         print("valid size: ", len(alldata))
-                        print("HHEEEEEERRRRRREEEEEE")
                         allresofvalid = {}
-                        with torch.no_grad():
-                            for step in range(len(alldata)):
-                                onedata = alldata[step]
-                                inputdata = onedata[0]
-                                tempdata = re.sub(' +', ' ', inputdata)
-                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                input_ids = inputres["input_ids"].to(args.device)
-                                attention_mask = inputres["attention_mask"].to(args.device)
-                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                tagpreds = entmodel._generative_step_for_tagger(input)
-                                allentitylist = tagpreds[0].split(',')
-                                if allentitylist == []:
-                                    allentitylist = ["none"]
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                print(step, input_guidance)
-                                allresofvalid[tempdata] = input_guidance
-                            logger.info(len(allresofvalid))
-                            with open(respath, "wb") as f:
-                                pickle.dump(allresofvalid, f)
-                                logger.info("saved the T5 valid entities")
-                            torch.cuda.empty_cache()
-                            del entmodel, enttokenizer
-                            gc.collect()
-                            valid_dataset.set_allent_for_valid(respath)
+                    with torch.no_grad():
+                        for step in range(len(alldata)):
+                            onedata = alldata[step]
+                            inputdata = onedata[0]
+                            tempdata = re.sub(' +', ' ', inputdata)
+                            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+                            input_ids = inputres["input_ids"].to(args.device)
+                            attention_mask = inputres["attention_mask"].to(args.device)
+                            input = {"input_ids": input_ids, "attention_mask": attention_mask}
+                            tagpreds = entmodel._generative_step_for_tagger(input)
+                            allentitylist = tagpreds[0].split(',')
+                            if allentitylist == []:
+                                allentitylist = ["none"]
+                            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+                            print(step, input_guidance)
+                            allresofvalid[tempdata] = input_guidance
+                    logger.info(len(allresofvalid))
+                    with open(respath, "wb") as f:
+                        pickle.dump(allresofvalid, f)
+                        logger.info("saved the T5 valid entities")
+                    torch.cuda.empty_cache()
+                    del entmodel, enttokenizer
+                    gc.collect()
+
+                if args.big_testset or args.full_testset:
+                    args.test_dataset.set_allent_for_valid(respath)
+                else:
+                    valid_dataset.set_allent_for_valid(respath)
+                print('Set valid ents for path: ', respath)
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)

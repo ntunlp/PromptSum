@@ -98,6 +98,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         result_dict['epoch'] = i
         allloss = []
         ents = []
+
+        print("Evaluating (Epoch 0)...")
+        dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
+
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
