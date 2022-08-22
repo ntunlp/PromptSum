@@ -47,10 +47,11 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    # root = "/data/mathieu/"
+    root = "/data/mathieu/"
     # data_root = "/data/mathieu/"
-    root = "/home/ruochen/"
-    data_root = "/home/ruochen/"
+    # root = "/home/ruochen/"
+    # data_root = "/home/ruochen/"
+    data_root = "/data/ruochen/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -539,7 +540,7 @@ def main(args):
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                     elif args.full_testset:
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                    if not(os.path.isfile(respath) and args.reuse_entity_file):
+                    if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
                             print("test size: ", len(alldata))
