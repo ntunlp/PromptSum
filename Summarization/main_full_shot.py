@@ -208,6 +208,8 @@ def set_args():
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
+    parser.add_argument("--eval_epoch_0", action="store_true", 
+                        default=False, help="whether to evaluate before trainin")
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,

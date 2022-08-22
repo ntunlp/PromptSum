@@ -92,15 +92,16 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     if args.big_testset:
         # save the model on the best validation set
         args.save_model = True
+    
+    if args.eval_epoch_0:
+        print("Evaluating (Epoch 0)...")
+        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
+
     for i in range(args.max_epoch_summary):
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
-        allloss = []
-        ents = []
-
-        print("Evaluating (Epoch 0)...")
-        dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
+        allloss, ents = [], []
 
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),

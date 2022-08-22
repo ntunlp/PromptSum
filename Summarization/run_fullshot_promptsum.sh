@@ -1,6 +1,6 @@
 ### dataset
-dataset="xsum"
-device="3"
+dataset="ccdv/cnn_dailymail" # in ["xsum", "ccdv/cnn_dailymail"]
+device="1"
 
 ### backbone model
 ### T5-large backbone

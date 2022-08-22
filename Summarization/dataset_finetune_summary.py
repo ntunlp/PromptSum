@@ -212,7 +212,8 @@ class T5SummarizationDataset(Dataset):
         elif self.args.guidance_type == "sents":
             salient_sents = self.find_salient_sents(inputdata, 1)
             input_guidance = salient_sents
-        #print(inputdata, "*"*10, targetdata, "A"*10, input_guidance)
+        if len(targetdata.split()) == 0:
+            targetdata = "None"
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,
                                                     return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen,
