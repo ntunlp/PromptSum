@@ -30,10 +30,8 @@ logger = logging.getLogger('root')
 
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
-    step_tot = (len(
-        train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
-    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
-        train_dataset)
+    step_tot = (len(train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
+    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(tokenizer, args.num_workers_summary, train_dataset, args.batch_size_per_gpu_summary, args.max_length,
@@ -53,17 +51,18 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "scale_parameter": False, 
         "relative_step": False
     }
-    optimizer = Adafactor
-    if args.n_gpu > 1: # distributed training
-        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
-                        **base_optimizer_arguments)
-        # distributed training
-        model = ShardedDDP(model, optimizer)
-    else:
-        optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-    model.train()
-    #scaler = ShardedGradScaler()
-    scheduler, scaler = None, None
+
+    optimizer, scheduler, scaler = None, None, None
+    if args.optimizer_summary == "adafactor":
+        optimizer = Adafactor
+        if args.n_gpu > 1: # distributed training
+            optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
+                            **base_optimizer_arguments)
+            # distributed training
+            model = ShardedDDP(model, optimizer)
+        else:
+            optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+        model.train()
 
     logger.info("Begin train...")
     logger.info("We will train model in %d steps" % step_tot)
@@ -127,12 +126,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     scaler.step(optimizer)
                     scaler.update()
                 else:
-                    if args.model == 'BartMixPromptUnfreeze':
-                        for name, param in model.named_parameters():
-                            if "shared" in name:
-                                for k in range(param.grad.shape[0]):
-                                    if not(k in ents):
-                                        param.grad[k,:] = 0
                     optimizer.step()
                     ents = []
                 if scheduler != None:
@@ -144,7 +137,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / max(1,step_tot), np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % args.eval_step == 0:
+                if args.local_rank in [0, -1] and global_step % args.eval_step_summary == 0:
                     print("Evaluating (within epoch)...")
                     dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
                     model.train()
@@ -184,9 +177,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "f1": 0.0
         }
         result_dict['epoch'] = args.max_epoch_summary
-        # if args.testing:
-        #     dooneeval(model, valid_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
-        # else:
         dooneeval(model, test_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
     torch.cuda.empty_cache()
     del model, optimizer, scheduler, scaler, train_dataloader, valid_dataloader,

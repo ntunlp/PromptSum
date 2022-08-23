@@ -125,8 +125,12 @@ def set_args():
     parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
                         default = 1e-8, help="adam epsilon")
     ##### pretraining
+    parser.add_argument("--optimizer_pretrain", dest="optimizer_pretrain", type=str,
+                        default="adafactor", help='optimizer for the pre-training')
     parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
                         default=5e-1, help='learning rate')
+    parser.add_argument("--lr_pretrain_full_weights", dest="lr_pretrain_full_weights", type=float,
+                        default=5e-5, help='learning rate if the pre-training changes all weights')
     parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
                         default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_pretrain", dest="valid_size_per_gpu_pretrain", type=int,
@@ -151,8 +155,11 @@ def set_args():
                         default=False, help="whether to use huggingface dataset for pretraining")
     parser.add_argument("--pretrain_with_ent_chain", dest="pretrain_with_ent_chain", action='store_true',
                         default=False, help="whether to pretrain with ent chain as input")
-                        
+    parser.add_argument("--eval_step_pretrain", dest="eval_step_pretrain", type=int,
+                        default=15000, help="how many steps to eval")
     ##### entity prompt tuning
+    parser.add_argument("--optimizer_entity", dest="optimizer_entity", type=str,
+                        default="adafactor", help='optimizer for the entity tuning')
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
@@ -173,7 +180,11 @@ def set_args():
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
                         default=1.0, help="max grad norm")
+    parser.add_argument("--eval_step_entity", dest="eval_step_entity", type=int,
+                        default=15000, help="how many steps to eval")
     ##### summary prompt tuning
+    parser.add_argument("--optimizer_summary", dest="optimizer_summary", type=str,
+                        default="adafactor", help='optimizer for the summary fine-tuning')
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
@@ -196,14 +207,14 @@ def set_args():
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
                         default=1.0, help="max grad norm")
+    parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
+                        default=15000, help="how many steps to eval")
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                         default=50, help="how many steps to log")
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
                         default=1, help="how many steps to log")
-    parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=15000, help="how many steps to eval")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
@@ -212,6 +223,7 @@ def set_args():
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")                 
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
+
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")

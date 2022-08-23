@@ -168,8 +168,9 @@ def finetune_model_tagger(trainfile, validfile, args):
         "scale_parameter": False,
         "relative_step": False
     }
-    optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-    # distributed training
+    if args.optimizer_entity == "adafactor":
+        optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+
     model.train()
 
     startepoch = 0
@@ -194,7 +195,6 @@ def finetune_model_tagger(trainfile, validfile, args):
 
     global_step = 0
     for i in range(startepoch, startepoch + num_train_epochs):
-        thisevalstep = 1000000
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
@@ -217,7 +217,7 @@ def finetune_model_tagger(trainfile, validfile, args):
                 if args.local_rank in [0, -1] and global_step % log_step == 0:
                     logger.info("step: %d,  loss: %.6f" % (global_step, np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
+                if args.local_rank in [0, -1] and global_step % args.eval_step_entity == 0:
                     print("only eval after every epoch")
                     model.train()
 
@@ -242,9 +242,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
     else:
         model = modeltoeval
     model.eval()
-    allentnumintar = 0
-    allentnuminpre = 0
-    hasentnum = 0
+    allentnumintar, allentnuminpre, hasentnum = 0, 0, 0
     alltar, allpred = [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
@@ -268,7 +266,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
                         hasentnum += 1
                 alltar.append(thistar)
                 allpred.append(thispred)
-    if allentnuminpre!=0 and allentnumintar!=0:
+    if allentnuminpre != 0 and allentnumintar != 0:
         p = float(hasentnum) / float(allentnuminpre)
         r = float(hasentnum) / float(allentnumintar)
         if p + r != 0.0:
@@ -358,10 +356,10 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         else:
             model = model
 
-        max_seq_length = 512
-        num_workers = 4
-        train_batch_size = 4
-        eval_batch_size = 4
+        max_seq_length = args.max_length
+        num_workers = args.num_workers_entity
+        train_batch_size = args.valid_size_per_gpu_entity
+        eval_batch_size = args.valid_size_per_gpu_entity
 
         # prepare training data
         trainfile = alltrainfile[i]

@@ -149,7 +149,8 @@ def set_args():
                         default=False, help="whether to use huggingface dataset for pretraining")
     parser.add_argument("--pretrain_with_ent_chain", dest="pretrain_with_ent_chain", action='store_true',
                         default=False, help="whether to pretrain with ent chain as input")
-                        
+    parser.add_argument("--eval_step_pretrain", dest="eval_step_pretrain", type=int,
+                        default=10000, help="how many steps to eval")
     ##### entity prompt tuning
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
@@ -171,6 +172,8 @@ def set_args():
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
                         default=1.0, help="max grad norm")
+    parser.add_argument("--eval_step_entity", dest="eval_step_entity", type=int,
+                        default=15000, help="how many steps to eval")
     ##### summary prompt tuning
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
@@ -194,14 +197,14 @@ def set_args():
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
                         default=1.0, help="max grad norm")
+    parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
+                        default=10000, help="how many steps to eval")
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                         default=50, help="how many steps to log")
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
                         default=200, help="how many steps to log")
-    parser.add_argument("--eval_step", dest="eval_step", type=int,
-                        default=10000, help="how many steps to eval")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
     parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
@@ -226,19 +229,6 @@ def set_args():
                         default="", help="the path where to save the model")
 
     # Overall pipeline
-    ##### pre-training
-    parser.add_argument("--pretrain", action='store_true',
-                        default=False, help="whether pretrain a T5 tagger")
-    parser.add_argument("--build_salient_entities", action='store_true',
-                        default=False, help="whether to build the pseudo-labels for pre-training")
-    parser.add_argument("--pretraining_train_size", type=int,
-                        default=204045, help="pre-training val size")
-    parser.add_argument("--pretraining_val_size", type=int,
-                        default=1000, help="pre-training train size")
-    parser.add_argument("--pretrain_all_weights", action='store_true',
-                        default=True, help="whether pretrain a T5 tagger")
-    parser.add_argument("--debug_pretrain", action='store_true',
-                        default=False, help="whether to just use 100-10 data points")
     ##### fine-tuning
     ######### pre-training
     parser.add_argument("--use_pretrain_ckpt", action='store_false',

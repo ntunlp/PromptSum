@@ -47,14 +47,13 @@ def pretrain_model(dataset_args, args):
     learning_rate = args.lr_pretrain
     if args.pretrain_all_weights:
         print("pretrain_all_weights")
-        learning_rate = 5e-5
+        learning_rate = args.lr_pretrain_full_weights
     weight_decay = args.weight_decay_pretrain
     max_seq_length = args.max_length
     num_workers = args.num_workers_pretrain
     max_grad_norm = args.max_grad_norm_pretrain
     log_step = args.log_step_pretrain
-    #eval_step = args.eval_step
-    eval_step = 10000
+    eval_step = args.eval_step_pretrain
     model_name = args.model_name
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
@@ -170,14 +169,12 @@ def pretrain_model(dataset_args, args):
         "scale_parameter": False,
         "relative_step": False
     }
-    optimizer = Adafactor
-    optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer, **base_optimizer_arguments)
-    model = ShardedDDP(model, optimizer)
-    #optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
 
-    #scaler = ShardedGradScaler()
-    scaler = None
-    scheduler = None
+    optimizer, scaler, scheduler = None, None, None
+    if args.optimizer_pretrain == "adafactor":
+        optimizer = Adafactor
+        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer, **base_optimizer_arguments)
+        model = ShardedDDP(model, optimizer)
 
     Best_F1 = -1
     Best_val_meanR = -100.0
