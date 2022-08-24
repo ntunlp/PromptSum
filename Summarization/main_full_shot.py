@@ -426,7 +426,19 @@ def main(args):
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-      
+            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
+        print('args.full_testset: ', args.full_testset)
+        if args.full_testset:
+            args.test_file = args.data_dir + args.dataset + '/full_test.txt'
+            print(args.test_file)
+            # check if we have already generated it
+            if not os.path.isfile(args.test_file):
+                print('creating')
+                subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
+            # load
+            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
+
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
 
