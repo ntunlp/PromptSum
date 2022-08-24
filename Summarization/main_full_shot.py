@@ -167,7 +167,7 @@ def set_args():
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
                         default=4, help="dataloader num_workers")
     parser.add_argument("--weight_decay_entity", dest="weight_decay_entity", type=float,
-                        default=1e-5, help="weight decay")
+                        default=0, help="weight decay")
     parser.add_argument("--warmup_steps_entity", dest="warmup_steps_entity", type=float,
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_entity", dest="max_grad_norm_entity", type=float,
@@ -192,7 +192,7 @@ def set_args():
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                         default=0, help="dataloader num_workers")
     parser.add_argument("--weight_decay_summary", dest="weight_decay_summary", type=float,
-                        default=1e-5, help="weight decay")
+                        default=0, help="weight decay")
     parser.add_argument("--warmup_steps_summary", dest="warmup_steps_summary", type=float,
                         default=0.01, help="warmup steps")
     parser.add_argument("--max_grad_norm_summary", dest="max_grad_norm_summary", type=float,
