@@ -27,7 +27,7 @@ class Nop(object):
         
 
 def seed_everything(args):
-    random.seed(args.seed)
+    random.seed(42)
     os.environ['PYTHONASSEED'] = str(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)

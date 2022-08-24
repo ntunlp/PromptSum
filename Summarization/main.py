@@ -54,8 +54,8 @@ def set_args():
     data_root = "/data/ruochen/"
 
     # general stuff
-    parser.add_argument("--seed", dest="seed", type=int,
-                        default=42, help="seed for network")
+    parser.add_argument("--seed", dest="seed", type=str,
+                        default="42_v1", help="seed for network")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id")
     parser.add_argument("--local_rank", dest="local_rank", type=int,
