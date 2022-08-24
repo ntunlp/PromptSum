@@ -229,6 +229,19 @@ def set_args():
                         default="", help="the path where to save the model")
 
     # Overall pipeline
+    ##### pre-training
+    parser.add_argument("--pretrain", action='store_true',
+                        default=False, help="whether pretrain a T5 tagger")
+    parser.add_argument("--build_salient_entities", action='store_true',
+                        default=False, help="whether to build the pseudo-labels for pre-training")
+    parser.add_argument("--pretraining_train_size", type=int,
+                        default=204045, help="pre-training val size")
+    parser.add_argument("--pretraining_val_size", type=int,
+                        default=1000, help="pre-training train size")
+    parser.add_argument("--pretrain_all_weights", action='store_true',
+                        default=True, help="whether pretrain a T5 tagger")
+    parser.add_argument("--debug_pretrain", action='store_true',
+                        default=False, help="whether to just use 100-10 data points")
     ##### fine-tuning
     ######### pre-training
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
