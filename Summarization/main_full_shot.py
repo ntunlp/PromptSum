@@ -436,7 +436,8 @@ def main(args):
                 print('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                                       save_path = args.save_dir)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
 
         logger.info("\n"+ "*"*50)
