@@ -123,6 +123,8 @@ def set_args():
     parser.add_argument("--adam_epsilon", dest="adam_epsilon", type=float,
                         default = 1e-8, help="adam epsilon")
     ##### pretraining
+    parser.add_argument("--optimizer_pretrain", dest="optimizer_pretrain", type=str,
+                        default="adafactor", help="optimizer for the pre-training")
     parser.add_argument("--lr_pretrain", dest="lr_pretrain", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_pretrain", dest="batch_size_per_gpu_pretrain", type=int,
@@ -152,6 +154,8 @@ def set_args():
     parser.add_argument("--eval_step_pretrain", dest="eval_step_pretrain", type=int,
                         default=10000, help="how many steps to eval")
     ##### entity prompt tuning
+    parser.add_argument("--optimizer_entity", dest="optimizer_entity", type=str,
+                        default="adafactor", help="optimizer for the entity tuning")
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
@@ -175,6 +179,8 @@ def set_args():
     parser.add_argument("--eval_step_entity", dest="eval_step_entity", type=int,
                         default=15000, help="how many steps to eval")
     ##### summary prompt tuning
+    parser.add_argument("--optimizer_summary", dest="optimizer_summary", type=str,
+                        default="adafactor", help="optimizer for the summary fine-tuning")
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
@@ -425,7 +431,8 @@ def main(args):
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                                        save_path = args.save_dir)
             logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
         print('args.full_testset: ', args.full_testset)
         if args.full_testset:
@@ -556,7 +563,7 @@ def main(args):
                     else:
                         alldata = valid_dataset.data
                         print("valid size: ", len(alldata))
-                        allresofvalid = {}
+                    allresofvalid = {}
                     with torch.no_grad():
                         for step in range(len(alldata)):
                             onedata = alldata[step]
@@ -571,7 +578,7 @@ def main(args):
                             if allentitylist == []:
                                 allentitylist = ["none"]
                             input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                            print(step, input_guidance)
+                            #print(step, input_guidance)
                             allresofvalid[tempdata] = input_guidance
                     logger.info(len(allresofvalid))
                     with open(respath, "wb") as f:

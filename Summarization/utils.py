@@ -27,8 +27,7 @@ class Nop(object):
         
 
 def seed_everything(args):
-    seed = args.seed
-    seed = 42
+    seed = int(args.seed)
     random.seed(seed)
     os.environ['PYTHONASSEED'] = str(seed)
     np.random.seed(seed)

@@ -1,6 +1,7 @@
 import os
 import pdb
 import sys
+import math
 import torch
 import torch.nn as nn
 
@@ -38,7 +39,7 @@ class ModelSoftPrompt(nn.Module):
     ):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        else:
+        elif "Pegasus" in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
 
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
@@ -49,6 +50,11 @@ class ModelSoftPrompt(nn.Module):
         else:
             allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+
+        if not(self.args.use_pretrain_ckpt):
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
 
         return self.model(
             inputs_embeds=allembedding,
@@ -76,25 +82,32 @@ class ModelSoftPrompt(nn.Module):
     def _generative_step(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        else:
+        elif "Pegasus" in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
+
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+        if not(self.args.use_pretrain_ckpt):
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
+
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
+        
         generated_ids = self.model.generate(
             inputs_embeds=allembedding,
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
-            use_cache=True,
-            num_beams=self.args.num_beams,
-            max_length=self.args.max_summary_length,
-            repetition_penalty=self.args.repetition_penalty,
-            length_penalty=self.args.length_penalty,
-            early_stopping=True
+            max_length = self.args.max_summary_length,
+            num_beams = self.args.num_beams,
+            repetition_penalty = self.args.repetition_penalty,
+            length_penalty = self.args.length_penalty,
+            use_cache = True,
+            early_stopping = True
         )
 
         preds = self.ids_to_clean_text(generated_ids)
@@ -106,10 +119,16 @@ class ModelSoftPrompt(nn.Module):
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        else:
+        elif "Pegasus" in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
+
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+        if not(self.args.use_pretrain_ckpt):
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
+
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
@@ -120,14 +139,14 @@ class ModelSoftPrompt(nn.Module):
             inputs_embeds=allembedding,
             decoder_input_ids=decoder_input_ids,
             attention_mask=all_attention_mask,
-            use_cache=True,
-            max_length=self.args.max_length,
-            repetition_penalty=2.5,
-            length_penalty=1.0,
-            early_stopping=True,
-            do_sample=True,
+            max_length = self.args.max_length,
+            repetition_penalty = self.args.repetition_penalty,
+            length_penalty = self.args.length_penalty,
+            use_cache = True,
+            early_stopping = True,
+            do_sample = True,
             top_k = 64,
-            num_return_sequences=3
+            num_return_sequences = 3
         )
 
         preds = self.ids_to_clean_text(generated_ids)

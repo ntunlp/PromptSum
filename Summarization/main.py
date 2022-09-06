@@ -51,10 +51,10 @@ def set_args():
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
     # data_root = "/home/ruochen/"
-    data_root = "/data/ruochen/"
+    data_root = "/data/mathieu/"
 
     # general stuff
-    parser.add_argument("--seed", dest=int, type=str,
+    parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id")
@@ -216,6 +216,8 @@ def set_args():
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
                         default=1, help="how many steps to log")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
+                        default=True)
+    parser.add_argument("--eval_epoch_0", dest="eval_epoch_0", type=bool,
                         default=True)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
                         default=30000, help="how many steps to start eval")
