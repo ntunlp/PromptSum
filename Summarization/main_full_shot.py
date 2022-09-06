@@ -74,9 +74,9 @@ def set_args():
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=1, help="number of seeds to sample for training AND validation")
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
-                        default=1000000, help="max training set size")
+                        default=10, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=1000, help="max validation set size")
+                        default=10, help="max validation set size")
 
     # model
     ##### input
@@ -494,7 +494,7 @@ def main(args):
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
 
-        #####load pre-trained model
+        ##### load pre-trained model
         if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
             logger.info("load pre-trained model for summarization")
 
@@ -515,7 +515,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
         model.eval()
-        ####add t5 tagger
+        #### add t5 tagger
         if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
             if args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
