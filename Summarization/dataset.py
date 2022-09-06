@@ -11,8 +11,14 @@ def subsample(dataset_args, few_shot_seeds, args):
         few_shot_seeds: list of random seeds to produce the subsamples repeatively
     '''
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    train_data = data['train']
-    valid_data = data['validation']
+    print("\nTotal size: {}".format(len(data)))
+    if args.dataset_name == "billsum":
+        x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
+        train_data = x_data['train']
+        valid_data = x_data['test']
+    else:
+        train_data = data['train']
+        valid_data = data['validation']
     len_train = len(train_data)
     len_valid = len(valid_data)
     for seed in few_shot_seeds:
@@ -40,10 +46,14 @@ def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000, valid = 
         seed: random seed to sample with
     '''
     data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    if valid:
-        valid_data = data['validation']
+    if args.dataset_name == "billsum":
+        x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
+        valid_data = x_data['test']
     else:
+        valid_data = data['validation']
+    if not(valid):
         valid_data = data['test']
+
     if args.full_testset:
         convert_data_to_txt(valid_data, file_path, args)
     else:
