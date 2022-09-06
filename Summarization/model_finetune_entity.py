@@ -8,14 +8,27 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 
 
 
-class T5forFinetuneEntity(nn.Module):
+class ModelforFinetuneEntity(nn.Module):
     def __init__(self, model, tokenizer, args):
-        super(T5forFinetuneEntity, self).__init__()
+        super(ModelforFinetuneEntity, self).__init__()
         self.args = args
         self.model = model
-        ### load ckpt
-        t5ckpt = torch.load(args.lm_adapted_path)
-        self.model.load_state_dict(t5ckpt)
+        if 't5' in args.model_name:
+            ### load ckpt
+            ckpt = torch.load(args.lm_adapted_path)
+            self.model.load_state_dict(ckpt)
+        elif 'pegasus' in args.model_name:
+            ### load ckpt
+            ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+            # many times it has module.model. as starting, which is extra
+            newdict = {}
+            for key in list(ckpt.keys()):
+                if key.startswith('module.model.'):
+                    newkey = key.replace('module.model.', '')
+                    newdict[newkey] = ckpt[key]
+                # else:
+                #     newdict[key] = t5ckpt[key] #this is "module.promptembedding", "module.promptembeddingforsum", not needed
+            self.model.load_state_dict(newdict)
         if not (args.pretrain and args.pretrain_all_weights):
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
@@ -24,14 +37,18 @@ class T5forFinetuneEntity(nn.Module):
         self.promptnumber = 0
         self.promptembedding = None
 
-    def set_prompt_embedding(self,promptnumber,promptembedding):
+    def set_prompt_embedding(self, promptnumber, promptembedding):
         self.promptnumber = promptnumber
         self.promptembedding = nn.parameter.Parameter(promptembedding)
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
     ):
-        input_embed_part = self.model.encoder.embed_tokens(input_ids)
+        if 't5' in self.args.model_name:
+            encoder = self.model.encoder
+        elif 'pegasus' in self.args.model_name:
+            encoder = self.model.get_encoder()
+        input_embed_part = encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device)
@@ -60,7 +77,11 @@ class T5forFinetuneEntity(nn.Module):
         return loss
 
     def _generative_step_for_tagger(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 't5' in self.args.model_name:
+            encoder = self.model.encoder
+        elif 'pegasus' in self.args.model_name:
+            encoder = self.model.get_encoder()
+        input_embed_part = encoder.embed_tokens(batch["input_ids"])
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
@@ -85,7 +106,11 @@ class T5forFinetuneEntity(nn.Module):
         return preds
 
     def _generative_step(self, batch):
-        input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        if 't5' in self.args.model_name:
+            encoder = self.model.encoder
+        elif 'pegasus' in self.args.model_name:
+            encoder = self.model.get_encoder()
+        input_embed_part = encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)

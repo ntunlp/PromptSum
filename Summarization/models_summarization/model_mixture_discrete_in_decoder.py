@@ -119,21 +119,6 @@ class ModelMixPromptDID(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        
-        if "DID" in self.args.model:
-            all_preds = []
-            for j in range(len(preds)):
-                preds_split = preds[j].split("[SEP]")
-                if len(preds_split) == 1:
-                    preds_j = preds_split[0]
-                else:
-                    preds_j = preds_split[1]
-                all_preds.append(preds_j)
-            preds = all_preds
-
-        #print("*"*50)
-        #print(self.ids_to_clean_text(batch["input_ents"][0])) 
-        #print(preds[0])
 
         return input, target, preds
 

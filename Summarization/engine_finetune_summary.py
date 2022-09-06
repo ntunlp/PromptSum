@@ -9,7 +9,7 @@ gc.enable()
 
 from datasets import load_metric
 from rouge_score import rouge_scorer
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
@@ -30,10 +30,8 @@ logger = logging.getLogger('root')
 
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
-    step_tot = (len(
-        train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
-    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(
-        train_dataset)
+    step_tot = (len(train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
+    train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 else data.RandomSampler(train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
 
     train_dataloader = get_dataloader(tokenizer, args.num_workers_summary, train_dataset, args.batch_size_per_gpu_summary, args.max_length,
@@ -53,18 +51,18 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "scale_parameter": False, 
         "relative_step": False
     }
-    optimizer = Adafactor
-    if args.n_gpu > 1: # distributed training
-        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
-                        **base_optimizer_arguments)
-        # distributed training
-        model = ShardedDDP(model, optimizer)
-    else:
-        optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-    model.train()
-    #scaler = ShardedGradScaler()
-    scheduler = None
-    scaler = None
+
+    optimizer, scheduler, scaler = None, None, None
+    if args.optimizer_summary == "adafactor":
+        optimizer = Adafactor
+        if args.n_gpu > 1: # distributed training
+            optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
+                            **base_optimizer_arguments)
+            # distributed training
+            model = ShardedDDP(model, optimizer)
+        else:
+            optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+        model.train()
 
     logger.info("Begin train...")
     logger.info("We will train model in %d steps" % step_tot)
@@ -82,7 +80,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     }
 
     if args.zero_shot:
-        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
+        if args.full_testset:
+            dooneeval(model, test_dataloader, scaler, result_dict, logger, 0, args)
+        else:
+            dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
         return result_dict
 
     global_step = 0
@@ -90,18 +91,21 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     if args.big_testset:
         # save the model on the best validation set
         args.save_model = True
+    
+    if args.eval_epoch_0:
+        print("Evaluating (Epoch 0)...")
+        dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
+
     for i in range(args.max_epoch_summary):
-        thisevalstep = args.eval_step
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
-        allloss = []
-        ents = []
+        allloss, ents = [], []
+
         for step, batch in enumerate(train_dataloader):
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                      "predents_ids": batch[4].to(args.device), "predents_mask": batch[5].to(args.device)}
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             for k in range(inputs["ents_ids"].shape[0]):
                 for l in range(inputs["ents_ids"].shape[1]):
                     ent = inputs["ents_ids"][k,l].item()
@@ -122,12 +126,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     scaler.step(optimizer)
                     scaler.update()
                 else:
-                    if args.model == 'BartMixPromptUnfreeze':
-                        for name, param in model.named_parameters():
-                            if "shared" in name:
-                                for k in range(param.grad.shape[0]):
-                                    if not(k in ents):
-                                        param.grad[k,:] = 0
                     optimizer.step()
                     ents = []
                 if scheduler != None:
@@ -139,24 +137,27 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / max(1,step_tot), np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
-                    print("not eval!!!")
+                if args.local_rank in [0, -1] and global_step % args.eval_step_summary == 0:
+                    print("Evaluating (within epoch)...")
+                    dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
                     model.train()
 
         logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
-            # if i >= 8:
             # do after every epoch
+            print("Evaluating (after epoch)...")
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
-        if args.model == 'T5Finetune':
+        if args.model in ['T5Finetune', 'PegasusFinetune']:
             path = args.model_save_path + 'full_weights'
             model.load_state_dict(torch.load(path))
             print("loaded the full model weights!", path)
         else:
             path = args.model_save_path + 'bestckpt'
+            if args.counterfactual_removal:
+                path = f'{path}_counterfactual'
             best_val_ckpt = torch.load(path)
             model.promptnumber = best_val_ckpt["promptnumber"]
             model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
@@ -212,8 +213,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         model = modeltoeval
     model.eval()
     logger.info("Do one eval!")
-    allytrue = []
-    allypred = []
+    allysrc, allytrue, allypred = [], [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in enumerate(valid_dataloader):
@@ -222,17 +222,18 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                      "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
             if scaler is not None:
                 with autocast():
                     sen, target, preds = model._generative_step(inputs)
                     tarres, predres = target, preds
+                    allysrc.extend(sen)
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
                 sen, target, preds = model._generative_step(inputs)
                 tarres, predres = target, preds
+                allysrc.extend(sen)
                 allytrue.extend(tarres)
                 allypred.extend(predres)
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
@@ -271,40 +272,68 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
-
         if args.save_model:
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if args.model == 'T5Finetune':
+            if args.model in ['T5Finetune', "PegasusFinetune"]:
                 path = args.model_save_path + 'full_weights'
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
                 path = args.model_save_path + 'bestckpt'
+                if args.counterfactual_removal:
+                    path = f'{path}_counterfactual'
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding
                 }
                 torch.save(ckpt, path)
                 print("saved the model prompt!", path)
-    
+    # abstractivness
+    if args.eval_abstractiveness:
+        new_unigrams, new_bigrams, new_trigrams = [], [], []
+        for i in tqdm(range(len(allysrc))):
+            text_words = allysrc[i].lower()
+            text_words = word_tokenize(text_words)
+            text_bigrams = [[text_words[j], text_words[j + 1]] for j in range(len(text_words) - 1)]
+            text_trigrams = [[text_words[j], text_words[j + 1], text_words[j + 2]] for j in range(len(text_words) - 2)]
+            text_quadrigrams = [[text_words[j], text_words[j + 1], text_words[j + 2], text_words[j + 3]] for j in range(len(text_words) - 3)]
+
+            summary_words = allypred[i].lower()
+            summary_words = word_tokenize(summary_words)
+            unigrams, bigrams, trigrams = 0, 0, 0
+            for j in range(len(summary_words)):
+                if not(summary_words[j] in text_words):
+                    unigrams += 1
+                if j < len(summary_words) - 1:
+                    if not([summary_words[j], summary_words[j + 1]] in text_bigrams):
+                        bigrams += 1
+                if j < len(summary_words) - 2:
+                    if not([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
+                        trigrams += 1
+            unigrams /= max(1, len(summary_words))
+            bigrams /= max(1, len(summary_words)-1)
+            trigrams /= max(1, len(summary_words)-2)
+            new_unigrams.append(unigrams)
+            new_bigrams.append(bigrams)
+            new_trigrams.append(trigrams)
+        print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}%".format(
+            100*np.mean(new_unigrams), 100*np.mean(new_bigrams), 100*np.mean(new_trigrams)
+        ))
+
     return result_dict
 
 
 def entity_eval(ytrue, ypred):
     spacy_nlp = spacy.load("en_core_web_sm")
-    all_p = []
-    all_r = []
-    all_f1 = []
+    all_p, all_r, all_f1 = [], [], []
     for i in tqdm(range(len(ytrue))):
         ents_true = spacy_nlp(ytrue[i]).ents
         ents_true = [ent.text for ent in ents_true]
         ents_pred = spacy_nlp(ypred[i]).ents
         ents_pred = [ent.text for ent in ents_pred]
-        p = 0
-        r = 0
-        f1 = 0
+        p, r, f1 = 0, 0, 0
         if len(ents_pred) > 0:
             p = 100 * len([x for x in ents_pred if x in ents_true]) / len(ents_pred)
         else:

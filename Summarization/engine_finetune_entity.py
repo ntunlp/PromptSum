@@ -13,6 +13,7 @@ from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -70,9 +71,16 @@ def finetune_model_tagger(trainfile, validfile, args):
     log_step = args.log_step_finetune
     model_name = args.model_name
 
-    t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
-    tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-    model = T5forFinetuneEntity(t5model, tokenizer, args)
+    if 't5' in args.model_name:
+        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
+        model = ModelforFinetuneEntity(t5model, tokenizer, args)
+    elif 'pegasus' in args.model_name:
+        t5model = PegasusForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
+        model = ModelforFinetuneEntity(t5model, tokenizer, args)
+    else:
+        raise Exception('Model not implemented yet')
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
@@ -81,7 +89,7 @@ def finetune_model_tagger(trainfile, validfile, args):
         print("Loading the pre-trained NER model!")
 
         # model weights
-        ckpt = torch.load(args.pretrain_ckpt)
+        ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
         dic = {}
         for x in ckpt.keys():
             if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -111,7 +119,6 @@ def finetune_model_tagger(trainfile, validfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
-
     train_dataset = T5DatasetPretrainConll(trainfile, max_seq_length, tokenizer)
     valid_dataset = T5DatasetPretrainConll(validfile, max_seq_length, tokenizer)
 
@@ -127,6 +134,8 @@ def finetune_model_tagger(trainfile, validfile, args):
     valid_dataloader = get_dataloader_tag(num_workers, valid_dataset, eval_batch_size, max_seq_length,
                                           valid_dataset.tokenizer.pad_token_id, valid_sampler)
 
+    print(len(train_dataloader), len(valid_dataloader))
+    
     #####the path of tuned model
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
@@ -159,13 +168,13 @@ def finetune_model_tagger(trainfile, validfile, args):
         "scale_parameter": False,
         "relative_step": False
     }
-    optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-    # distributed training
+    if args.optimizer_entity == "adafactor":
+        optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+
     model.train()
 
     startepoch = 0
-    Best_F1 = 0.0
-    Best_val_meanR = 0.0
+    Best_F1, Best_val_meanR = 0.0, 0.0
 
     logger.info("Begin train...")
 
@@ -178,9 +187,14 @@ def finetune_model_tagger(trainfile, validfile, args):
         'val_rl': [],
         'best_val_meanR': Best_val_meanR
     }
+
+    if args.zero_shot:
+        dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args)
+
+        return result_dict
+
     global_step = 0
     for i in range(startepoch, startepoch + num_train_epochs):
-        thisevalstep = 1000000
         logger.info(i)
         model.train()
         result_dict['epoch'] = i
@@ -203,7 +217,7 @@ def finetune_model_tagger(trainfile, validfile, args):
                 if args.local_rank in [0, -1] and global_step % log_step == 0:
                     logger.info("step: %d,  loss: %.6f" % (global_step, np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % thisevalstep == 0:
+                if args.local_rank in [0, -1] and global_step % args.eval_step_entity == 0:
                     print("only eval after every epoch")
                     model.train()
 
@@ -228,9 +242,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
     else:
         model = modeltoeval
     model.eval()
-    allentnumintar = 0
-    allentnuminpre = 0
-    hasentnum = 0
+    allentnumintar, allentnuminpre, hasentnum = 0, 0, 0
     alltar, allpred = [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
@@ -254,7 +266,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
                         hasentnum += 1
                 alltar.append(thistar)
                 allpred.append(thispred)
-    if allentnuminpre!=0 and allentnumintar!=0:
+    if allentnuminpre != 0 and allentnumintar != 0:
         p = float(hasentnum) / float(allentnuminpre)
         r = float(hasentnum) / float(allentnumintar)
         if p + r != 0.0:
@@ -304,10 +316,16 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     for i in range(len(alltrainfile)):
         # model
-        model_name = "google/t5-v1_1-large"
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name,
-                                                             cache_dir="/data/mathieu/hf_models/t5-v1-large/")
-        tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir="/data/mathieu/hf_models/t5-v1-large/")
+        if 't5' in args.model_name:
+            model_name = "google/t5-v1_1-large"
+            t5model = T5ForConditionalGeneration.from_pretrained(model_name,cache_dir=args.cache_path)
+            tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir=args.cache_path)
+        elif 'pegasus' in args.model_name:
+            model_name = "google/pegasus-v1_1-large"
+            t5model = PegasusForConditionalGeneration.from_pretrained(model_name,cache_dir=args.cache_path)
+            tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir=args.cache_path)
+        else:
+            raise Exception('Model not implemented yet')
         model = T5forNER(args, t5model, tokenizer)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
@@ -338,10 +356,10 @@ def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
         else:
             model = model
 
-        max_seq_length = 512
-        num_workers = 4
-        train_batch_size = 4
-        eval_batch_size = 4
+        max_seq_length = args.max_length
+        num_workers = args.num_workers_entity
+        train_batch_size = args.valid_size_per_gpu_entity
+        eval_batch_size = args.valid_size_per_gpu_entity
 
         # prepare training data
         trainfile = alltrainfile[i]

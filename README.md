@@ -1,18 +1,49 @@
-# PromptSumms
-cool prompting for summarization!
+# PromptSum
+Cool prompting for parameter-efficient few-shot controllable summarization!
 
-# Running command
+# Bash scripts
 
-!!! Don't forget to change the "root" variable at the top of args !!!
+!!! Don't forget to change the "root" variable at the top of args in main.py!!!
 
-### 1: Pre-training stage
-CUDA_VISIBLE_DEVICES=? python main.py --pretrain --pretrain_all_weights
+Run the corresponding bash script for each use case:
 
-### 2: Entity soft prompt tuning stage
-CUDA_VISIBLE_DEVICES=? python main.py --finetune_entity --use_pretrain_ckpt=True
+### Pre-training 
+bash run_pretraining.sh
 
-### 3: Summary soft prompt tuning stage
-CUDA_VISIBLE_DEVICES=? python main.py --finetune_summary --use_pretrain_ckpt=True
+### 0-shot summarization (3 seeds in validation, 1 seed in test)
+For <ins>PromptSum</ins>:
+
+bash runall_zeroshot_promptsum.sh
+
+### Few-shot summarization (3 seeds)
+For the <ins>baselines</ins>:
+
+bash runall_kshot_baselines.sh
+
+For the <ins>oracle</ins>:
+
+bash runall_kshot_oracle.sh
+
+For <ins>PromptSum</ins>:
+
+bash runall_kshot_promptsum.sh
+
+For <ins>controllability</ins> experiments:
+
+bash runall_kshot_controllability.sh
+
+For <ins>counterfactual</ins> training experiments:
+
+bash runall_kshot_counterfactual.sh
+
+For <ins>hallucinations</ins> experiments:
+
+bash runall_kshot_hallucination.sh
+
+### Full-shot summarization (1 seed)
+For <ins>PromptSum</ins>:
+
+bash run_fullshot_promptsum.sh
 
 ## Contents
 - [PromptSumm](#PromptSumm)

@@ -27,11 +27,12 @@ class Nop(object):
         
 
 def seed_everything(args):
-    random.seed(args.seed)
-    os.environ['PYTHONASSEED'] = str(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed(args.seed)
+    seed = int(args.seed)
+    random.seed(seed)
+    os.environ['PYTHONASSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
