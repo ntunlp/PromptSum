@@ -97,7 +97,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
 
     for i in range(args.max_epoch_summary):
-        logger.info(i)
+        logger.info("Epoch {} / {}".format(i+1, args.max_epoch_summary))
         model.train()
         result_dict['epoch'] = i
         allloss, ents = [], []
@@ -216,8 +216,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     allysrc, allytrue, allypred = [], [], []
     with torch.no_grad():
         logger.info(len(valid_dataloader))
-        for step, batch in enumerate(valid_dataloader):
-            # logger.info(step)
+        for step, batch in tqdm(enumerate(valid_dataloader)):
             if step % args.log_step_finetune == 0:
                 logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),

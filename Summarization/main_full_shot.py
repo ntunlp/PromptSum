@@ -48,8 +48,8 @@ def set_args():
     root = "/data/mathieu/"
 
     # general stuff
-    parser.add_argument("--seed", dest="seed", type=str,
-                        default="42_v1", help="seed for network")
+    parser.add_argument("--seed", dest="seed", type=int,
+                        default=42, help="seed for network")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id")
     parser.add_argument("--local_rank", dest="local_rank", type=int,
@@ -76,7 +76,7 @@ def set_args():
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
                         default=1000000, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=1000, help="max validation set size")
+                        default=100000, help="max validation set size")
 
     # model
     ##### input
@@ -378,10 +378,15 @@ def main(args):
 
     dataset_args = [args.dataset_name, args.dataset_version]
     data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-
-    train_data = data['train']
-    valid_data = data['validation']
-    print("\nTotal data size: train: {}, val: {}".format(len(train_data), len(valid_data)))
+    print("\nTotal size: {}".format(len(data)))
+    if args.dataset_name == "billsum":
+        x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
+        train_data = x_data['train']
+        valid_data = x_data['test']
+    else:
+        train_data = data['train']
+        valid_data = data['validation']
+    print("\nData size: train: {}, val: {}".format(len(train_data), len(valid_data)))
     train_data = train_data[:args.max_train_size]
     valid_data = valid_data[:args.max_val_size]
     print("\nFinal data size: train: {}, val: {}".format(len(train_data), len(valid_data)))
@@ -494,7 +499,7 @@ def main(args):
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
         logger.info("The model has {} trainable parameters".format(n_params))
 
-        #####load pre-trained model
+        ##### load pre-trained model
         if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
             logger.info("load pre-trained model for summarization")
 
@@ -515,7 +520,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
         model.eval()
-        ####add t5 tagger
+        #### add t5 tagger
         if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
             if args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
