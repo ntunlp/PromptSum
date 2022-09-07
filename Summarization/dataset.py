@@ -10,7 +10,7 @@ def subsample(dataset_args, few_shot_seeds, args):
     args:
         few_shot_seeds: list of random seeds to produce the subsamples repeatively
     '''
-    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    data = datasets.load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
     train_data = data['train']
     valid_data = data['validation']
     len_train = len(train_data)
