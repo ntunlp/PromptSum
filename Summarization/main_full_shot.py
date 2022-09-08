@@ -45,7 +45,7 @@ def set_args():
 
     #root = "/data/qin/"
     #data_root = "/data/ruochen/"
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,

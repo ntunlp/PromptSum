@@ -47,11 +47,11 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
     # data_root = "/home/ruochen/"
-    data_root = "/data/mathieu/"
+    data_root = "/home/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,

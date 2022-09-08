@@ -42,4 +42,4 @@ urllib3==1.26.6
 xgboost==1.4.2
 xxhash==2.0.2
 yarl==1.6.3
-en-core-web-lg==3.0.0
+#en-core-web-lg==3.0.0
