@@ -43,9 +43,7 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    #root = "/data/qin/"
-    #data_root = "/data/ruochen/"
-    root = "/home/mathieu/"
+    root = "/home/qin/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -76,7 +74,7 @@ def set_args():
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
                         default=1000000, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=100000, help="max validation set size")
+                        default=2000, help="max validation set size")
 
     # model
     ##### input
@@ -218,7 +216,7 @@ def set_args():
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
     parser.add_argument("--eval_epoch_0", action="store_true", 
-                        default=False, help="whether to evaluate before trainin")
+                        default=True, help="whether to evaluate before trainin")
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -286,7 +284,8 @@ def set_args():
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
     max_epoch_summary = [5, 5, 10, 10, 10, 10]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
-
+    val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
+    
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
         idx = 0
@@ -305,8 +304,10 @@ def set_args():
     args.optimizer_summary = optimizers[idx]
     args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
+    args.max_val_size = min(args.max_val_size, val_sizes[idx])
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
+    os.makedirs(args.model_save_folder, exist_ok=True)
 
     return args
 
@@ -402,6 +403,7 @@ def main(args):
 
     train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
     valid_path = args.save_dir + 'seed_{}/valid.txt'.format(args.seed)
+    os.makedirs(args.save_dir + 'seed_{}'.format(args.seed), exist_ok=True)
     train_data_new = []
     for i in tqdm(range(len(train_data[list(train_data.keys())[0]]))):
         t = {}

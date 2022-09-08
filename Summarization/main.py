@@ -45,14 +45,8 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    # root = "/home/qin/"
-    # data_root = "/home/qin/"
-    root = "/home/mathieu/"
-    # data_root = "/data/mathieu/"
-    # root = "/home/ruochen/"
-    # data_root = "/home/ruochen/"
-    data_root = "/home/mathieu/"
-
+    root = "/home/qin/"
+    data_root = "/home/qin/"
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
