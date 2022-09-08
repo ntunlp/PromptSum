@@ -44,21 +44,23 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
     
-    base_optimizer_arguments = {
-        "lr": args.lr_summary,
-        "clip_threshold": args.max_grad_norm_summary,
-        "decay_rate": -0.8,
-        "weight_decay": args.weight_decay_summary,
-        "scale_parameter": False, 
-        "relative_step": False
-    }
-
     optimizer, scheduler, scaler = None, None, None
     if args.optimizer_summary == "adafactor":
+        base_optimizer_arguments = {
+            "lr": args.lr_summary,
+            "clip_threshold": args.max_grad_norm_summary,
+            "decay_rate": -0.8,
+            "weight_decay": args.weight_decay_summary,
+            "scale_parameter": False,
+            "relative_step": False
+        }
         optimizer = Adafactor
     elif args.optimizer_summary == "adam":
+        base_optimizer_arguments = {
+            "lr": args.lr_summary,
+            "weight_decay": args.weight_decay_summary
+        }
         optimizer = optim.Adam
-
     if args.n_gpu > 1: # distributed training
         optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
                         **base_optimizer_arguments)
