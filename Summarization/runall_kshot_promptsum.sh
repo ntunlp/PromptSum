@@ -1,7 +1,7 @@
 ### dataset
-dataset="samsum"
+dataset="billsum"
 k_shot="10"
-device="5"
+device="7"
 
 ### backbone model
 ##### T5-large backbone
@@ -22,9 +22,9 @@ device="5"
 
 
 ### PEGASUS backbone
-pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
-cache='/data/ruochen/hf_models/pegasus-large/'
+pretrain_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
+pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+cache='/home/qin/hf_models/pegasus-large/'
 # pretrain_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 

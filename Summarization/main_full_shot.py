@@ -43,9 +43,9 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    #root = "/data/qin/"
+    root = "/home/qin/"
     #data_root = "/data/ruochen/"
-    root = "/data/mathieu/"
+    #root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -76,7 +76,7 @@ def set_args():
     parser.add_argument("--max_train_size", dest="max_train_size", type=int,
                         default=1000000, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
-                        default=100000, help="max validation set size")
+                        default=1000, help="max validation set size")
 
     # model
     ##### input
@@ -305,6 +305,7 @@ def set_args():
     args.eval_step_summary = eval_step_summary[idx]
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
+    os.makedirs(args.model_save_folder, exist_ok=True)
 
     return args
 
@@ -400,6 +401,7 @@ def main(args):
 
     train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
     valid_path = args.save_dir + 'seed_{}/valid.txt'.format(args.seed)
+    os.makedirs(args.save_dir + 'seed_{}'.format(args.seed), exist_ok=True)
     train_data_new = []
     for i in tqdm(range(len(train_data[list(train_data.keys())[0]]))):
         t = {}
