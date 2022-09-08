@@ -1,6 +1,6 @@
 ### dataset
-dataset="ccdv/cnn_dailymail"
-k_shot="10"
+dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "samsum", "billsum"] 
+k_shot="100"
 device="7"
 
 

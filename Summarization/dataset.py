@@ -10,15 +10,16 @@ def subsample(dataset_args, few_shot_seeds, args):
     args:
         few_shot_seeds: list of random seeds to produce the subsamples repeatively
     '''
-    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    print("\nTotal size: {}".format(len(data)))
     if args.dataset_name == "billsum":
+        data = datasets.load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
         x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
         train_data = x_data['train']
         valid_data = x_data['test']
     else:
+        data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
         train_data = data['train']
         valid_data = data['validation']
+    print("\nTotal size: {}".format(len(data)))
     len_train = len(train_data)
     len_valid = len(valid_data)
     for seed in few_shot_seeds:
