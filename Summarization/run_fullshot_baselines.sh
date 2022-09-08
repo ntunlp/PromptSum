@@ -1,6 +1,6 @@
 ### dataset
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "samsum", "billsum"]
-device="6"
+device="2"
 
 ### backbone model
 ### T5-large backbone
@@ -9,7 +9,7 @@ device="6"
 ##### PEGASUS backbone
 pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
 pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
-cache='/data/mathieu/hf_models/pegasus-large/'
+cache='/home/mathieu/hf_models/pegasus-large/'
 
 
 ##### train & val
