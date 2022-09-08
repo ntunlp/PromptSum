@@ -165,7 +165,7 @@ def set_args():
     parser.add_argument("--test_size_per_gpu_entity", dest="test_size_per_gpu_entity", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_entity", dest="gradient_accumulation_steps_entity", type=int,
-                        default=2, help="gradient accumulation steps")
+                        default=128, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_entity", dest="max_epoch_entity", type=int,
                         default=3, help="max epoch number")
     parser.add_argument("--num_workers_entity", dest="num_workers_entity", type=int,
@@ -192,7 +192,7 @@ def set_args():
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=8, help="gradient accumulation steps")
+                        default=256, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -284,7 +284,8 @@ def set_args():
     highlights = [True, False, False, False, False, False, False]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
-    eval_step_summary = [10000, 10000, 100, 100, 50, 50]
+    max_epoch_summary = [5, 5, 10, 10, 10, 10]
+    eval_step_summary = [500, 500, 100, 100, 50, 50]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -302,6 +303,7 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
+    args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'

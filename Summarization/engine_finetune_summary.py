@@ -139,17 +139,18 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 optimizer.zero_grad()
                 global_step += 1
 
-                if args.local_rank in [0, -1] and global_step % args.log_step_finetune == 0:
+                if (args.local_rank in [0, -1]) and (global_step % args.log_step_finetune == 0):
                     logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
                         global_step, global_step / max(1,step_tot), np.average(allloss)))
 
-                if args.local_rank in [0, -1] and global_step % args.eval_step_summary == 0:
-                    print("Evaluating (within epoch), step {}...".format(global_step))
-                    dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
-                    model.train()
+                if args.few_shot == "full":
+                    if (args.local_rank in [0, -1]) and (global_step % args.eval_step_summary == 0):
+                        print("Evaluating (within epoch), step {}...".format(global_step))
+                        dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
+                        model.train()
 
         logger.info("finish one epoch")
-        if args.local_rank in [0, -1]:
+        if (args.few_shot != "full") and (args.local_rank in [0, -1]):
             # do after every epoch
             print("Evaluating (after epoch)...")
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
