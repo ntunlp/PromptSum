@@ -275,7 +275,7 @@ def set_args():
 
     args = parser.parse_args()
 
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
+    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
@@ -283,6 +283,8 @@ def set_args():
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False, False]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
+    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
+    eval_step_summary = [10000, 10000, 100, 100, 50, 50]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -298,6 +300,9 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
+    args.optimizer_entity = optimizers[idx]
+    args.optimizer_summary = optimizers[idx]
+    args.eval_step_summary = eval_step_summary[idx]
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
 
@@ -377,15 +382,17 @@ def main(args):
     os.makedirs(args.save_dir , exist_ok=True)
 
     dataset_args = [args.dataset_name, args.dataset_version]
-    data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    print("\nTotal size: {}".format(len(data)))
     if args.dataset_name == "billsum":
+        data = load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
         x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
         train_data = x_data['train']
         valid_data = x_data['test']
     else:
+        data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
         train_data = data['train']
         valid_data = data['validation']
+    print("\nTotal size: {}".format(len(data)))
+
     print("\nData size: train: {}, val: {}".format(len(train_data), len(valid_data)))
     train_data = train_data[:args.max_train_size]
     valid_data = valid_data[:args.max_val_size]

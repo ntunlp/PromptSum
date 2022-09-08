@@ -4,6 +4,7 @@ import gc
 import spacy
 import time
 import logging
+import torch.optim as optim
 
 gc.enable()
 
@@ -55,14 +56,17 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     optimizer, scheduler, scaler = None, None, None
     if args.optimizer_summary == "adafactor":
         optimizer = Adafactor
-        if args.n_gpu > 1: # distributed training
-            optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
-                            **base_optimizer_arguments)
-            # distributed training
-            model = ShardedDDP(model, optimizer)
-        else:
-            optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-        model.train()
+    elif args.optimizer_summary == "adam":
+        optimizer = optim.Adam
+
+    if args.n_gpu > 1: # distributed training
+        optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
+                        **base_optimizer_arguments)
+        # distributed training
+        model = ShardedDDP(model, optimizer)
+    else:
+        optimizer = optimizer(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+    model.train()
 
     logger.info("Begin train...")
     logger.info("We will train model in %d steps" % step_tot)
