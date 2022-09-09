@@ -45,8 +45,8 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/qin/"
-    data_root = "/home/qin/"
+    root = "/data/mathieu/"
+    data_root = "/data/mathieu/"
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
@@ -211,8 +211,8 @@ def set_args():
                         default=1, help="how many steps to log")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
-    parser.add_argument("--eval_epoch_0", dest="eval_epoch_0", type=bool,
-                        default=True)
+    parser.add_argument("--eval_epoch_0", dest="eval_epoch_0", action='store_true',
+                        default=False)
     parser.add_argument("--eval_start_step", dest="eval_start_step", type=int,
                         default=30000, help="how many steps to start eval")
     parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")    

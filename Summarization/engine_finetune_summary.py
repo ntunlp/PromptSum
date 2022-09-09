@@ -171,6 +171,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             print("loaded the model prompt!", path)
         # no need to save again
         args.save_model = False
+        args.log_step_finetune = 100
         # initialize new result_dict to save results
         result_dict = {
             'epoch': [],

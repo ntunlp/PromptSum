@@ -79,7 +79,7 @@ class ModelFinetune(nn.Module):
             inputs_embeds=input_embed_part,
             decoder_input_ids=decoder_input_ids,
             attention_mask=batch["attention_mask"],
-            decoder_attention_mask=batch['target_mask'],
+            #decoder_attention_mask=batch['target_mask'],
             max_length = self.args.max_summary_length,
             num_beams = self.args.num_beams,
             repetition_penalty = self.args.repetition_penalty,
@@ -91,7 +91,7 @@ class ModelFinetune(nn.Module):
         preds = self.ids_to_clean_text(generated_ids)
         target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
-        
+
         return input, target, preds
 
     def _generative_samples(self, batch):
