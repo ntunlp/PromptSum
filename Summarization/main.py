@@ -75,9 +75,6 @@ def set_args():
                         default=3, help="number of seeds to sample for training AND validation")
 
     # model
-    ##### input
-    parser.add_argument("--max_length", dest="max_length", type=int,
-                        default=512, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
@@ -152,8 +149,6 @@ def set_args():
     parser.add_argument("--eval_step_pretrain", dest="eval_step_pretrain", type=int,
                         default=15000, help="how many steps to eval")
     ##### entity prompt tuning
-    parser.add_argument("--optimizer_entity", dest="optimizer_entity", type=str,
-                        default="adafactor", help='optimizer for the entity tuning')
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
                         default=5e-1, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
@@ -177,8 +172,6 @@ def set_args():
     parser.add_argument("--eval_step_entity", dest="eval_step_entity", type=int,
                         default=15000, help="how many steps to eval")
     ##### summary prompt tuning
-    parser.add_argument("--optimizer_summary", dest="optimizer_summary", type=str,
-                        default="adafactor", help='optimizer for the summary fine-tuning')
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
@@ -275,14 +268,16 @@ def set_args():
 
     args.few_shot = int(args.few_shot)
 
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
+    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
+    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum", 'en']
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False, False]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
+    max_lengths = [512, 512, 512, 512, 512, 512, 512]
+    max_summary_lengths = [128, 64, 64, 128, 256, 64, 128]
+    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -297,7 +292,13 @@ def set_args():
     args.validation_key = validation_keys[idx]
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
+    args.max_length = max_lengths[idx]
     args.max_summary_length = max_summary_lengths[idx]
+    args.optimizer_entity = optimizers[idx]
+    args.optimizer_summary = optimizers[idx]
+    if"Finetune" in args.model:
+        args.lr_summary = 5e-5
+
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':
         if args.model == 'T5SoftPrompt' and args.use_pretrain_ckpt:
@@ -306,6 +307,7 @@ def set_args():
         else:
             args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
+
     return args
 
 

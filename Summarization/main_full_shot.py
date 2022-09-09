@@ -77,9 +77,6 @@ def set_args():
                         default=2000, help="max validation set size")
 
     # model
-    ##### input
-    parser.add_argument("--max_length", dest="max_length", type=int,
-                        default=1024, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
@@ -273,15 +270,17 @@ def set_args():
 
     args = parser.parse_args()
 
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
+    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
+    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
+    highlights = [True, False, False, False, False, False]
+    max_lengths = [512, 512, 512, 512, 512, 512]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
+    lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
     max_epoch_summary = [5, 5, 10, 10, 10, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
@@ -299,9 +298,12 @@ def set_args():
     args.validation_key = validation_keys[idx]
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
+    args.max_length = max_lengths[idx]
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
+    if not("Finetune" in args.model):
+        args.lr_summary = lrs_finetune[idx]
     args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
