@@ -43,7 +43,7 @@ from models_summarization.model_mixture_double_discrete import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/qin/"
+    root = "/home/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -79,7 +79,7 @@ def set_args():
     # model
     ##### input
     parser.add_argument("--max_length", dest="max_length", type=int,
-                        default=512, help="max sentence length")
+                        default=1024, help="max sentence length")
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
@@ -228,7 +228,7 @@ def set_args():
 
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
-                        default=True, help="whether to save the model or not")
+                        default=False, help="whether to save the model or not")
     parser.add_argument("--model_save_path", dest="save_model_path", type=str,
                         default="", help="the path where to save the model")
 
@@ -282,7 +282,7 @@ def set_args():
     highlights = [True, False, False, False, False, False, False]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
-    max_epoch_summary = [5, 5, 10, 10, 10, 10]
+    max_epoch_summary = [5, 5, 10, 10, 10, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
     
