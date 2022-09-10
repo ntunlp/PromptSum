@@ -303,13 +303,16 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
         result_dict["best_val_meanR"] = meanR
         if not os.path.exists(path):
             os.mkdir(path)
+
         model_to_save = model.module if hasattr(model, 'module') else model
-        ckpt = {
-            "promptnumber": model_to_save.promptnumber,
-            "promptembedding": model_to_save.promptembedding
-        }
-        torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
-        #torch.save(model.state_dict(), os.path.join(path, "bestckpt_full_model"))
+        if args.tune_weights:
+            torch.save(model_to_save.state_dict(), os.path.join(path, "bestckpt_full_weights"))
+        else:
+            ckpt = {
+                "promptnumber": model_to_save.promptnumber,
+                "promptembedding": model_to_save.promptembedding
+            }
+            torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
 
 
 def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):
