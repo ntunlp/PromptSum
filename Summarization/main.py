@@ -296,7 +296,7 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
-    if"Finetune" in args.model:
+    if ("Finetune" in args.model) or args.tune_weights:
         args.lr_summary = 5e-5
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
