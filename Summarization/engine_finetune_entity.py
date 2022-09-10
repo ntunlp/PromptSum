@@ -306,13 +306,16 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args):
 
         model_to_save = model.module if hasattr(model, 'module') else model
         if args.tune_weights:
-            torch.save(model_to_save.state_dict(), os.path.join(path, "bestckpt_full_weights"))
+            d = model_to_save.state_dict()
+            d["promptnumber"] = model_to_save.promptnumber
+            torch.save(d, os.path.join(path, "bestckpt_full_weights"))
         else:
             ckpt = {
                 "promptnumber": model_to_save.promptnumber,
                 "promptembedding": model_to_save.promptembedding
             }
             torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
+        print("saved new entity model ckpt!")
 
 
 def infer_tagger_for_all_seeds(alltrainfile, allvalidfile, args):

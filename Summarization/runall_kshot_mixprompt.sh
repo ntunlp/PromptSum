@@ -13,8 +13,8 @@ cache='/data/mathieu/hf_models/pegasus-large/'
 # pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ### PEGASUS backbone
-pretrain_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 # pretrain_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 
@@ -22,8 +22,8 @@ pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k
 ############################ MixPrompt (PromptSum)
 
 ##### train + val
-#echo "start k-shot prompt-tune_entity"
-#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
+echo "start k-shot prompt-tune_entity"
+CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
 #echo "start k-shot prompt-tune_summary"
 #CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
 #### test
@@ -44,10 +44,10 @@ pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k
 ############################ MixPrompt (PromptSum) TUNE WEIGHTS
 
 ##### train + val
-echo "start k-shot prompt-tune_entity TUNE WEIGHTS"
-CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
-echo "start k-shot prompt-tune_summary TUNE WEIGHTS"
-CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
+#echo "start k-shot prompt-tune_entity TUNE WEIGHTS"
+#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
+#echo "start k-shot prompt-tune_summary TUNE WEIGHTS"
+#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
 #### test
 #echo "start k-shot prompt-tune_entity TUNE WEIGHTS - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights

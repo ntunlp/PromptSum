@@ -529,12 +529,19 @@ def main(args):
                     if not(args.zero_shot):
                         if args.tune_weights:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_full_weights'
+                            oneckpt = torch.load(onepath)
+                            d = {}
+                            for k in entmodel.state_dict().keys():
+                                d[k] = oneckpt[k]
+                            entmodel.load_state_dict(d)
+                            entmodel.promptnumber = oneckpt["promptnumber"]
+                            entmodel.promptembedding = oneckpt["promptembedding"]
                         else:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                        print("Loading the entity prompt from: {}".format(onepath))
-                        oneckpt = torch.load(onepath)
-                        entmodel.promptnumber = oneckpt["promptnumber"]
-                        entmodel.promptembedding = oneckpt["promptembedding"]
+                            oneckpt = torch.load(onepath)
+                            entmodel.promptnumber = oneckpt["promptnumber"]
+                            entmodel.promptembedding = oneckpt["promptembedding"]
+                        print("Loaded the entity model from: {}".format(onepath))
                     else:
                         print("Zero-shot - loading the prompt from pre-training ckpt")
                         ckpt = torch.load(args.pretrain_prompt_ckpt)
@@ -553,6 +560,8 @@ def main(args):
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                     elif args.full_testset:
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                    if args.tune_weights:
+                        respath = respath[:-4] + "full_weights.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
