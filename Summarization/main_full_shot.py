@@ -36,8 +36,6 @@ from engine_finetune_summary import *
 from models_summarization.model_finetune import *
 from models_summarization.model_soft import *
 from models_summarization.model_mixture import *
-from models_summarization.model_mixture_discrete_in_decoder import *
-from models_summarization.model_mixture_double_discrete import *
 
 
 def set_args():
@@ -66,6 +64,8 @@ def set_args():
                         default= root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
+    parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
+                        default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default="full", help="full  = full-shot fine-tuning")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -93,8 +93,8 @@ def set_args():
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default=root + "hf_models/pegasus-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
-    parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
+                        default=False)
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])

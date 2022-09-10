@@ -29,6 +29,7 @@ from dataset_finetune_summary import *
 
 logger = logging.getLogger('root')
 
+
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
     step_tot = (len(train_dataset) // args.gradient_accumulation_steps_summary // args.batch_size_per_gpu_summary // args.n_gpu) * args.max_epoch_summary
@@ -157,8 +158,11 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             model.train()
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
-        if args.model in ['T5Finetune', 'PegasusFinetune']:
-            path = args.model_save_path + 'full_weights'
+        if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
+            if args.tune_weights:
+                path = args.model_save_path + 'bestckpt_full_weights'
+            else:
+                path = args.model_save_path + 'full_weights'
             model.load_state_dict(torch.load(path))
             print("loaded the full model weights!", path)
         else:
@@ -283,8 +287,11 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if args.model in ['T5Finetune', "PegasusFinetune"]:
-                path = args.model_save_path + 'full_weights'
+            if (args.model in ['T5Finetune', "PegasusFinetune"]) or args.tune_weights:
+                if args.tune_weights:
+                    path = args.model_save_path + 'bestckpt_full_weights'
+                else:
+                    path = args.model_save_path + 'full_weights'
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
