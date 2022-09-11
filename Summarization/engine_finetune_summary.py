@@ -161,12 +161,16 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
             if args.tune_weights:
                 path = args.model_save_path + 'bestckpt_full_weights'
+                if args.use_pretrained_ckpt:
+                    path += "_from_pretrained"
             else:
                 path = args.model_save_path + 'full_weights'
             model.load_state_dict(torch.load(path))
             print("loaded the full model weights!", path)
         else:
             path = args.model_save_path + 'bestckpt'
+            if args.use_pretrained_ckpt:
+                path += "_from_pretrained"
             if args.counterfactual_removal:
                 path = f'{path}_counterfactual'
             best_val_ckpt = torch.load(path)
@@ -290,12 +294,16 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if (args.model in ['T5Finetune', "PegasusFinetune"]) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
+                    if args.use_pretrained_ckpt:
+                        path += "_from_pretrained"
                 else:
                     path = args.model_save_path + 'full_weights'
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
                 path = args.model_save_path + 'bestckpt'
+                if args.use_pretrained_ckpt:
+                    path += "_from_pretrained"
                 if args.counterfactual_removal:
                     path = f'{path}_counterfactual'
                 ckpt = {
