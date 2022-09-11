@@ -161,7 +161,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
             if args.tune_weights:
                 path = args.model_save_path + 'bestckpt_full_weights'
-                if args.use_pretrained_ckpt:
+                if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
             else:
                 path = args.model_save_path + 'full_weights'
@@ -169,7 +169,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             print("loaded the full model weights!", path)
         else:
             path = args.model_save_path + 'bestckpt'
-            if args.use_pretrained_ckpt:
+            if args.use_pretrain_ckpt:
                 path += "_from_pretrained"
             if args.counterfactual_removal:
                 path = f'{path}_counterfactual'
@@ -294,7 +294,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if (args.model in ['T5Finetune', "PegasusFinetune"]) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
-                    if args.use_pretrained_ckpt:
+                    if args.use_pretrain_ckpt:
                         path += "_from_pretrained"
                 else:
                     path = args.model_save_path + 'full_weights'
@@ -302,7 +302,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("saved the full model weights!", path)
             else:
                 path = args.model_save_path + 'bestckpt'
-                if args.use_pretrained_ckpt:
+                if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
                 if args.counterfactual_removal:
                     path = f'{path}_counterfactual'

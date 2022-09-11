@@ -1,5 +1,5 @@
 ### dataset
-dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "samsum", "billsum"]
+dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "samsum", "billsum"]
 k_shot="10"
 device="5"
 cache='/data/mathieu/hf_models/pegasus-large/'
