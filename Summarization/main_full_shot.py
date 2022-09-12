@@ -213,7 +213,7 @@ def set_args():
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
     parser.add_argument("--eval_epoch_0", action="store_true", 
-                        default=True, help="whether to evaluate before trainin")
+                        default=False, help="whether to evaluate before trainin")
 
     # generation
     parser.add_argument("--num_beams", dest="num_beams", type=int,
@@ -270,6 +270,9 @@ def set_args():
 
     args = parser.parse_args()
 
+    if args.big_testset or args.full_testset:
+        args.eval_epoch_0 = False
+
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
@@ -277,11 +280,11 @@ def set_args():
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False]
-    max_lengths = [512, 512, 512, 512, 512, 512]
+    max_lengths = [512, 512, 512, 512, 1024, 512]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
-    max_epoch_summary = [5, 5, 10, 10, 10, 30]
+    max_epoch_summary = [5, 5, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
     
@@ -302,9 +305,11 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
-    if not("Finetune" in args.model):
+    if ("Finetune" in args.model):
+        print("HERE")
         args.lr_summary = lrs_finetune[idx]
-    args.max_epoch_summary = max_epoch_summary[idx]
+    if args.max_epoch_summary > 0: # meaning, if we are in training mode:
+        args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
 
