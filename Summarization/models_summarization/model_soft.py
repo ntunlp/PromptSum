@@ -43,16 +43,17 @@ class ModelSoftPrompt(nn.Module):
         elif "Pegasus" in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
 
+        # prompt
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber), 1).to(self.args.device)
+
         if self.args.concat_mode == "concat_right":
             allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
             all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
         else:
             allembedding = torch.cat([prompt_embed_repeat, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
-
-        if not(self.args.use_pretrain_ckpt):
+        if "Pegasus" in self.model_name:
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
             allembedding = allembedding * embed_scale
@@ -86,14 +87,16 @@ class ModelSoftPrompt(nn.Module):
         elif "Pegasus" in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
 
+        # prompt
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        if not(self.args.use_pretrain_ckpt):
+        if "Pegasus" in self.model_name:
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
             allembedding = allembedding * embed_scale
 
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
@@ -124,13 +127,14 @@ class ModelSoftPrompt(nn.Module):
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
 
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
+
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
-        if not(self.args.use_pretrain_ckpt):
+        if "Pegasus" in self.model_name:
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
             allembedding = allembedding * embed_scale
 
-        mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
