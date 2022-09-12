@@ -150,7 +150,7 @@ def set_args():
                         default=15000, help="how many steps to eval")
     ##### entity prompt tuning
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
-                        default=5e-1, help='learning rate')
+                        default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
                         default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
@@ -175,7 +175,7 @@ def set_args():
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
-                        default=5e-1, help='learning rate')
+                        default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
                         default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
@@ -296,6 +296,9 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
+    if ("T5" in args.model):
+        args.lr_entity = 5e-1
+        args.lr_summary = 5e-1
     if ("Finetune" in args.model) or args.tune_weights:
         args.lr_summary = 5e-5
     if args.few_shot == "1":
