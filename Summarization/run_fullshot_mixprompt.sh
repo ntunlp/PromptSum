@@ -1,5 +1,5 @@
 ### dataset
-dataset="billsum" # in ["xsum", "ccdv/cnn_dailymail"]
+dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 device="7"
 
 ### backbone model
@@ -7,8 +7,8 @@ device="7"
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone
-pretrain_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/home/qin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+pretrain_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 # train + val
 echo "start full-shot prompt-tune_entity"

@@ -275,7 +275,7 @@ def set_args():
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False, False]
-    max_lengths = [512, 512, 512, 512, 512, 512, 512]
+    max_lengths = [512, 512, 512, 512, 1024, 512, 512]
     max_summary_lengths = [128, 64, 64, 128, 256, 64, 128]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
 
@@ -298,6 +298,11 @@ def set_args():
     args.optimizer_summary = optimizers[idx]
     if ("Finetune" in args.model) or args.tune_weights:
         args.lr_summary = 5e-5
+    if args.few_shot == "1":
+        args.batch_size_per_gpu_entity = 1
+        args.gradient_accumulation_steps_entity = 1
+        args.batch_size_per_gpu_summary = 1
+        args.gradient_accumulation_steps_summary = 1
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':

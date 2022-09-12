@@ -1,6 +1,6 @@
 ### dataset
-dataset="xsum"
-k_shot="10"
+dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+k_shot="10" # in ["1", "10", "100"]
 device="5"
 cache='/data/mathieu/hf_models/pegasus-large/'
 
@@ -12,11 +12,9 @@ cache='/data/mathieu/hf_models/pegasus-large/'
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt"
 # pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
-### PEGASUS backbone
-pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
-# pretrain_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-# pretrain_prompt_ckpt="/home/ruochen/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+##### PEGASUS backbone
+pretrain_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 
 ############################ MixPrompt (PromptSum)
