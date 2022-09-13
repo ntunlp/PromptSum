@@ -556,7 +556,7 @@ def main(args):
                     enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                     entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                 elif args.model == "PegasusMixPrompt":
-                    entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings cache_dir = args.cache_path)
+                    entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
                     enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                     entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                 logger.info("Loading the pre-trained NER model!")
