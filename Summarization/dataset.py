@@ -10,6 +10,8 @@ def subsample(dataset_args, few_shot_seeds, args):
     args:
         few_shot_seeds: list of random seeds to produce the subsamples repeatively
     '''
+    data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir, ignore_verifications=True, download_mode="force_redownload")
+    print("\nTotal size: {}".format(len(data)))
     if args.dataset_name == "billsum":
         data = datasets.load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
         test_data = data['test']
