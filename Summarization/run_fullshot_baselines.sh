@@ -1,11 +1,6 @@
 ### dataset
-<<<<<<< HEAD
-dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "samsum", "billsum"]
-device="0"
-=======
 dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 device="7"
->>>>>>> a2d7d7a8945963ebffa71ac82c9e7d08c51c65a3
 cache='/home/mathieu/hf_models/pegasus-large/'
 
 ### backbone model

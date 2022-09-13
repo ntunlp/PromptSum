@@ -24,11 +24,14 @@ class ModelforFinetuneEntity(nn.Module):
             # many times it has module.model. as starting, which is extra
             newdict = {}
             for key in list(ckpt.keys()):
+                if (args.max_position_embeddings > 1024) and ("embed_positions" in key):
+                    continue
                 if key.startswith('module.model.'):
                     newkey = key.replace('module.model.', '')
                     newdict[newkey] = ckpt[key]
-                # else:
-                #     newdict[key] = t5ckpt[key] #this is "module.promptembedding", "module.promptembeddingforsum", not needed
+            if (args.max_position_embeddings > 1024):
+                newdict["model.encoder.embed_positions.weight"] = self.model.state_dict()["model.encoder.embed_positions.weight"]
+                newdict["model.decoder.embed_positions.weight"] = self.model.state_dict()["model.decoder.embed_positions.weight"]
             self.model.load_state_dict(newdict)
         if not (args.pretrain and args.pretrain_all_weights):
             for name, param in self.model.named_parameters():

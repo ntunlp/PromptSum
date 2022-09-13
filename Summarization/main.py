@@ -276,6 +276,7 @@ def set_args():
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False, False]
     max_lengths = [512, 512, 512, 512, 1024, 512, 512]
+    max_position_embeddings = [1024, 1024, 1024, 1024, 1536, 1024, 1024]
     max_summary_lengths = [128, 64, 64, 128, 256, 64, 128]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
 
@@ -293,6 +294,7 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_length = max_lengths[idx]
+    args.max_position_embeddings = max_position_embeddings[idx]
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
@@ -465,7 +467,7 @@ def main(args):
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             elif 'Pegasus' in args.model:
-                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             logger.info("Finish prepare model and dataset")
@@ -498,9 +500,13 @@ def main(args):
                 ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                 dicsum = {}
                 for x in ckptsum.keys():
-
+                    if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                        continue
                     if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
                         dicsum[x[7:]] = ckptsum[x]
+                if args.max_position_embeddings > 1024:
+                    dicsum["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
+                    dicsum["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
                 model.load_state_dict(dicsum)
 
                 # just prompt
@@ -520,7 +526,7 @@ def main(args):
                         enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                         entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                     elif args.model == "PegasusMixPrompt":
-                        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+                        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
                         enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                         entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
                     logger.info("Loading the pre-trained NER model!")
@@ -529,8 +535,13 @@ def main(args):
                     ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                     dic = {}
                     for x in ckpt.keys():
+                        if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                            continue
                         if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
                             dic[x[7:]] = ckpt[x]
+                    if args.max_position_embeddings > 1024:
+                        dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                        dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
                     entmodel.load_state_dict(dic)
     
                     # just prompt

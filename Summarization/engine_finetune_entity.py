@@ -72,15 +72,14 @@ def finetune_model_tagger(trainfile, validfile, args):
     model_name = args.model_name
 
     if 't5' in args.model_name:
-        t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        basemodel = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
         tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-        model = ModelforFinetuneEntity(t5model, tokenizer, args)
     elif 'pegasus' in args.model_name:
-        t5model = PegasusForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
+        basemodel = PegasusForConditionalGeneration.from_pretrained(model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
         tokenizer = PegasusTokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-        model = ModelforFinetuneEntity(t5model, tokenizer, args)
     else:
         raise Exception('Model not implemented yet')
+    model = ModelforFinetuneEntity(basemodel, tokenizer, args)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
@@ -92,8 +91,13 @@ def finetune_model_tagger(trainfile, validfile, args):
         ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
         dic = {}
         for x in ckpt.keys():
+            if (args.dataset == "billsum") and ("embed_positions" in x):
+                continue
             if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
                dic[x[7:]] = ckpt[x]
+        if (args.max_position_embeddings > 1024):
+            dic["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
+            dic["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
         model.load_state_dict(dic)
 
         # just prompt
@@ -194,6 +198,11 @@ def finetune_model_tagger(trainfile, validfile, args):
         return result_dict
 
     global_step = 0
+    
+    if args.eval_epoch_0:
+        print("Evaluating (Epoch 0)...")
+        dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args)
+
     for i in range(startepoch, startepoch + num_train_epochs):
         logger.info(i)
         model.train()
