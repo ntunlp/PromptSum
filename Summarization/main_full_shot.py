@@ -152,7 +152,7 @@ def set_args():
     parser.add_argument("--optimizer_entity", dest="optimizer_entity", type=str,
                         default="adafactor", help="optimizer for the entity tuning")
     parser.add_argument("--lr_entity", dest="lr_entity", type=float,
-                        default=5e-1, help='learning rate')
+                        default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_entity", dest="batch_size_per_gpu_entity", type=int,
                         default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_entity", dest="valid_size_per_gpu_entity", type=int,
@@ -179,15 +179,15 @@ def set_args():
     parser.add_argument("--train_sample_summary", dest="train_sample_summary", type=bool,
                         default=True, help="dynamic sample or not")
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
-                        default=5e-1, help='learning rate')
+                        default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=1, help="batch size per gpu")
+                        default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=256, help="gradient accumulation steps")
+                        default=128, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -205,7 +205,7 @@ def set_args():
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
                         default=50, help="how many steps to log")
     parser.add_argument("--log_step_finetune", dest="log_step_finetune", type=int,
-                        default=200, help="how many steps to log")
+                        default=100, help="how many steps to log")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
     parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
@@ -282,8 +282,9 @@ def set_args():
     highlights = [True, False, False, False, False, False]
     max_lengths = [512, 512, 512, 512, 1024, 512]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adam"]
+    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
+    max_epoch_entity = [3, 3, 5, 5, 5, 5]
     max_epoch_summary = [5, 5, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
@@ -305,10 +306,13 @@ def set_args():
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
     args.optimizer_summary = optimizers[idx]
+    if ("T5" in args.model):
+        args.lr_entity = 5e-1
+        args.lr_summary = 5e-1
     if ("Finetune" in args.model):
-        print("HERE")
         args.lr_summary = lrs_finetune[idx]
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
+        args.max_epoch_entity = max_epoch_entity[idx]
         args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
@@ -588,7 +592,7 @@ def main(args):
                         print("valid size: ", len(alldata))
                     allresofvalid = {}
                     with torch.no_grad():
-                        for step in range(len(alldata)):
+                        for step in tqdm(range(len(alldata))):
                             onedata = alldata[step]
                             inputdata = onedata[0]
                             tempdata = re.sub(' +', ' ', inputdata)
@@ -604,6 +608,7 @@ def main(args):
                             #print(step, input_guidance)
                             allresofvalid[tempdata] = input_guidance
                     logger.info(len(allresofvalid))
+                    #raise Exception 
                     with open(respath, "wb") as f:
                         pickle.dump(allresofvalid, f)
                         logger.info("saved the T5 valid entities")

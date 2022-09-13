@@ -1,6 +1,7 @@
 import os
 import pdb
 import sys
+import math
 import torch
 import torch.nn as nn
 
@@ -46,13 +47,13 @@ class ModelMixPrompt(nn.Module):
             input_embed_part = self.model.encoder.embed_tokens(input_ids)
         else:
             input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
-        soft_prompt_embed= self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
 
+        # prompt: soft + discrete
+        soft_prompt_embed= self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         if 'T5' in self.model_name:
             discrete_prompt_embed = self.model.encoder.embed_tokens(ent_ids)
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(ent_ids)
-
         if self.args.use_entity_chain:
             prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
         else:
@@ -65,6 +66,10 @@ class ModelMixPrompt(nn.Module):
         else:
             allembedding = torch.cat([prompt_embed, input_embed_part], 1)
             all_attention_mask = torch.cat([mask_prompt, attention_mask], 1)
+        if "Pegasus" in self.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
 
         return self.model(
             inputs_embeds=allembedding,
@@ -96,20 +101,27 @@ class ModelMixPrompt(nn.Module):
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
         else:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
-        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
 
+        # prompt: soft + discrete
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         if 'T5' in self.model_name:
             discrete_prompt_embed = self.model.encoder.embed_tokens(batch["ents_ids"])
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["ents_ids"])
-
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
+
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        if "Pegasus" in self.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
+
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
+
         generated_ids = self.model.generate(
             inputs_embeds=allembedding,
             decoder_input_ids=decoder_input_ids,
@@ -129,17 +141,25 @@ class ModelMixPrompt(nn.Module):
 
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
-            input_embed_part = self.model.encoder.embed_tokens(input_ids)
+            input_embed_part = self.model.encoder.embed_tokens(batch['input_ids'])
         else:
-            input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
+            input_embed_part = self.model.get_encoder().embed_tokens(batch['input_ids'])
+
+        # prompt: soft + discrete
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         if 'T5' in self.model_name:
             discrete_prompt_embed = self.model.encoder.embed_tokens(batch["input_ents"])
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["input_ents"])
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
-        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
+
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        if "Pegasus" in self.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
+
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
             torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use

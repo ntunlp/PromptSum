@@ -1,5 +1,6 @@
 import os
 import pdb
+import math
 import torch
 import torch.nn as nn
 import gc
@@ -51,6 +52,10 @@ class ModelforFinetuneEntity(nn.Module):
         input_embed_part = encoder.embed_tokens(input_ids)
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+        if "pegasus" in self.args.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
         mask_prompt = torch.full((attention_mask.shape[0], self.promptnumber),1).to(self.args.device)
         all_attention_mask = torch.cat([attention_mask, mask_prompt], 1)
 
@@ -84,6 +89,10 @@ class ModelforFinetuneEntity(nn.Module):
         input_embed_part = encoder.embed_tokens(batch["input_ids"])
         soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, soft_prompt_embed], 1)
+        if "pegasus" in self.args.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (
@@ -113,6 +122,10 @@ class ModelforFinetuneEntity(nn.Module):
         input_embed_part = encoder.embed_tokens(batch["input_ids"])
         prompt_embed_repeat = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
         allembedding = torch.cat([input_embed_part, prompt_embed_repeat], 1)
+        if "pegasus" in self.args.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
         mask_prompt = torch.full((batch["attention_mask"].shape[0], self.promptnumber), 1).to(self.args.device)
         all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
         decoder_input_ids = (

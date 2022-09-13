@@ -15,6 +15,7 @@ import re
 import pickle
 import random
 
+from tqdm import tqdm
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
 from nltk.corpus import stopwords
@@ -85,6 +86,15 @@ class T5SummarizationDataset(Dataset):
         print("entpath: ",entpath)
         with open(entpath, "rb") as f:
             self.allent = pickle.load(f)
+
+    def check_entity_keys(self):
+        not_in = 0
+        for i in tqdm(range(len(self.data))):
+            inputdata = self.data[i][0]
+            tempdata = re.sub(' +', ' ', inputdata).strip()
+            if not(tempdata in self.allent.keys()):
+                not_in += 1
+        print("Text entries not in the entity dictionary: {} (SHOULD BE 0!!!)".format(not_in))
 
     def getalldata(self, filename):
         f = open(filename, 'r')
@@ -188,33 +198,24 @@ class T5SummarizationDataset(Dataset):
             else: #use bert_tagger
                 ####for train
                 if self.split.startswith("train"):
-                    tempdata = re.sub(' +', ' ', inputdata)
+                    tempdata = re.sub(' +', ' ', inputdata).strip()
                     if tempdata in self.allent.keys():
                         input_guidance = self.allent[tempdata]
                     else:
-                        print("we can not find inputdata in the dictionary!! There should be some errors!")
-                        print('Self.allent: ', self.allent)
-                        print('tempdata: ', tempdata)
-                        raise Exception('end')
+                        print("We can not find TRANING inputdata in the dictionary!! There should be some errors!")
                 else:
                     if self.args.guidance_mode == 'target':
-                        tempdata = re.sub(' +', ' ', inputdata)
+                        tempdata = re.sub(' +', ' ', inputdata).strip()
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
-                            print("we can not find inputdata in the dictionary!! There should be some errors!")
-                            print('Self.allent: ', self.allent)
-                            print('tempdata: ', tempdata)
-                            raise Exception('end')
+                            print("We can not find VALIDATION - TARGET inputdata in the dictionary!! There should be some errors!")
                     else:
-                        tempdata = re.sub(' +', ' ', inputdata)
+                        tempdata = re.sub(' +', ' ', inputdata).strip()
                         if tempdata in self.allent.keys():
                             input_guidance = self.allent[tempdata]
                         else:
-                            print("For valid: we can not find inputdata in the dictionary!! There should be some errors!")
-                            print('Self.allent: ', self.allent)
-                            print('tempdata: ', tempdata)
-                            raise Exception('end')
+                            print("For valid: we can not find VALIDATION - PREDICTION inputdata in the dictionary!! There should be some errors!")
             # after finding it, I remove the 'REMOVEDN' argument:
             inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
         # 2nd option: based on salient sentences
@@ -223,12 +224,9 @@ class T5SummarizationDataset(Dataset):
             input_guidance = salient_sents
         if len(targetdata.split()) == 0:
             targetdata = "None"
-        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,
-                                                    return_tensors="pt")
-        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen,
-                                                     truncation=True, return_tensors="pt")
-        inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen,
-                                                        truncation=True, return_tensors="pt")
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,  return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
 
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze()
 

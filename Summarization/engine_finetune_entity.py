@@ -174,7 +174,7 @@ def finetune_model_tagger(trainfile, validfile, args):
     model.train()
 
     startepoch = 0
-    Best_F1, Best_val_meanR = 0.0, 0.0
+    Best_F1, Best_val_meanR = -1.0, -1.0
 
     logger.info("Begin train...")
 

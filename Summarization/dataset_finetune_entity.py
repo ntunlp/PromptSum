@@ -268,9 +268,9 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     fe = open(train_ent, 'w')
     for i in range(len(allentityfortrain)):
         if allentityfortrain[i][1] != []:
-            fe.write(allentityfortrain[i][0] + "\t" + allentityfortrain[i][1] + '\n')
+            fe.write(allentityfortrain[i][0].strip() + "\t" + allentityfortrain[i][1] + '\n')
         else:
-            fe.write(allentityfortrain[i][0] + "\tnone\n")
+            fe.write(allentityfortrain[i][0].strip() + "\tnone\n")
     fe.close()
 
     ### save valid ent
@@ -278,9 +278,9 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
     fe = open(valid_ent, 'w')
     for i in range(len(allentityforvalid)):
         if allentityforvalid[i][1] != []:
-            fe.write(allentityforvalid[i][0] + "\t" + allentityforvalid[i][1] + '\n')
+            fe.write(allentityforvalid[i][0].strip() + "\t" + allentityforvalid[i][1] + '\n')
         else:
-            fe.write(allentityforvalid[i][0] + "\tnone\n")
+            fe.write(allentityforvalid[i][0].strip() + "\tnone\n")
     fe.close()
 
     return docwithlabel_train, docwithlabel_vaid
