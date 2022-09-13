@@ -595,7 +595,7 @@ def main(args):
                         for step in tqdm(range(len(alldata))):
                             onedata = alldata[step]
                             inputdata = onedata[0]
-                            tempdata = re.sub(' +', ' ', inputdata)
+                            tempdata = re.sub(' +', ' ', inputdata).strip()
                             inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
                             input_ids = inputres["input_ids"].to(args.device)
                             attention_mask = inputres["attention_mask"].to(args.device)

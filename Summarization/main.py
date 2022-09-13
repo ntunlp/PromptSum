@@ -579,7 +579,7 @@ def main(args):
                             print("valid size: ", len(alldata))
                         allresofvalid = {}
                         with torch.no_grad():
-                            for step in range(len(alldata)):
+                            for step in tqdm(range(len(alldata))):
                                 onedata = alldata[step]
                                 inputdata = onedata[0]
                                 tempdata = re.sub(' +', ' ', inputdata).strip()
@@ -647,6 +647,8 @@ def main(args):
             ########## 2nd prompt tuning stage: summarization
             train_dataset.check_entity_keys()
             valid_dataset.check_entity_keys()
+            if args.big_testset or args.full_testset:
+                args.test_dataset.check_entity_keys()
 
             model.to(args.device)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)

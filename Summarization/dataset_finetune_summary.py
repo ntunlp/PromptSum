@@ -94,7 +94,7 @@ class T5SummarizationDataset(Dataset):
             tempdata = re.sub(' +', ' ', inputdata).strip()
             if not(tempdata in self.allent.keys()):
                 not_in += 1
-        print("Text entries not in the entity dictionary: {} (SHOULD BE 0!!!)".format(not_in))
+        print("{} Text entries not in the entity dictionary: {} (SHOULD BE 0!!!)".format(self.split, not_in))
 
     def getalldata(self, filename):
         f = open(filename, 'r')
