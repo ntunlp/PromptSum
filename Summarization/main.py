@@ -417,10 +417,10 @@ def main(args):
         logger.info("2/ Prompt tuning the tagger for entity chain prediction...")
         # get data
         logger.info("\nprepare data..")
-        alltrainfile, allvalidfile = get_data(few_shot_seeds, args.few_shot_save_dir, args)
+        alltrainfile, allvalidfile, alltestfile = get_data(few_shot_seeds, args.few_shot_save_dir, args)
         # train one T5 tagger for each seed
         logger.info("\nfine-tune...")
-        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args)
         return
 
     ########## 2nd prompt tuning stage (for summarization)?
