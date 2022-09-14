@@ -75,6 +75,8 @@ def set_args():
                         default=1000000, help="max training set size")
     parser.add_argument("--max_val_size", dest="max_val_size", type=int,
                         default=2000, help="max validation set size")
+    parser.add_argument("--max_test_size", dest="max_test_size", type=int,
+                        default=20000, help="max test set size")
 
     # model
     ##### base model
@@ -289,7 +291,8 @@ def set_args():
     max_epoch_summary = [5, 5, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
-    
+    test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
+
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
         idx = 0
@@ -318,6 +321,7 @@ def set_args():
         args.max_epoch_summary = max_epoch_summary[idx]
     args.eval_step_summary = eval_step_summary[idx]
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
+    args.max_test_size = min(args.max_test_size, test_sizes[idx])
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
     os.makedirs(args.model_save_folder, exist_ok=True)
@@ -400,6 +404,7 @@ def main(args):
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.dataset_name == "billsum":
         data = load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
+        test_data = data['test']
         x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
         train_data = x_data['train']
         valid_data = x_data['test']
@@ -407,15 +412,20 @@ def main(args):
         data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
         train_data = data['train']
         valid_data = data['validation']
+        test_data = data['test']
     print("\nTotal size: {}".format(len(data)))
 
-    print("\nData size: train: {}, val: {}".format(len(train_data), len(valid_data)))
+    print("\nData size: train: {}, val: {}, test: {}".format(
+        len(train_data), len(valid_data), len(test_data)))
     train_data = train_data[:args.max_train_size]
     valid_data = valid_data[:args.max_val_size]
-    print("\nFinal data size: train: {}, val: {}".format(len(train_data), len(valid_data)))
+    test_data = test_data[:args.max_test_size]
+    print("\nFinal data size: train: {}, val: {}, test: {}".format(
+        len(train_data), len(valid_data), len(test_data)))
 
     train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
     valid_path = args.save_dir + 'seed_{}/valid.txt'.format(args.seed)
+    test_path = args.save_dir + 'seed_{}/test.txt'.format(args.seed)
     os.makedirs(args.save_dir + 'seed_{}'.format(args.seed), exist_ok=True)
     train_data_new = []
     for i in tqdm(range(len(train_data[list(train_data.keys())[0]]))):
@@ -436,6 +446,7 @@ def main(args):
 
     convert_data_to_txt(train_data, train_path, args)
     convert_data_to_txt(valid_data, valid_path, args)
+    convert_data_to_txt(test_data, test_path, args)
 
     print(args.pretrain_ckpt)
     print(args.pretrain_prompt_ckpt)
@@ -446,10 +457,10 @@ def main(args):
         logger.info("2/ Prompt tuning the tagger for entity chain prediction...")
         # get data
         logger.info("\nprepare data..")
-        alltrainfile, allvalidfile = get_data([args.seed], args.save_dir, args)
+        alltrainfile, allvalidfile, alltestfile = get_data([args.seed], args.save_dir, args)
         # train one T5 tagger for each seed
         logger.info("\nfine-tune...")
-        train_tagger_for_all_seeds(alltrainfile, allvalidfile, args)
+        train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args)
         return
 
     ########## 2nd prompt tuning stage (for summarization)?
@@ -569,8 +580,9 @@ def main(args):
                         continue
                     if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
                         dic[x[7:]] = ckpt[x]
-                dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
-                dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
+                if args.max_position_embeddings > 1024:
+                    dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                    dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
                 entmodel.load_state_dict(dic)
 
                 # just prompt

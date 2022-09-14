@@ -12,6 +12,7 @@ def subsample(dataset_args, few_shot_seeds, args):
     '''
     if args.dataset_name == "billsum":
         data = datasets.load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
+        test_data = data['test']
         x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
         train_data = x_data['train']
         valid_data = x_data['test']
@@ -19,6 +20,7 @@ def subsample(dataset_args, few_shot_seeds, args):
         data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
         train_data = data['train']
         valid_data = data['validation']
+        test_data = data['test']
     print("\nTotal size: {}".format(len(data)))
     len_train = len(train_data)
     len_valid = len(valid_data)
@@ -33,8 +35,10 @@ def subsample(dataset_args, few_shot_seeds, args):
         # save
         train_path = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
         valid_path = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        test_path = args.few_shot_save_dir + 'seed_{}/test.txt'.format(seed)
         convert_data_to_txt(train_data_new, train_path, args)
         convert_data_to_txt(valid_data_new, valid_path, args)
+        convert_data_to_txt(test_data, test_path, args)
     # convert to original seed
     np.random.seed(args.seed)
 

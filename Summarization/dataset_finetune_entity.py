@@ -11,6 +11,7 @@ import nltk
 import random
 import re
 import gc
+from tqdm import tqdm
 
 from torch.utils.data import Sampler, Dataset, DataLoader, SequentialSampler
 from rouge_score import rouge_scorer
@@ -23,10 +24,9 @@ from model_finetune_entity import ModelforFinetuneEntity
 
 
 def get_data(few_shot_seeds, save_path, args):
-    usetrain = True
-    usevalid = True
+    usetrain, usevalid, usetest = True, True, True
     spacy_nlp = spacy.load("en_core_web_sm")
-    alltrainfile, allvalidfile = [], []
+    alltrainfile, allvalidfile, alltestfile = [], [], []
     # few_shot_seeds = [0]
     i = 0
     for seed in few_shot_seeds:
@@ -35,8 +35,10 @@ def get_data(few_shot_seeds, save_path, args):
         i += 1
         train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
         valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
+        test_file_name = save_path + 'seed_{}/test.txt'.format(seed)
         handler_train = open(train_file_name, "r")
         handler_valid = open(valid_file_name, "r")
+        handler_test = open(test_file_name, "r")
 
         alldoc, allsum = [], []
         count = 0
@@ -55,7 +57,7 @@ def get_data(few_shot_seeds, save_path, args):
                 allsum.append(onesum)
                 count += 1
                 if count % 10000 == 0:
-                    print("did {}".format(count))
+                    print("TRAIN - did {}".format(count))
         if usevalid:
             count = 0
             while True:
@@ -72,10 +74,28 @@ def get_data(few_shot_seeds, save_path, args):
                 allsum.append(onesum)
                 count += 1
                 if count % 1000 == 0:
-                    print("did {}".format(count))
+                    print("VALID - did {}".format(count))
+        if usetest:
+            count = 0
+            while True:
+                oneline = handler_test.readline().strip()
+                if not oneline:
+                    break
+                onedata = oneline.split("\t")
+                if len(onedata) != 2:
+                    print("test doc sum split error")
+                    continue
+                onedoc = re.sub(' +', ' ', onedata[0].replace("\n", " "))
+                alldoc.append(onedoc)
+                onesum = re.sub(' +', ' ', onedata[1].replace("\n", " "))
+                allsum.append(onesum)
+                count += 1
+                if count % 1000 == 0:
+                    print("TEST - did {}".format(count))
 
         handler_train.close()
         handler_valid.close()
+        handler_test.close()
         doc_sum_path = f'{save_path}seed_{seed}/data_for_bert_{seed}/'
         if not os.path.exists(doc_sum_path):
             os.makedirs(doc_sum_path, exist_ok=True)
@@ -93,11 +113,12 @@ def get_data(few_shot_seeds, save_path, args):
         f.close()
 
         #### get train and valid data for bert tagger
-        docwithlabel_train, docwithlabel_vaid = get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args)
+        docwithlabel_train, docwithlabel_valid, docwithlabel_test = get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args)
         alltrainfile.append(docwithlabel_train)
-        allvalidfile.append(docwithlabel_vaid)
+        allvalidfile.append(docwithlabel_valid)
+        alltestfile.append(docwithlabel_test)
 
-    return alltrainfile, allvalidfile
+    return alltrainfile, allvalidfile, alltestfile
 
 
 def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
@@ -105,18 +126,20 @@ def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
     sum_y_pred = get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args)
 
     #### get label for document
-    alldocandlabel, allentityfortrain, allentityforvalid = get_doc_label(sum_y_pred, docpath, args)
+    alldocandlabel, allentityfortrain, allentityforvalid, allentityfortest = get_doc_label(sum_y_pred, docpath, args)
 
     #### split to train and valid
-    docwithlabeltrain, docwithlabelvalid = get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, args)
+    docwithlabeltrain, docwithlabelvalid, docwithlabeltest = get_train_valid(
+        alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, allentityfortest, args)
 
-    return docwithlabeltrain, docwithlabelvalid
+    return docwithlabeltrain, docwithlabelvalid, docwithlabeltest
 
 
 def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
     #####handle sumfile to fake conll format and use NER model to label it
     allpreds = []
     if not args.if_spacy:
+        print("Finding entities with T5 tagger...")
         sumwithfakelabel = doc_sum_path + "sumwithfakelabel.txt"
         allsumwithfakelabeldata = getfilewithlabel(sumpath, sumwithfakelabel)
         model_name = args.model_name
@@ -135,7 +158,7 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
         model.eval()
 
         with torch.no_grad():
-            for step, batch in enumerate(test_dataloader):
+            for step, batch in tqdm(enumerate(test_dataloader)):
                 inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                           "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
                 sen, target, preds = model._generative_step(inputs)
@@ -147,6 +170,7 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
 
         assert len(allpreds) == len(allsumwithfakelabeldata)
     else:
+        print("Finding entities with spacy...")
         allpreds = [] ##should be separated by ','
         fin = open(sumpath, 'r')
         index = 0
@@ -163,6 +187,8 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
             #input_guidance = ','.join(allents)  ##### not unique
             allpreds.append(input_guidance)
             index += 1
+            if index % 100 == 0:
+                print(index)
         fin.close()
 
     return allpreds
@@ -188,30 +214,37 @@ def getfilewithlabel(file, filewithfakelabel):
 
 
 def get_doc_label(sum_y_pred, docfile, args):
-    alldocres, resfortrain, resforvalid = getdocandent(docfile, sum_y_pred, args)
+    alldocres, resfortrain, resforvalid, resfortest = getdocandent(docfile, sum_y_pred, args)
 
     allentityfortrain = []
-    for i in range(len(resfortrain)):
+    for i in tqdm(range(len(resfortrain))):
         onedata = resfortrain[i].split('\t')
         onedoc = onedata[0]
         oneent = onedata[1]
         allentityfortrain.append([onedoc, oneent])
 
     allentityforvalid = []
-    for i in range(len(resforvalid)):
+    for i in tqdm(range(len(resforvalid))):
         onedata = resforvalid[i].split('\t')
         onedoc = onedata[0]
         oneent = onedata[1]
         allentityforvalid.append([onedoc, oneent])
 
+    allentityfortest = []
+    for i in tqdm(range(len(resfortest))):
+        onedata = resfortest[i].split('\t')
+        onedoc = onedata[0]
+        oneent = onedata[1]
+        allentityfortest.append([onedoc, oneent])
+
     alldocandlabel = []
-    for i in range(len(alldocres)):
+    for i in tqdm(range(len(alldocres))):
         onedata = alldocres[i].split('\t')
         onedoc = onedata[0]
         oneent = onedata[1]
         alldocandlabel.append([onedoc, oneent])
 
-    return alldocandlabel, allentityfortrain, allentityforvalid
+    return alldocandlabel, allentityfortrain, allentityforvalid, allentityfortest
 
 
 def getdocandent(docfile, sum_y_pred, args):
@@ -223,45 +256,55 @@ def getdocandent(docfile, sum_y_pred, args):
             break
         alldoc.append(oneline)
     f.close()
-    resfortrain = []
-    resforvalid = []
+    resfortrain, resforvalid, resfortest = [], [], []
     if args.few_shot == "full":
-        trainsize = len(alldoc) - args.max_val_size
+        trainsize = len(alldoc) - args.max_val_size - args.max_test_size
+        valsize = args.max_val_size
     else:
-        trainsize = len(alldoc) // 2
+        trainsize = (len(alldoc) - args.max_test_size) // 2
+        valsize = trainsize
     print("alldoc", len(alldoc))
-    print("train size", trainsize)
+    print("train size: {}, valsize: {}".format(trainsize, valsize))
     #trainsize = 100
     allres = []
-    for i in range(len(alldoc)):
+    for i in tqdm(range(len(alldoc))):
         if i < trainsize:
             resfortrain.append(alldoc[i] + "\t" + sum_y_pred[i])
-        else:
+        elif (i >= trainsize) and (i < (trainsize + valsize)):
             resforvalid.append(alldoc[i] + "\t" + sum_y_pred[i])
+        else:
+            resfortest.append(alldoc[i] + "\t" + sum_y_pred[i])
         allres.append(alldoc[i] + "\t" + sum_y_pred[i])
 
-    return allres, resfortrain, resforvalid
+    return allres, resfortrain, resforvalid, resfortest
 
 
-def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, args):
+def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityforvalid, allentityfortest, args):
     docwithlabel_train = doc_sum_path + "docwithlabel_train.txt"
-    docwithlabel_vaid = doc_sum_path + "docwithlabel_valid.txt"
+    docwithlabel_valid = doc_sum_path + "docwithlabel_valid.txt"
+    docwithlabel_test = doc_sum_path + "docwithlabel_test.txt"
 
     fout = open(docwithlabel_train, 'w')
-    fout_1 = open(docwithlabel_vaid, 'w')
+    fout_1 = open(docwithlabel_valid, 'w')
+    fout_2 = open(docwithlabel_test, 'w')
 
     if args.few_shot == "full":
-        trainsize = len(alldocandlabel) - args.max_val_size
+        trainsize = len(alldocandlabel) - args.max_val_size - args.max_test_size
+        valsize = args.max_val_size
     else:
-        trainsize = len(alldocandlabel) // 2
-    for aa in range(len(alldocandlabel)):
+        trainsize = (len(alldocandlabel) - args.max_test_size) // 2
+        valsize = trainsize
+    for aa in tqdm(range(len(alldocandlabel))):
         onedata = alldocandlabel[aa]
         if aa < trainsize:
             fout.write(onedata[0] + "\t" + onedata[1] + "\n")
-        else:
+        elif (aa >= trainsize) and (aa < (trainsize + valsize)):
             fout_1.write(onedata[0] + "\t" + onedata[1] + "\n")
+        else:
+            fout_2.write(onedata[0] + "\t" + onedata[1] + "\n")
     fout.close()
     fout_1.close()
+    fout_2.close()
 
     ### save train ent
     train_ent = doc_sum_path + "trainent.txt"
@@ -283,7 +326,17 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
             fe.write(allentityforvalid[i][0].strip() + "\tnone\n")
     fe.close()
 
-    return docwithlabel_train, docwithlabel_vaid
+    ### save test ent
+    test_ent = doc_sum_path + "testent.txt"
+    fe = open(test_ent, 'w')
+    for i in range(len(allentityfortest)):
+        if allentityfortest[i][1] != []:
+            fe.write(allentityfortest[i][0].strip() + "\t" + allentityfortest[i][1] + '\n')
+        else:
+            fe.write(allentityfortest[i][0].strip() + "\tnone\n")
+    fe.close()
+
+    return docwithlabel_train, docwithlabel_valid, docwithlabel_test
 
 
 def get_dataloader_tag(num_workers, dataset, batch_size, max_len, pad_id, sampler):
