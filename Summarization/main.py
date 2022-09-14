@@ -73,6 +73,8 @@ def set_args():
     parser.add_argument("--zero_shot", action = 'store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
+    parser.add_argument("--max_test_size", dest="max_test_size", type=int,
+                        default=20000, help="max test set size")
 
     # model
     ##### base model
@@ -279,6 +281,7 @@ def set_args():
     max_position_embeddings = [1024, 1024, 1024, 1024, 1536, 1024, 1024]
     max_summary_lengths = [128, 64, 64, 128, 256, 64, 128]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
+    test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
 
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
@@ -308,6 +311,7 @@ def set_args():
         args.gradient_accumulation_steps_entity = 1
         args.batch_size_per_gpu_summary = 1
         args.gradient_accumulation_steps_summary = 1
+    args.max_test_size = min(args.max_test_size, test_sizes[idx])
 
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':
@@ -400,7 +404,7 @@ def main(args):
     # sample multiple datasets (reproducible with fixed seeds)
     few_shot_seeds = range(args.num_seeds)
     # if files don't exist, subsample
-    if len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds):
+    if (len(os.listdir(args.few_shot_save_dir)) < len(few_shot_seeds)) or not(os.path.exists(args.few_shot_save_dir + "seed_0/test.txt")):
         logger.info('subsampling..')
         subsample(dataset_args, few_shot_seeds, args)
 
