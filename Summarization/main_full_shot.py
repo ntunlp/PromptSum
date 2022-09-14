@@ -536,7 +536,7 @@ def main(args):
                 if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
                     dicsum[x[7:]] = ckptsum[x]
             dicsum["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
-            dicsum["model.model.decoder.embed_position.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
+            dicsum["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
             model.load_state_dict(dicsum)
 
             # just prompt
