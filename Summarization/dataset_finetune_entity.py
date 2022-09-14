@@ -187,7 +187,7 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
             #input_guidance = ','.join(allents)  ##### not unique
             allpreds.append(input_guidance)
             index += 1
-            if index % 100 == 0:
+            if index % 1000 == 0:
                 print(index)
         fin.close()
 

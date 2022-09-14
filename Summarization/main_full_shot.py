@@ -443,6 +443,14 @@ def main(args):
         valid_data_new.append(t)
     valid_data = valid_data_new
     print(len(valid_data))
+    test_data_new = []
+    for i in tqdm(range(len(test_data[list(test_data.keys())[0]]))):
+        t = {}
+        for k in test_data.keys():
+            t[k] = test_data[k][i]
+        test_data_new.append(t)
+    test_data = test_data_new
+    print(len(test_data))
 
     convert_data_to_txt(train_data, train_path, args)
     convert_data_to_txt(valid_data, valid_path, args)
