@@ -132,6 +132,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
 
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 \
         else data.RandomSampler(train_dataset)
+    if args.few_shot == "1":
+        train_sampler = SequentialSampler(train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
     test_sampler = SequentialSampler(test_dataset)
 

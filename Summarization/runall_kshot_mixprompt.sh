@@ -1,6 +1,6 @@
 ### dataset
-dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-k_shot="10" # in ["1", "10", "100"]
+dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+k_shot="1" # in ["1", "10", "100"]
 device="0"
 cache='/home/mathieu/hf_models/pegasus-large/'
 
