@@ -41,7 +41,7 @@ from models_summarization.model_mixture import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/mathieu/"
+    root = "/export/home/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -51,7 +51,7 @@ def set_args():
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--exp_id", dest="exp_id", type=str,
-                        default='001', help="id for current exp")
+                        default='001', help="id for current exp")   
     parser.add_argument("--debug", action='store_true',
                         default=False, help="whether debug with breakpoint")
     parser.add_argument("--log_dir", dest="log_dir", type=str,
@@ -61,11 +61,11 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= root + "dataset/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+                        default="/export/home/cache", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default="full", help="full  = full-shot fine-tuning")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -84,6 +84,7 @@ def set_args():
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
+    parser.add_argument("--model_version", dest="model_version", type=str, default='PegasusSoftPrompt_v5')
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices = ["t5-base, google/t5-v1_1-base, facebook/bart-base, "
                         "facebook/bart-large", "google/pegasus-large"])
@@ -93,7 +94,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
+                        default="/export/home/cache",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
                         default=False)
@@ -185,9 +186,9 @@ def set_args():
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
                         default=2, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=4, help="valid size per gpu")
+                        default=16, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=4, help="test size per gpu")
+                        default=16, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
                         default=128, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
@@ -250,9 +251,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
+                        default="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -314,7 +315,7 @@ def set_args():
     if ("T5" in args.model):
         args.lr_entity = 5e-1
         args.lr_summary = 5e-1
-    if ("Finetune" in args.model):
+    if ("Finetune" in args.model) or args.tune_weights:
         args.lr_summary = lrs_finetune[idx]
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
         args.max_epoch_entity = max_epoch_entity[idx]
@@ -323,7 +324,7 @@ def set_args():
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
     args.max_test_size = min(args.max_test_size, test_sizes[idx])
 
-    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
+    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model_version}/'
     os.makedirs(args.model_save_folder, exist_ok=True)
 
     return args
@@ -403,7 +404,7 @@ def main(args):
 
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.dataset_name == "billsum":
-        data = load_dataset(*dataset_args, download_mode="force_redownload", cache_dir=args.dataset_cache_dir)
+        data = load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
         test_data = data['test']
         x_data = data['train'].train_test_split(test_size=0.1, shuffle=True)
         train_data = x_data['train']
