@@ -35,7 +35,11 @@ def get_data(few_shot_seeds, save_path, args):
         i += 1
         train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
         valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
-        test_file_name = save_path + 'seed_{}/test.txt'.format(seed)
+        if args.full_testset or args.big_testset:
+            test_file_name = save_path + 'seed_{}/test.txt'.format(seed)
+        else:
+            args.max_test_size = int(args.few_shot)
+            test_file_name = valid_file_name
         handler_train = open(train_file_name, "r")
         handler_valid = open(valid_file_name, "r")
         handler_test = open(test_file_name, "r")

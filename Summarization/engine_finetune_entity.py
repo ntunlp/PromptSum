@@ -132,6 +132,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
 
     train_sampler = data.distributed.DistributedSampler(train_dataset) if args.local_rank != -1 \
         else data.RandomSampler(train_dataset)
+    if args.few_shot == "1":
+        train_sampler = SequentialSampler(train_dataset)
     valid_sampler = SequentialSampler(valid_dataset)
     test_sampler = SequentialSampler(test_dataset)
 
@@ -240,28 +242,29 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
             dooneeval(model, valid_dataloader, result_dict, i, output_dir, args, save_model=args.save_model)
 
     # test inference
-    print("Test evaluation...")
-    test_result_dict = {
-        'epoch': [],
-        'val_F1': [],
-        'best_val_F1': Best_F1,
-        'val_r1': [],
-        'val_r2': [],
-        'val_rl': [],
-        'best_val_meanR': Best_val_meanR
-    }
-    if args.tune_weights:
-        onepath = os.path.join(output_dir, "bestckpt_full_weights")
-        oneckpt = torch.load(onepath)
-        model.load_state_dict(oneckpt)
-        print("loaded all model weights")
-    else:
-        onepath = os.path.join(output_dir, "bestckpt_prompt")
-        oneckpt = torch.load(onepath)
-        model.promptnumber = oneckpt["promptnumber"]
-        model.promptembedding = oneckpt["promptembedding"]
-        print("loaded model prompt weights")
-    dooneeval(model, test_dataloader, test_result_dict, 0, output_dir, args, save_model=False)
+    if args.full_testset:
+        print("Test evaluation...")
+        test_result_dict = {
+            'epoch': [],
+            'val_F1': [],
+            'best_val_F1': Best_F1,
+            'val_r1': [],
+            'val_r2': [],
+            'val_rl': [],
+            'best_val_meanR': Best_val_meanR
+        }
+        if args.tune_weights:
+            onepath = os.path.join(output_dir, "bestckpt_full_weights")
+            oneckpt = torch.load(onepath)
+            model.load_state_dict(oneckpt)
+            print("loaded all model weights")
+        else:
+            onepath = os.path.join(output_dir, "bestckpt_prompt")
+            oneckpt = torch.load(onepath)
+            model.promptnumber = oneckpt["promptnumber"]
+            model.promptembedding = oneckpt["promptembedding"]
+            print("loaded model prompt weights")
+        dooneeval(model, test_dataloader, test_result_dict, 0, output_dir, args, save_model=False)
 
     torch.cuda.empty_cache()
     del model, tokenizer
