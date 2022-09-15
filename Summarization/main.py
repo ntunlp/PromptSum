@@ -48,7 +48,7 @@ def set_args():
     root = "/data/mathieu/"
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
-    data_root = "/home/ruochen/"
+    data_root = "/data/ruochen/"
     # data_root = "/data/mathieu/"
 
     # general stuff
