@@ -283,7 +283,7 @@ def set_args():
     test_keys = ["test", "test", "", "test", "test", "test"]
     highlights = [True, False, False, False, False, False]
     max_lengths = [512, 512, 512, 512, 1024, 512]
-    max_position_embeddings = [1024, 1024, 1024, 1024, 1536, 1024]
+    max_position_embeddings = [1024, 1024, 1024, 1024, 1536 if not("Finetune" in args.model) else 1024, 1024]
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
