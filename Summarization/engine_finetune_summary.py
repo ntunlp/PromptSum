@@ -165,12 +165,16 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     path += "_from_pretrained"
             else:
                 path = args.model_save_path + 'full_weights'
+            if args.guidance_mode == "target":
+                path += "_oracle"
             model.load_state_dict(torch.load(path))
             print("loaded the full model weights!", path)
         else:
             path = args.model_save_path + 'bestckpt'
             if args.use_pretrain_ckpt:
                 path += "_from_pretrained"
+            if args.guidance_mode == "target":
+                path += "_oracle"
             if args.counterfactual_removal:
                 path = f'{path}_counterfactual'
             best_val_ckpt = torch.load(path)
@@ -287,6 +291,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
+        
         if args.save_model:
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
@@ -298,12 +303,16 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                         path += "_from_pretrained"
                 else:
                     path = args.model_save_path + 'full_weights'
+                if args.guidance_mode == "target":
+                    path += "_oracle"
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
                 path = args.model_save_path + 'bestckpt'
                 if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
+                if args.guidance_mode == "target":
+                    path += "_oracle"
                 if args.counterfactual_removal:
                     path = f'{path}_counterfactual'
                 ckpt = {

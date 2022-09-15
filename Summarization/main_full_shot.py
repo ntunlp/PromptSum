@@ -554,8 +554,9 @@ def main(args):
                     continue
                 if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
                     dicsum[x[7:]] = ckptsum[x]
-            dicsum["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
-            dicsum["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
+            if args.max_position_embeddings > 1024:
+                dicsum["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
+                dicsum["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
             model.load_state_dict(dicsum)
 
             # just prompt
