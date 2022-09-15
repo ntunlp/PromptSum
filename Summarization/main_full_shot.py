@@ -316,6 +316,9 @@ def set_args():
         args.lr_summary = 5e-1
     if ("Finetune" in args.model):
         args.lr_summary = lrs_finetune[idx]
+    if (args.tune_weights):
+        args.lr_entity = 5e-3
+        args.lr_summary = 5e-3
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
         args.max_epoch_entity = max_epoch_entity[idx]
         args.max_epoch_summary = max_epoch_summary[idx]
