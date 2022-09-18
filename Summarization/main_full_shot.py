@@ -227,7 +227,7 @@ def set_args():
 
     # export
     parser.add_argument("--save_model", dest="save_model", type=bool,
-                        default=False, help="whether to save the model or not")
+                        default=True, help="whether to save the model or not")
     parser.add_argument("--model_save_path", dest="save_model_path", type=str,
                         default="", help="the path where to save the model")
 
