@@ -2,13 +2,16 @@ import argparse
 import time
 import logging
 import pickle5 as pickle
+import spacy
 
+from tqdm import tqdm
 from datasets import load_metric
-from transformers import T5Tokenizer
+from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
 
 from utils import *
 from dataset import *
-from guidance import *
 
 
 
@@ -24,28 +27,11 @@ parser.add_argument("--seed", dest="seed", type=int,
 # For the following argument, follow the order "cnndm", "xsum", "reddit", "wikihow", "billsum", "samsum"
 parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                     default="samsum", help="data name",
-                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
-parser.add_argument("--dataset_version", dest="dataset_version", type=str,
-                    default="samsum", help="data version",
-                    choices = ["3.0.0", "default", "long", "all", "default", "samsum"]) 
-parser.add_argument("--text_key", dest="text_key", type=str,
-                    default="dialogue", help="name of the data entry containing the source document",
-                    choices = ["article", "document", "documents", "text", "text", "dialogue"]) 
-parser.add_argument("--summary_key", dest="summary_key", type=str,
-                    default="summary", help="name of the data entry containing the summary",
-                    choices = ["highlights", "summary", "tldr", "headline", "summary", "summary"])  
-parser.add_argument("--validation_key", dest="validation_key", type=str,
-                    default="validation", help="name of the dataset field for validation split",
-                    choices = ["validation", "validation", "", "validation", "test", "validation"])  
-parser.add_argument("--test_key", dest="test_key", type=str,
-                    default="test", help="name of the dataset field for test split",
-                    choices = ["test", "test", "", "test", "test", "test"])  
+                    choices = ["cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"])
 parser.add_argument("--dataset_data_dir", dest="dataset_data_dir", type=str,
                     default=None, help = "folder for WikiHow data") 
 parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                     default="../../hf_datasets/", help="dataset cache folder")
-parser.add_argument("--num_entries", dest="num_entries", type=int,
-                    default=42139, help="size of the dataset for Reddit TIFU")
 
 ##### model
 # input 
@@ -55,9 +41,9 @@ parser.add_argument("--max_length", dest="max_length", type=int,
 parser.add_argument("--model", dest="model", type=str,
                     default="T5Finetune", choices=['T5Prompt', 'T5MixPrompt', 'T5Finetune'])
 parser.add_argument("--model_name", dest="model_name", type=str,
-                    default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, google/t5-v1_1-large}")
+                    default="google/pegasus-large")
 parser.add_argument("--cache_dir", dest="cache_dir", type=str,
-                    default="../../hf_models/t5-v1-large", )
+                    default="../../hf_models/pegasus-large", )
 parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=bool,
                     default=True, help="whether to use lm_adapted model")
 parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -98,50 +84,70 @@ parser.add_argument("--ents_stats_max_len", type=int, default=1000)
 
 args = parser.parse_args()
 
+dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
+dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
+text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
+summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
+validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
+test_keys = ["test", "test", "", "test", "test", "test"]
+
+idx = dataset_names.index(args.dataset_name)
+if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
+    idx = 0
+    args.dataset = 'cnndm'
+else:
+    args.dataset = args.dataset_name
+
+args.dataset_version = dataset_versions[idx]
+args.text_key = text_keys[idx]
+args.summary_key = summary_keys[idx]
+args.validation_key = validation_keys[idx]
+args.test_key = test_keys[idx]
+
 # print args
 print(args)
 
 
 
 def main(args):
-
     # set seed
     seed_everything(args)
 
-    # tokenizer
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name,cache_dir=args.cache_dir)
+    if 'Bart' in args.model:
+        tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    elif 'Pegasus' in args.model:
+        tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    else:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
 
     # data
-    dataset_args = [args.dataset_name, args.dataset_version]
-    if args.dataset_name in ["cnn_dailymail", "xsum", "wikihow", "billsum", "samsum"]:
-        train_dataset = T5CNNDataset(dataset_args, "train", tokenizer, args)
-        valid_dataset = T5CNNDataset(dataset_args, args.validation_key, tokenizer, args)
-        test_dataset = T5CNNDataset(dataset_args, args.test_key, tokenizer, args)
-    else:
-        # build a train:valid:test split
-        num_entries = args.num_entries
-        print("Total # of data points: {}".format(num_entries))
-        idx = np.random.permutation(num_entries)
-        thresh = int(0.1 * num_entries)
-        # call splits based on their indices
-        train_split = list(idx[0:(8 * thresh)])
-        valid_split = list(idx[(8 * thresh):(9 * thresh)])
-        test_split = list(idx[(9 * thresh):])
-        train_split = train_split[:50]
-        valid_split = valid_split[:10]
-        test_split = test_split[:10]
-        train_dataset = T5CNNDataset(dataset_args, train_split, tokenizer, args)
-        valid_dataset = T5CNNDataset(dataset_args, valid_split, tokenizer, args)
-        test_dataset = T5CNNDataset(dataset_args, test_split, tokenizer, args)
-
-
     spacy_nlp = spacy.load("en_core_web_sm")
-    # train
-    spacy_ents_stats(train_dataset.data, "training", spacy_nlp, args)
-    # val
-    spacy_ents_stats(valid_dataset.data, "validation", spacy_nlp, args)
-    # test    
-    spacy_ents_stats(test_dataset.data, "test", spacy_nlp, args)
+    sets = ["val", "test", "train"]
+    for set in sets:
+        path = "/home/mathieu/DATASETS/PromptSumm/{}/full/seed_42/{}.txt".format(args.dataset, set)
+        print(path)
+        count = 0
+        source_ents, summary_ents = 0, 0
+        with open(path, 'r') as f:
+            for l in tqdm(f.readlines()):
+                data = l.split("\t")
+                source = data[0]
+                ents = spacy_nlp(source).ents
+                allents = [ent.text for ent in ents]
+                source_ents += len(allents)
+                summary = data[1]
+                ents = spacy_nlp(summary).ents
+                allents = [ent.text for ent in ents]
+                summary_ents += len(allents)
+
+                count += 1
+                if count >= 1000:
+                    break
+        source_ents /= count
+        summary_ents /= count
+        print("Average # entities in the source: {:.4f}".format(source_ents))
+        print("Average # entities in the summary: {:.4f}".format(summary_ents))
+
 
 
 
