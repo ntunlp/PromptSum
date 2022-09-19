@@ -168,32 +168,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             model.eval()
 
             idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
-            respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-            # if not os.path.isfile(respath_full):
-            #     alldata = valid_dataset.data
-            #     allresofvalid = {}
-            #     all_ents = []
-            #     with torch.no_grad():
-            #         for step in range(len(alldata)):
-            #             onedata = alldata[step]
-            #             inputdata = onedata[0]
-            #             tempdata = re.sub(' +', ' ', inputdata)
-            #             inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-            #             input_ids = inputres["input_ids"].to(args.device)
-            #             attention_mask = inputres["attention_mask"].to(args.device)
-            #             input = {"input_ids": input_ids, "attention_mask": attention_mask}
-            #             tagpreds = entmodel._generative_step_for_tagger(input)
-            #             allentitylist = tagpreds[0].split(',')
-            #             if allentitylist == []:
-            #                 input_guidance = 'none'
-            #             else:
-            #                 input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-            #             allresofvalid[tempdata] = input_guidance
-            #             all_ents.append(input_guidance)
-            #     logger.info(len(allresofvalid))
-            #     with open(respath_full, "wb") as f:
-            #         pickle.dump(allresofvalid, f)
-            #         logger.info("saved the T5 test entities")
+            respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'\
             # logger.info(f'respath: {respath}')
             with open(respath_full, "rb") as f:
                 allresofvalid = pickle.load(f)
@@ -207,7 +182,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
                 indices = []
                 for key, value in full_dict.items():
                     input_guidance_list = value.split(',')
-                    if len(input_guidance_list) >= 2:
+                    if len(input_guidance_list) >= 2: #filtering
                         input_guidance = args.separator.join(input_guidance_list)
                         allresofvalid[key] = input_guidance
                         all_ents.append(input_guidance)
@@ -243,10 +218,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
                 input_guidance = args.separator.join(input_guidance_list)
             else:
                 input_guidance = 'none'
-            # all_ents.append(input_guidance)
             new_allent[key] = input_guidance
-            # logger.info(f'original: {value}')
-            # logger.info(f'popped: {input_guidance}')
         new_valid_dataset = copy.deepcopy(valid_dataset)
         new_valid_dataset.allent = new_allent
     else:

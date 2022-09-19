@@ -42,7 +42,6 @@ pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_e
 # echo "CONTROLLING EXPS FOR CNNDM - WITH COUNTERFACTUAL TRAINING"
 # CUDA_VISIBLE_DEVICES=4 python controllability.py --big_testset --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --dataset_name ccdv/cnn_dailymail --counterfactual_trained
 
-# # FIXED
 # echo "CONTROLLING EXPS FOR XSUM"
 # CUDA_VISIBLE_DEVICES=2 python controllability_fixed.py  --big_testset --dataset_name=xsum --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt
 # # nohup bash run_controlling.sh > full_controlling_xsum_log 2>&1 &
