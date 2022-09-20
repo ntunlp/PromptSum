@@ -250,6 +250,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
+                #for k in inputs.keys():
+                #    print(k, inputs[k].shape)
                 sen, target, preds = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allysrc.extend(sen)

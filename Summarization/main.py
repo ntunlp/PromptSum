@@ -45,6 +45,7 @@ def set_args():
 
     root = "/export/home/"
     data_root = "/export/home/"
+
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
@@ -470,10 +471,13 @@ def main(args):
             # base model
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle'
             elif 'Pegasus' in args.model:
                 basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle_newforpegasus'
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle'
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
@@ -483,12 +487,12 @@ def main(args):
             elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             else:
                 raise Exception('Model not implemented yet')
