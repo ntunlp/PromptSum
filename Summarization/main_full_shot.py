@@ -287,6 +287,7 @@ def set_args():
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
+    lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
     max_epoch_entity = [3, 3, 5, 5, 5, 5]
     max_epoch_summary = [5, 5, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
@@ -316,9 +317,12 @@ def set_args():
         args.lr_summary = 5e-1
     if ("Finetune" in args.model):
         args.lr_summary = lrs_finetune[idx]
+    if ("Prompt" in args.model):
+        args.lr_entity = lrs_soft[idx]
+        args.lr_summary = lrs_soft[idx]
     if (args.tune_weights):
-        args.lr_entity = 5e-3
-        args.lr_summary = 5e-3
+        args.lr_entity = 1e-4
+        args.lr_summary = 1e-4
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
         args.max_epoch_entity = max_epoch_entity[idx]
         args.max_epoch_summary = max_epoch_summary[idx]
