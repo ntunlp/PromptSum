@@ -478,8 +478,8 @@ def main(args):
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
             elif 'Pegasus' in args.model:
-                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-                args.allnumber_path = '/data/qin/T5/Prompt_fewshot/allnumber.pickle_newforpegasus'
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle_newforpegasus'
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
