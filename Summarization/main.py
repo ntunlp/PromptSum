@@ -45,10 +45,10 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
-    data_root = "/data/mathieu/"
+    data_root = "/home/mathieu/"
     # data_root = "/data/mathieu/"
 
     # general stuff
@@ -545,18 +545,20 @@ def main(args):
                     logger.info("Loading the pre-trained NER model!")
 
                     # model weights
-                    ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-                    dic = {}
-                    for x in ckpt.keys():
-                        if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
-                            continue
-                        if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                            dic[x[7:]] = ckpt[x]
-                    if args.max_position_embeddings > 1024:
-                        dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
-                        dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
-                    entmodel.load_state_dict(dic)
-    
+                    if args.use_pretrain_ckpt:
+                        ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+                        dic = {}
+                        for x in ckpt.keys():
+                            if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                                continue
+                            if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                                dic[x[7:]] = ckpt[x]
+                        if args.max_position_embeddings > 1024:
+                            dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                            dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
+                        entmodel.load_state_dict(dic)
+                        logger.infor("Loaded the pre-trained ckpt for the entity prediction model!")
+
                     # just prompt
                     if not(args.zero_shot):
                         if args.tune_weights:

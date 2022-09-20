@@ -108,8 +108,6 @@ class ModelMixPrompt(nn.Module):
             discrete_prompt_embed = self.model.encoder.embed_tokens(batch["ents_ids"])
         else:
             discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["ents_ids"])
-        #print(soft_prompt_embed.device, discrete_prompt_embed.device)
-        soft_prompt_embed = soft_prompt_embed.cpu()
         prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
 
