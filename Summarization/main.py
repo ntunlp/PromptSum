@@ -43,8 +43,14 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/mathieu/"
-    data_root = "/home/mathieu/"
+    # root = "/home/qin/"
+    # data_root = "/home/qin/"
+    root = "/data/mathieu/"
+    # data_root = "/data/mathieu/"
+    # root = "/home/ruochen/"
+    data_root = "/data/mathieu/"
+    # data_root = "/data/mathieu/"
+
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
@@ -470,10 +476,13 @@ def main(args):
             # base model
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle'
             elif 'Pegasus' in args.model:
-                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = '/data/qin/T5/Prompt_fewshot/allnumber.pickle_newforpegasus'
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle'
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
@@ -483,12 +492,12 @@ def main(args):
             elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+                promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
             else:
                 raise Exception('Model not implemented yet')

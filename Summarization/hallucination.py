@@ -146,9 +146,9 @@ def hallucinated(entity_chain, input, spacy_nlp):
         non_hallucinated = [ent for ent in input_guidance_list if ent in ents_true]
         return ','.join(non_hallucinated), True
     else:
-        return None, False
+        return ','.join(input_guidance_list), False
 
-def count_hallucination_percentage(allytrue, allypred, spacy_nlp):
+def count_hallucination_percentage(allytrue, allypred, spacy_nlp): #CAN CHANGE HERE
     hallucinated_count = 0
     all_count = 0
     for i, ytrue in enumerate(allytrue):
