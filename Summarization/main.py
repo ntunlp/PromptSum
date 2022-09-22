@@ -557,7 +557,7 @@ def main(args):
                             dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
                             dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
                         entmodel.load_state_dict(dic)
-                        logger.infor("Loaded the pre-trained ckpt for the entity prediction model!")
+                        logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
                     # just prompt
                     if not(args.zero_shot):
