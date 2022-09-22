@@ -86,13 +86,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "f1": 0.0
     }
 
-    if args.zero_shot:
-        if args.full_testset:
-            dooneeval(model, test_dataloader, scaler, result_dict, logger, 0, args)
-        else:
-            dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
-        return result_dict
-
     global_step = 0
 
     if args.big_testset:
@@ -158,29 +151,30 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             model.train()
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
-        if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
-            if args.tune_weights:
-                path = args.model_save_path + 'bestckpt_full_weights'
+        if not(args.zero_shot):
+            if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
+                if args.tune_weights:
+                    path = args.model_save_path + 'bestckpt_full_weights'
+                    if args.use_pretrain_ckpt:
+                        path += "_from_pretrained"
+                else:
+                    path = args.model_save_path + 'full_weights'
+                if args.guidance_mode == "target":
+                    path += "_oracle"
+                model.load_state_dict(torch.load(path))
+                print("loaded the full model weights!", path)
+            else:
+                path = args.model_save_path + 'bestckpt'
                 if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
-            else:
-                path = args.model_save_path + 'full_weights'
-            if args.guidance_mode == "target":
-                path += "_oracle"
-            model.load_state_dict(torch.load(path))
-            print("loaded the full model weights!", path)
-        else:
-            path = args.model_save_path + 'bestckpt'
-            if args.use_pretrain_ckpt:
-                path += "_from_pretrained"
-            if args.guidance_mode == "target":
-                path += "_oracle"
-            if args.counterfactual_removal:
-                path = f'{path}_counterfactual'
-            best_val_ckpt = torch.load(path)
-            model.promptnumber = best_val_ckpt["promptnumber"]
-            model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-            print("loaded the model prompt!", path)
+                if args.guidance_mode == "target":
+                    path += "_oracle"
+                if args.counterfactual_removal:
+                    path = f'{path}_counterfactual'
+                best_val_ckpt = torch.load(path)
+                model.promptnumber = best_val_ckpt["promptnumber"]
+                model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+                print("loaded the model prompt!", path)
         # no need to save again
         args.save_model = False
         args.log_step_finetune = 100

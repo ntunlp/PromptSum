@@ -198,12 +198,6 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         'best_val_meanR': Best_val_meanR
     }
 
-    if args.zero_shot:
-        print("0-shot evaluation...")
-        dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args, save_model=False)
-
-        return result_dict
-
     global_step = 0
     
     if args.eval_epoch_0:
