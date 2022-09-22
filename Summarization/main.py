@@ -563,6 +563,8 @@ def main(args):
                     if not(args.zero_shot):
                         if args.tune_weights:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_full_weights'
+                            if args.use_pretrain_ckpt:
+                                onepath += "_from_pretrained"
                             oneckpt = torch.load(onepath)
                             d = {}
                             for k in entmodel.state_dict().keys():
@@ -572,6 +574,8 @@ def main(args):
                             entmodel.promptembedding = oneckpt["promptembedding"]
                         else:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                            if args.use_pretrain_ckpt:
+                                onepath += "_from_pretrained"
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]

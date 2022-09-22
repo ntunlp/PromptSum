@@ -605,13 +605,24 @@ def main(args):
                     dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
                 entmodel.load_state_dict(dic)
 
-                # just prompt
-                #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
-                print(onepath)
-                oneckpt = torch.load(onepath)
-                entmodel.promptnumber = oneckpt["promptnumber"]
-                entmodel.promptembedding = oneckpt["promptembedding"]
+                if args.tune_weights:
+                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
+                    if args.use_pretrain_ckpt:
+                        onepath += "_from_pretrained"
+                    oneckpt = torch.load(onepath)
+                    d = {}
+                    for k in entmodel.state_dict().keys():
+                        d[k] = oneckpt[k]
+                    entmodel.load_state_dict(d)
+                    entmodel.promptnumber = oneckpt["promptnumber"]
+                    entmodel.promptembedding = oneckpt["promptembedding"]
+                else:
+                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+                    if args.use_pretrain_ckpt:
+                        onepath += "_from_pretrained"
+                    oneckpt = torch.load(onepath)
+                    entmodel.promptnumber = oneckpt["promptnumber"]
+                    entmodel.promptembedding = oneckpt["promptembedding"]
 
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))

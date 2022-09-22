@@ -249,11 +249,15 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         }
         if args.tune_weights:
             onepath = os.path.join(output_dir, "bestckpt_full_weights")
+            if args.use_pretrain_ckpt:
+                onepath += "_from_pretrained"
             oneckpt = torch.load(onepath)
             model.load_state_dict(oneckpt)
             print("loaded all model weights")
         else:
             onepath = os.path.join(output_dir, "bestckpt_prompt")
+            if args.use_pretrain_ckpt:
+                onepath += "_from_pretrained"
             oneckpt = torch.load(onepath)
             model.promptnumber = oneckpt["promptnumber"]
             model.promptembedding = oneckpt["promptembedding"]
@@ -344,13 +348,19 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
             if args.tune_weights:
                 d = model_to_save.state_dict()
                 d["promptnumber"] = model_to_save.promptnumber
-                torch.save(d, os.path.join(path, "bestckpt_full_weights"))
+                path = os.path.join(path, "bestckpt_full_weights")
+                if args.use_pretrain_ckpt:
+                    path += "_from_pretrained"
+                torch.save(d, path)
             else:
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding
                 }
-                torch.save(ckpt, os.path.join(path, "bestckpt_prompt"))
+                path = os.path.join(path, "bestckpt_prompt")
+                if args.use_pretrain_ckpt:
+                    path += "_from_pretrained"
+                torch.save(ckpt, path)
             print("saved new entity model ckpt!")
 
 
