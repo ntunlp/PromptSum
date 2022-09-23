@@ -477,7 +477,7 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        logger.info('args.big_testset: ', args.big_testset)
+        logger.info('args.big_testset: {args.big_testset}')
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
@@ -485,11 +485,11 @@ def main(args):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
                                                      save_path = args.save_dir)
-            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
-        logger.info('args.full_testset: ', args.full_testset)
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
+        logger.info('args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            logger.info('full test set file: {}'.format(args.test_file))
+            logger.info('full test set file: {args.test_file}')
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 logger.info('creating')
