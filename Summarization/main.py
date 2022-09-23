@@ -608,6 +608,8 @@ def main(args):
                             alldata = valid_dataset.data
                             print("valid size: ", len(alldata))
                         allresofvalid = {}
+                        allpreds, alllabels = [], []
+                        spacy_nlp = spacy.load("en_core_web_sm")
                         with torch.no_grad():
                             for step in tqdm(range(len(alldata))):
                                 onedata = alldata[step]
@@ -623,7 +625,27 @@ def main(args):
                                     allentitylist = ["none"]
                                 input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
                                 allresofvalid[tempdata] = input_guidance
+                                allpreds.append(tagpreds[0])
+                                target = onedata[1]
+                                ents = spacy_nlp(target).ents
+                                ents = [ent.text for ent in ents]
+                                target_ents = ','.join(ents)
+                                alllabels.append(target_ents)
                         logger.info(len(allresofvalid))
+                        scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
+                        mean_rs, r1s, r2s, rls = [], [], [], []
+                        for x in range(len(allpreds)):
+                            rouge_score = scorer.score(alllabels[x], allpreds[x])
+                            r1 = rouge_score["rouge1"].fmeasure
+                            r2 = rouge_score["rouge2"].fmeasure
+                            rl = rouge_score["rougeLsum"].fmeasure
+                            mean_r = (r1 + r2 + rl)/3
+                            mean_rs.append(mean_r)
+                            r1s.append(r1)
+                            r2s.append(r2)
+                            rls.append(rl) 
+                        print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
+                            100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)                                                                                                                                                                                                                                   ))
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)
                             logger.info("saved the T5 valid entities to: {}".format(respath))

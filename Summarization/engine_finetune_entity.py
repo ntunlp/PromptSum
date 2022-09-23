@@ -252,7 +252,11 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
             if args.use_pretrain_ckpt:
                 onepath += "_from_pretrained"
             oneckpt = torch.load(onepath)
-            model.load_state_dict(oneckpt)
+            d = {}
+            for k in model.state_dict().keys():
+                d[k] = oneckpt[k]
+            model.load_state_dict(d)
+            model.promptnumber = oneckpt["promptnumber"]
             print("loaded all model weights")
         else:
             onepath = os.path.join(output_dir, "bestckpt_prompt")
