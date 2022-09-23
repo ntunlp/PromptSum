@@ -115,7 +115,9 @@ class ModelforFinetuneEntity(nn.Module):
             early_stopping=True
         )
         preds = self.ids_to_clean_text(generated_ids)
-        target = self.ids_to_clean_text(batch["target_ids"])
+        target = None
+        if "target_ids" in batch.keys():
+            target = self.ids_to_clean_text(batch["target_ids"])
         input = self.ids_to_clean_text(batch["input_ids"])
 
         return input, target, preds

@@ -405,7 +405,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    logger.info("Few shot save dir: {args.few_shot_save_dir}")
+    logger.info(f"Few shot save dir: {args.few_shot_save_dir}")
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -437,7 +437,7 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        logger.info('args.big_testset: {args.big_testset}')
+        logger.info(f'args.big_testset: {args.big_testset}')
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
@@ -445,7 +445,7 @@ def main(args):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
-        logger.info('args.full_testset: {args.full_testset}')
+        logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
             logger.info(args.test_file)
@@ -601,17 +601,17 @@ def main(args):
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                     elif args.full_testset:
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
-                    if args.use_pretrained_ckpt:
+                    if args.use_pretrain_ckpt:
                         respath = respath[:-4] + "_from_pretrained.pkl"
                     if args.tune_weights:
                         respath = respath[:-4] + "_full_weights.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
-                            logger.info("test size: {len(alldata)}")
+                            logger.info(f"test size: {len(alldata)}")
                         else:
                             alldata = valid_dataset.data
-                            logger.info("valid size: {len(alldata)}")
+                            logger.info(f"valid size: {len(alldata)}")
                         allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                         logger.info(len(allresofvalid))
                         with open(respath, "wb") as f:
@@ -624,7 +624,7 @@ def main(args):
                         args.test_dataset.set_allent_for_valid(respath)
                     else:
                         valid_dataset.set_allent_for_valid(respath)
-                    logger.info('Set valid ents for path: {respath}')
+                    logger.info(f'Set valid ents for path: {respath}')
 
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:
