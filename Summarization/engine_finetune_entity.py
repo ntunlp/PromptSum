@@ -123,9 +123,9 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
-    train_dataset = T5DatasetPretrainConll(trainfile, max_seq_length, tokenizer)
-    valid_dataset = T5DatasetPretrainConll(validfile, max_seq_length, tokenizer)
-    test_dataset = T5DatasetPretrainConll(testfile, max_seq_length, tokenizer)
+    train_dataset = DatasetPretrainEntity(trainfile, max_seq_length, tokenizer)
+    valid_dataset = DatasetPretrainEntity(validfile, max_seq_length, tokenizer)
+    test_dataset = DatasetPretrainEntity(testfile, max_seq_length, tokenizer)
 
     if args.local_rank != -1:
         torch.distributed.barrier()
@@ -368,4 +368,46 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
             print("saved new entity model ckpt!")
 
 
+def infer_entity_model(alldata, enttokenizer, entmodel, args):
+    allresofvalid = {}
+    allpreds, alllabels = [], []
+    spacy_nlp = spacy.load("en_core_web_sm")
+    with torch.no_grad():
+        for step in tqdm(range(len(alldata))):
+            onedata = alldata[step]
+            inputdata = onedata[0]
+            tempdata = re.sub(' +', ' ', inputdata).strip()
+            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
+            input_ids = inputres["input_ids"].to(args.device)
+            attention_mask = inputres["attention_mask"].to(args.device)
+            input = {"input_ids": input_ids, "attention_mask": attention_mask}
+            _, _, tagpreds = entmodel._generative_step(input)
+            allentitylist = tagpreds[0].split(',')
+            if allentitylist == []:
+                allentitylist = ["none"]
+            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
+            allresofvalid[tempdata] = input_guidance
+            allpreds.append(tagpreds[0])
+            target = onedata[1]
+            ents = spacy_nlp(target).ents
+            ents = [ent.text for ent in ents]
+            target_ents = ','.join(ents)
+            alllabels.append(target_ents)
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    mean_rs, r1s, r2s, rls = [], [], [], []
+    for x in range(len(allpreds)):
+        rouge_score = scorer.score(alllabels[x], allpreds[x])
+        r1 = rouge_score["rouge1"].fmeasure
+        r2 = rouge_score["rouge2"].fmeasure
+        rl = rouge_score["rougeLsum"].fmeasure
+        mean_r = (r1 + r2 + rl) / 3
+        mean_rs.append(mean_r)
+        r1s.append(r1)
+        r2s.append(r2)
+        rls.append(rl)
+    print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
+        100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)
+    ))
+
+    return allresofvalid, allpreds, alllabels
 

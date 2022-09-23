@@ -222,6 +222,8 @@ def set_args():
                         default=True)
 
     # generation
+    parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
+                        default=128, help="maximum length of the generated entity chain")
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -403,7 +405,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    print("Few shot save dir:", args.few_shot_save_dir)
+    logger.info("Few shot save dir:", args.few_shot_save_dir)
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -435,24 +437,24 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        print('args.big_testset: ', args.big_testset)
+        logger.info('args.big_testset: ', args.big_testset)
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
-        print('args.full_testset: ', args.full_testset)
+        logger.info('args.full_testset: ', args.full_testset)
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            print(args.test_file)
+            logger.info(args.test_file)
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
-                print('creating')
+                logger.info('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
@@ -542,9 +544,10 @@ def main(args):
                         entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
                         enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                         entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
-                    logger.info("Loading the pre-trained NER model!")
 
-                    # model weights
+                    # Entity model weights
+
+                    # from pre-training checkpoint
                     if args.use_pretrain_ckpt:
                         ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
                         dic = {}
@@ -559,7 +562,7 @@ def main(args):
                         entmodel.load_state_dict(dic)
                         logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
-                    # just prompt
+                    # from entity tuning round
                     if not(args.zero_shot):
                         if args.tune_weights:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_full_weights'
@@ -579,9 +582,9 @@ def main(args):
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
-                        print("Loaded the entity model from: {}".format(onepath))
+                        logger.info("Loaded the entity model from: {}".format(onepath))
                     else:
-                        print("Zero-shot - loading the prompt from pre-training ckpt")
+                        logger.info("Zero-shot - loading the prompt from pre-training ckpt")
                         ckpt = torch.load(args.pretrain_prompt_ckpt)
                         entmodel.promptnumber = ckpt["promptnumber"]
                         entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
@@ -598,54 +601,19 @@ def main(args):
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                     elif args.full_testset:
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                    if args.use_pretrained_ckpt:
+                        respath = respath[:-4] + "_from_pretrained.pkl"
                     if args.tune_weights:
-                        respath = respath[:-4] + "full_weights.pkl"
+                        respath = respath[:-4] + "_full_weights.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
-                            print("test size: ", len(alldata))
+                            logger.info("test size: ", len(alldata))
                         else:
                             alldata = valid_dataset.data
-                            print("valid size: ", len(alldata))
-                        allresofvalid = {}
-                        allpreds, alllabels = [], []
-                        spacy_nlp = spacy.load("en_core_web_sm")
-                        with torch.no_grad():
-                            for step in tqdm(range(len(alldata))):
-                                onedata = alldata[step]
-                                inputdata = onedata[0]
-                                tempdata = re.sub(' +', ' ', inputdata).strip()
-                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                input_ids = inputres["input_ids"].to(args.device)
-                                attention_mask = inputres["attention_mask"].to(args.device)
-                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                tagpreds = entmodel._generative_step_for_tagger(input)
-                                allentitylist = tagpreds[0].split(',')
-                                if allentitylist == []:
-                                    allentitylist = ["none"]
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                allresofvalid[tempdata] = input_guidance
-                                allpreds.append(tagpreds[0])
-                                target = onedata[1]
-                                ents = spacy_nlp(target).ents
-                                ents = [ent.text for ent in ents]
-                                target_ents = ','.join(ents)
-                                alllabels.append(target_ents)
+                            logger.info("valid size: ", len(alldata))
+                        allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                         logger.info(len(allresofvalid))
-                        scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
-                        mean_rs, r1s, r2s, rls = [], [], [], []
-                        for x in range(len(allpreds)):
-                            rouge_score = scorer.score(alllabels[x], allpreds[x])
-                            r1 = rouge_score["rouge1"].fmeasure
-                            r2 = rouge_score["rouge2"].fmeasure
-                            rl = rouge_score["rougeLsum"].fmeasure
-                            mean_r = (r1 + r2 + rl)/3
-                            mean_rs.append(mean_r)
-                            r1s.append(r1)
-                            r2s.append(r2)
-                            rls.append(rl) 
-                        print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
-                            100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)                                                                                                                                                                                                                                   ))
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)
                             logger.info("saved the T5 valid entities to: {}".format(respath))
@@ -656,7 +624,7 @@ def main(args):
                         args.test_dataset.set_allent_for_valid(respath)
                     else:
                         valid_dataset.set_allent_for_valid(respath)
-                    print('Set valid ents for path: ', respath)
+                    logger.info('Set valid ents for path: ', respath)
 
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:

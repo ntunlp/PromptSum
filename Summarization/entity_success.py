@@ -285,7 +285,7 @@ def main(args):
         dataset_args = [args.dataset_name, args.dataset_version]
         subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, n = 100)
     logger.info('generated dataset')
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     scaler = None
     # find all entities for all inputs

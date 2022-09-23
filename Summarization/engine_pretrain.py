@@ -145,8 +145,8 @@ def pretrain_model(dataset_args, args):
                 print(len(train_texts), len(val_texts))
 
     # datasets
-    train_dataset = T5DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
-    valid_dataset = T5DatasetPretrain(val_texts, val_ents, valid_target, max_seq_length, tokenizer, args)
+    train_dataset = DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
+    valid_dataset = DatasetPretrain(val_texts, val_ents, valid_target, max_seq_length, tokenizer, args)
 
     if args.local_rank != -1:
         torch.distributed.barrier()
