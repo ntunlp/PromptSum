@@ -405,7 +405,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    logger.info("Few shot save dir:", args.few_shot_save_dir)
+    logger.info("Few shot save dir: {args.few_shot_save_dir}")
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -437,15 +437,15 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        logger.info('args.big_testset: ', args.big_testset)
+        logger.info('args.big_testset: {args.big_testset}')
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
-        logger.info('args.full_testset: ', args.full_testset)
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
+        logger.info('args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
             logger.info(args.test_file)
@@ -608,10 +608,10 @@ def main(args):
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
-                            logger.info("test size: ", len(alldata))
+                            logger.info("test size: {len(alldata)}")
                         else:
                             alldata = valid_dataset.data
-                            logger.info("valid size: ", len(alldata))
+                            logger.info("valid size: {len(alldata)}")
                         allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                         logger.info(len(allresofvalid))
                         with open(respath, "wb") as f:
@@ -624,7 +624,7 @@ def main(args):
                         args.test_dataset.set_allent_for_valid(respath)
                     else:
                         valid_dataset.set_allent_for_valid(respath)
-                    logger.info('Set valid ents for path: ', respath)
+                    logger.info('Set valid ents for path: {respath}')
 
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:
