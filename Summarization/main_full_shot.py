@@ -218,6 +218,8 @@ def set_args():
                         default=False, help="whether to evaluate before trainin")
 
     # generation
+    parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
+                        default=128, help="maximum length of the generated entity chain")
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -250,9 +252,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
+                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -420,14 +422,14 @@ def main(args):
         train_data = data['train']
         valid_data = data['validation']
         test_data = data['test']
-    print("\nTotal size: {}".format(len(data)))
+    logger.info("\nTotal size: {}".format(len(data)))
 
-    print("\nData size: train: {}, val: {}, test: {}".format(
+    logger.info("\nData size: train: {}, val: {}, test: {}".format(
         len(train_data), len(valid_data), len(test_data)))
     train_data = train_data[:args.max_train_size]
     valid_data = valid_data[:args.max_val_size]
     test_data = test_data[:args.max_test_size]
-    print("\nFinal data size: train: {}, val: {}, test: {}".format(
+    logger.info("\nFinal data size: train: {}, val: {}, test: {}".format(
         len(train_data), len(valid_data), len(test_data)))
 
     train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
@@ -441,7 +443,6 @@ def main(args):
             t[k] = train_data[k][i]
         train_data_new.append(t)
     train_data = train_data_new
-    print(len(train_data))
     valid_data_new = []
     for i in tqdm(range(len(valid_data[list(valid_data.keys())[0]]))):
         t = {}
@@ -449,7 +450,6 @@ def main(args):
             t[k] = valid_data[k][i]
         valid_data_new.append(t)
     valid_data = valid_data_new
-    print(len(valid_data))
     test_data_new = []
     for i in tqdm(range(len(test_data[list(test_data.keys())[0]]))):
         t = {}
@@ -457,14 +457,11 @@ def main(args):
             t[k] = test_data[k][i]
         test_data_new.append(t)
     test_data = test_data_new
-    print(len(test_data))
+    logger.info("train/val/test size: {} {} {}".format(len(train_data), len(valid_data), len(test_data)))
 
     convert_data_to_txt(train_data, train_path, args)
     convert_data_to_txt(valid_data, valid_path, args)
     convert_data_to_txt(test_data, test_path, args)
-
-    print(args.pretrain_ckpt)
-    print(args.pretrain_prompt_ckpt)
 
     ########## 1st prompt tuning stage (for entity chain)?
     if args.finetune_entity:
@@ -480,36 +477,36 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        print('args.big_testset: ', args.big_testset)
+        logger.info(f'args.big_testset: {args.big_testset}')
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                                        save_path = args.save_dir)
-            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
-        print('args.full_testset: ', args.full_testset)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                                     save_path = args.save_dir)
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
+        logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            print(args.test_file)
+            logger.info('full test set file: {args.test_file}')
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
-                print('creating')
+                logger.info('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                                       save_path = args.save_dir)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                                     save_path = args.save_dir)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
 
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
 
         # datasets
-        train_dataset = T5SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                               save_path = args.save_dir)
-        valid_dataset = T5SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed, 
-                                                save_path = args.save_dir)
+        train_dataset = SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                             save_path = args.save_dir)
+        valid_dataset = SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                             save_path = args.save_dir)
 
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         result_dict_total = {}
@@ -593,25 +590,39 @@ def main(args):
                 logger.info("Loading the pre-trained NER model!")
 
                 # model weights
-                ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-                dic = {}
-                for x in ckpt.keys():
-                    if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
-                        continue
-                    if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                        dic[x[7:]] = ckpt[x]
-                if args.max_position_embeddings > 1024:
-                    dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
-                    dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
-                entmodel.load_state_dict(dic)
+                if args.use_pretrain_ckpt:
+                    ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+                    dic = {}
+                    for x in ckpt.keys():
+                        if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                            continue
+                        if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                            dic[x[7:]] = ckpt[x]
+                    if args.max_position_embeddings > 1024:
+                        dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                        dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
+                    entmodel.load_state_dict(dic)
+                    logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
-                # just prompt
-                #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
-                print(onepath)
-                oneckpt = torch.load(onepath)
-                entmodel.promptnumber = oneckpt["promptnumber"]
-                entmodel.promptembedding = oneckpt["promptembedding"]
+                if args.tune_weights:
+                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
+                    if args.use_pretrain_ckpt:
+                        onepath += "_from_pretrained"
+                    oneckpt = torch.load(onepath)
+                    d = {}
+                    for k in entmodel.state_dict().keys():
+                        d[k] = oneckpt[k]
+                    entmodel.load_state_dict(d)
+                    entmodel.promptnumber = oneckpt["promptnumber"]
+                    entmodel.promptembedding = oneckpt["promptembedding"]
+                else:
+                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+                    if args.use_pretrain_ckpt:
+                        onepath += "_from_pretrained"
+                    oneckpt = torch.load(onepath)
+                    entmodel.promptnumber = oneckpt["promptnumber"]
+                    entmodel.promptembedding = oneckpt["promptembedding"]
+                logger.info("Loaded the entity model from: {}".format(onepath))
 
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))
@@ -624,32 +635,19 @@ def main(args):
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
                 elif args.full_testset:
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
+                if args.use_pretrained_ckpt:
+                    respath = respath[:-4] + "_from_pretrained.pkl"
+                if args.tune_weights:
+                    respath = respath[:-4] + "_full_weights.pkl"
                 if not (os.path.isfile(respath) and args.reuse_entity_file):
                     if args.big_testset or args.full_testset:
                         alldata = args.test_dataset.data
-                        print("test size: ", len(alldata))
+                        logger.info("test size: ", len(alldata))
                     else:
                         alldata = valid_dataset.data
-                        print("valid size: ", len(alldata))
-                    allresofvalid = {}
-                    with torch.no_grad():
-                        for step in tqdm(range(len(alldata))):
-                            onedata = alldata[step]
-                            inputdata = onedata[0]
-                            tempdata = re.sub(' +', ' ', inputdata).strip()
-                            inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                            input_ids = inputres["input_ids"].to(args.device)
-                            attention_mask = inputres["attention_mask"].to(args.device)
-                            input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                            tagpreds = entmodel._generative_step_for_tagger(input)
-                            allentitylist = tagpreds[0].split(',')
-                            if allentitylist == []:
-                                allentitylist = ["none"]
-                            input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                            #print(step, input_guidance)
-                            allresofvalid[tempdata] = input_guidance
+                        logger.info("valid size: ", len(alldata))
+                    allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                     logger.info(len(allresofvalid))
-                    #raise Exception 
                     with open(respath, "wb") as f:
                         pickle.dump(allresofvalid, f)
                         logger.info("saved the T5 valid entities")
@@ -661,7 +659,7 @@ def main(args):
                     args.test_dataset.set_allent_for_valid(respath)
                 else:
                     valid_dataset.set_allent_for_valid(respath)
-                print('Set valid ents for path: ', respath)
+                logger.info('Set valid ents for path: ', respath)
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)

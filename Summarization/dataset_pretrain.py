@@ -7,9 +7,9 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 
 
 
-class T5DatasetPretrainConll(Dataset):
+class DatasetPretrainEntity(Dataset):
     def __init__(self, filename, maxlen, tokenizer):
-        super(T5DatasetPretrainConll, self).__init__()
+        super(DatasetPretrainEntity, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
@@ -55,9 +55,9 @@ class T5DatasetPretrainConll(Dataset):
         return self.num_entries
 
 
-class T5DatasetPretrain(Dataset):
+class DatasetPretrain(Dataset):
     def __init__(self, texts, ents, target, maxlen, tokenizer, args):
-        super(T5DatasetPretrain, self).__init__()
+        super(DatasetPretrain, self).__init__()
         self.texts = texts
         self.ents = ents
         self.target = target

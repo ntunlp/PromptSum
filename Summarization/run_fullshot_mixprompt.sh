@@ -1,29 +1,29 @@
 ### dataset
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="2"
-cache='/data/mathieu/hf_models/pegasus-large/'
+device="3"
+cache='/home/mathieu/hf_models/pegasus-large/'
 
 ### backbone model
 ##### T5-large backbone
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 
 ############################ MixPrompt (PromptSum) - no pre-training
 
 ##### train + val
 #echo "start full-shot prompt-tune_entity"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_entity --use_pretrain_ckpt --cache_path $cache --batch_size_per_gpu_entity 1 --gradient_accumulation_steps_entity 256 --valid_size_per_gpu_entity 1
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_entity --use_pretrain_ckpt --cache_path $cache
 #echo "start full-shot prompt-tune_summary"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --cache_path $cache --batch_size_per_gpu_summary 1 --gradient_accumulation_steps_summary 256 --valid_size_per_gpu_summary 1 
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --cache_path $cache
 ##### test
-echo "start full-shot prompt-tune_entity - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --use_pretrain_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache
-echo "start full-shot prompt-tune_summary - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --max_epoch_summary 0 --cache_path $cache
+#echo "start full-shot prompt-tune_entity - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --use_pretrain_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache
+#echo "start full-shot prompt-tune_summary - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --max_epoch_summary 0 --cache_path $cache
 
 ############################ MixPrompt (PromptSum)
 
@@ -42,10 +42,23 @@ CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt -
 
 ##### train & val
 #echo "start full-shot prompt-tune_summary ORACLE"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_t5_tagger --guidance_mode target --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --batch_size_per_gpu_summary 1 --gradient_accumulation_steps_summary 256 --valid_size_per_gpu_summary 1
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_t5_tagger --guidance_mode target --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache
 ##### test
 #echo "start full-shot prompt-tune_summary ORACLE - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --use_t5_tagger --guidance_mode target --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache
+
+############################ MixPrompt (PromptSum) - no pre-training TUNE WEIGHTS
+
+##### train + val
+#echo "start full-shot prompt-tune_entity"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_entity --use_pretrain_ckpt --cache_path $cache --tune_weights
+#echo "start full-shot prompt-tune_summary"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --cache_path $cache --tune_weights
+##### test
+echo "start full-shot prompt-tune_entity - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --use_pretrain_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache --tune_weights
+echo "start full-shot prompt-tune_summary - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --max_epoch_summary 0 --cache_path $cache --tune_weights
 
 ############################ MixPrompt (PromptSum) TUNE WEIGHTS
 
