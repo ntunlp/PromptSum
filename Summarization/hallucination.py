@@ -23,8 +23,9 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                             default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                        default="T5MixPrompt", choices = ['T5Finetune', 'T5SoftPrompt', 'T5MixPrompt',
+                            'BartFinetune', 'BartSoftPrompt', 'BartMixPrompt',
+                            'PegasusFinetune', 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -353,7 +354,7 @@ def main(args):
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
-    if args.use_pretrain_ckpt and args.model != "T5Finetune":
+    if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
         ckptsum = torch.load(args.pretrain_ckpt)
         dicsum = {}
         for x in ckptsum.keys():
