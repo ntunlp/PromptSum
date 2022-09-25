@@ -478,8 +478,8 @@ def main(args):
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
             elif 'Pegasus' in args.model:
-                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-                args.allnumber_path = '/data/qin/T5/Prompt_fewshot/allnumber.pickle_newforpegasus'
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+                args.allnumber_path = 'allnumber.pickle_newforpegasus'
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
@@ -545,18 +545,20 @@ def main(args):
                     logger.info("Loading the pre-trained NER model!")
 
                     # model weights
-                    ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-                    dic = {}
-                    for x in ckpt.keys():
-                        if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
-                            continue
-                        if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                            dic[x[7:]] = ckpt[x]
-                    if args.max_position_embeddings > 1024:
-                        dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
-                        dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
-                    entmodel.load_state_dict(dic)
-    
+                    if args.use_pretrain_ckpt:
+                        ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+                        dic = {}
+                        for x in ckpt.keys():
+                            if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                                continue
+                            if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                                dic[x[7:]] = ckpt[x]
+                        if args.max_position_embeddings > 1024:
+                            dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                            dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
+                        entmodel.load_state_dict(dic)
+                        logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
+
                     # just prompt
                     if not(args.zero_shot):
                         if args.tune_weights:

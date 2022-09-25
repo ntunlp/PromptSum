@@ -41,7 +41,7 @@ from models_summarization.model_mixture import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/mathieu/"
+    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -287,6 +287,7 @@ def set_args():
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
+    lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
     max_epoch_entity = [3, 3, 5, 5, 5, 5]
     max_epoch_summary = [5, 5, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
@@ -316,9 +317,12 @@ def set_args():
         args.lr_summary = 5e-1
     if ("Finetune" in args.model):
         args.lr_summary = lrs_finetune[idx]
+    if ("Prompt" in args.model):
+        args.lr_entity = lrs_soft[idx]
+        args.lr_summary = lrs_soft[idx]
     if (args.tune_weights):
-        args.lr_entity = 5e-3
-        args.lr_summary = 5e-3
+        args.lr_entity = 1e-4
+        args.lr_summary = 1e-4
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
         args.max_epoch_entity = max_epoch_entity[idx]
         args.max_epoch_summary = max_epoch_summary[idx]
@@ -518,11 +522,14 @@ def main(args):
 
         # base model
         if 'Bart' in args.model:
-            basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+            basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            args.allnumber_path = 'allnumber.pickle'
         elif 'Pegasus' in args.model:
-            basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
+            basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+            args.allnumber_path = 'allnumber.pickle_newforpegasus'
         else:
-            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            args.allnumber_path = 'allnumber.pickle'
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
@@ -532,12 +539,12 @@ def main(args):
         elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
             logger.info('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
             logger.info('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
             raise Exception('Model not implemented yet')
@@ -561,6 +568,7 @@ def main(args):
                 dicsum["model.model.encoder.embed_positions.weight"] = basemodel.state_dict()["model.encoder.embed_positions.weight"]
                 dicsum["model.model.decoder.embed_positions.weight"] = basemodel.state_dict()["model.decoder.embed_positions.weight"]
             model.load_state_dict(dicsum)
+            model = model.to(device)
 
             # just prompt
             ckptsum = torch.load(args.pretrain_prompt_ckpt)

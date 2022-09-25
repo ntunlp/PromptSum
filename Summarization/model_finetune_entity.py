@@ -20,19 +20,21 @@ class ModelforFinetuneEntity(nn.Module):
             self.model.load_state_dict(ckpt)
         elif 'pegasus' in args.model_name:
             ### load ckpt
-            ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-            # many times it has module.model. as starting, which is extra
-            newdict = {}
-            for key in list(ckpt.keys()):
-                if (args.max_position_embeddings > 1024) and ("embed_positions" in key):
-                    continue
-                if key.startswith('module.model.'):
-                    newkey = key.replace('module.model.', '')
-                    newdict[newkey] = ckpt[key]
-            if (args.max_position_embeddings > 1024):
-                newdict["model.encoder.embed_positions.weight"] = self.model.state_dict()["model.encoder.embed_positions.weight"]
-                newdict["model.decoder.embed_positions.weight"] = self.model.state_dict()["model.decoder.embed_positions.weight"]
-            self.model.load_state_dict(newdict)
+            if args.use_pretrain_ckpt:
+                ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+                # many times it has module.model. as starting, which is extra
+                newdict = {}
+                for key in list(ckpt.keys()):
+                    if (args.max_position_embeddings > 1024) and ("embed_positions" in key):
+                        continue
+                    if key.startswith('module.model.'):
+                        newkey = key.replace('module.model.', '')
+                        newdict[newkey] = ckpt[key]
+                if (args.max_position_embeddings > 1024):
+                    newdict["model.encoder.embed_positions.weight"] = self.model.state_dict()["model.encoder.embed_positions.weight"]
+                    newdict["model.decoder.embed_positions.weight"] = self.model.state_dict()["model.decoder.embed_positions.weight"]
+                self.model.load_state_dict(newdict)
+                print("Loaded the entity prediction model from the pre-trained ckpt!")
         if not (args.pretrain and args.pretrain_all_weights):
             for name, param in self.model.named_parameters():
                 param.requires_grad = False
