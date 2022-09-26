@@ -635,17 +635,17 @@ def main(args):
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
                 elif args.full_testset:
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
-                if args.use_pretrained_ckpt:
+                if args.use_pretrain_ckpt:
                     respath = respath[:-4] + "_from_pretrained.pkl"
                 if args.tune_weights:
                     respath = respath[:-4] + "_full_weights.pkl"
                 if not (os.path.isfile(respath) and args.reuse_entity_file):
                     if args.big_testset or args.full_testset:
                         alldata = args.test_dataset.data
-                        logger.info("test size: ", len(alldata))
+                        logger.info(f"test size: {len(alldata)}")
                     else:
                         alldata = valid_dataset.data
-                        logger.info("valid size: ", len(alldata))
+                        logger.info(f"valid size: {len(alldata)}")
                     allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                     logger.info(len(allresofvalid))
                     with open(respath, "wb") as f:
@@ -659,7 +659,7 @@ def main(args):
                     args.test_dataset.set_allent_for_valid(respath)
                 else:
                     valid_dataset.set_allent_for_valid(respath)
-                logger.info('Set valid ents for path: ', respath)
+                logger.info(f'Set valid ents for path: {respath}')
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)

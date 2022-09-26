@@ -228,6 +228,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     model.eval()
     logger.info("Do one eval!")
     allysrc, allytrue, allypred = [], [], []
+    count = 0
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
@@ -251,6 +252,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 allysrc.extend(sen)
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+            count += batch[0].shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for j in range(len(allytrue)):
