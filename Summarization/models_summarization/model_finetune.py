@@ -35,7 +35,7 @@ class ModelFinetune(nn.Module):
     ):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(input_ids)
-        elif "Pegasus" in self.model_name:
+        elif "Pegasus" in self.model_name or 'Bart' in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(input_ids)
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
@@ -66,7 +66,7 @@ class ModelFinetune(nn.Module):
     def _generative_step(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        elif "Pegasus" in self.model_name:
+        elif "Pegasus" in self.model_name or 'Bart' in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim) 
@@ -97,7 +97,7 @@ class ModelFinetune(nn.Module):
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
-        elif "Pegasus" in self.model_name:
+        elif "Pegasus" in self.model_name or 'Bart' in self.model_name:
             input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
