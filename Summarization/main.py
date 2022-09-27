@@ -89,8 +89,7 @@ def set_args():
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
-                        "facebook/bart-large", "google/pegasus-large"])
+                        default="google/pegasus-large", choices=["google/t5-v1_1-large", "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -254,9 +253,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
+                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -488,15 +487,15 @@ def main(args):
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model in ['T5Finetune', 'PegasusFinetune']:
+            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
                 logger.info('\nFinetuning')
                 model = ModelFinetune(args, basemodel, tokenizer, args.model)
-            elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
+            elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
+            elif args.model in ['T5MixPrompt', 'BartMixPrompt', 'PegasusMixPrompt']:
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -508,7 +507,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
+            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights

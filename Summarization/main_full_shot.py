@@ -530,15 +530,15 @@ def main(args):
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
-        if args.model in ['T5Finetune', 'PegasusFinetune']:
+        if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
             logger.info('\nFinetuning')
             model = ModelFinetune(args, basemodel, tokenizer, args.model)
-        elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
+        elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
             logger.info('\nSoft prompt tuning')
             model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
-        elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
+        elif args.model in ['T5MixPrompt', 'BartMixPrompt', 'PegasusMixPrompt']:
             logger.info('\nMix prompt tuning')
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -550,7 +550,7 @@ def main(args):
         logger.info("The model has {} trainable parameters".format(n_params))
 
         ##### load pre-trained model
-        if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
+        if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
             logger.info("load pre-trained model for summarization")
 
             # model weights

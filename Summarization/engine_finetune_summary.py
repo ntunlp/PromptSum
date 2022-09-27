@@ -297,7 +297,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if (args.model in ['T5Finetune', "PegasusFinetune"]) or args.tune_weights:
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
                     if args.use_pretrain_ckpt:
