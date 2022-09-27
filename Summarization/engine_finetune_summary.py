@@ -152,7 +152,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
         if not(args.zero_shot):
-            if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
                     if args.use_pretrain_ckpt:

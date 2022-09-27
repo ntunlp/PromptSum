@@ -1,8 +1,8 @@
 ### dataset
-dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-k_shot="10" # in ["1", "10", "100"]
-device=7
-cache='/data/mathieu/hf_models/t5-v1-large/'
+dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+k_shot="100" # in ["1", "10", "100"]
+device=1
+cache='/data/mathieu/hf_models/bart-large/'
 
 ### backbone model
 ##### T5-large backbone
@@ -24,7 +24,7 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_4
 #CUDA_VISIBLE_DEVICES=$device python main.py --model T5Finetune --dataset_name $dataset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 60 --model_name google/t5-v1_1-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 
 # ##### test
 echo "start k-shot baseline-1: all-params finetune summary - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main.py --model T5Finetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/t5-v1_1-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary 8
+CUDA_VISIBLE_DEVICES=$device python main.py --model BartFinetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name facebook/bart-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary 8
 
 ############################ Baseline v2: Soft prompt tuning
 
