@@ -1,7 +1,7 @@
 ### dataset
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 k_shot="100" # 100
-device=3
+device=2
 bs=8
 cache='/home/mathieu/hf_models/pegasus-large/'
 
@@ -31,6 +31,8 @@ CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_
 
 ##### test
 echo "**************************************************************"
+echo "start k-shot prompt-tune_entity - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary $bs
 echo "start k-shot prompt-tune_summary - TEST SET"
 CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary $bs
 
@@ -54,5 +56,7 @@ CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt 
 
 ##### test
 echo "**************************************************************"
+echo "start full-shot prompt-tune_entity - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache --valid_size_per_gpu_summary $bs
 echo "start full-shot prompt-tune_summary - TEST SET"
 CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --valid_size_per_gpu_summary $bs
