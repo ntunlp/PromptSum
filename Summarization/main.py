@@ -462,6 +462,7 @@ def main(args):
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         if args.eval_abstractiveness:
             keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
+            keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
