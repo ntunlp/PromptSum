@@ -152,7 +152,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
         if not(args.zero_shot):
-            if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
                     if args.use_pretrain_ckpt:
@@ -324,7 +324,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("saved the model prompt!", path)
     # abstractivness
     if args.eval_abstractiveness:
-        new_unigrams, new_bigrams, new_trigrams = [], [], []
+        print("Running new n-grams counts...")
+        new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
         for i in tqdm(range(len(allysrc))):
             text_words = allysrc[i].lower()
             text_words = word_tokenize(text_words)
@@ -334,7 +335,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
 
             summary_words = allypred[i].lower()
             summary_words = word_tokenize(summary_words)
-            unigrams, bigrams, trigrams = 0, 0, 0
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
             for j in range(len(summary_words)):
                 if not(summary_words[j] in text_words):
                     unigrams += 1
@@ -344,15 +345,28 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 if j < len(summary_words) - 2:
                     if not([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
                         trigrams += 1
+                if j < len(summary_words) - 3:
+                    if not([summary_words[j], summary_words[j + 1], summary_words[j + 2], summary_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
             unigrams /= max(1, len(summary_words))
             bigrams /= max(1, len(summary_words)-1)
             trigrams /= max(1, len(summary_words)-2)
+            quadrigrams /= max(1, len(summary_words)-3)
             new_unigrams.append(unigrams)
             new_bigrams.append(bigrams)
             new_trigrams.append(trigrams)
-        print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}%".format(
-            100*np.mean(new_unigrams), 100*np.mean(new_bigrams), 100*np.mean(new_trigrams)
+            new_quadrigrams.append(quadrigrams)
+        new_unigrams = 100 * np.mean(new_unigrams)
+        new_bigrams = 100 * np.mean(new_bigrams)
+        new_trigrams = 100 * np.mean(new_trigrams)
+        new_quadrigrams = 100 * np.mean(new_quadrigrams)
+        print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
+            new_unigrams, new_bigrams, new_trigrams, new_quadrigrams
         ))
+        result_dict["new_unigrams"] = new_unigrams
+        result_dict["new_bigrams"] = new_bigrams
+        result_dict["new_trigrams"] = new_trigrams
+        result_dict["new_quadrigrams"] = new_quadrigrams
 
     return result_dict
 

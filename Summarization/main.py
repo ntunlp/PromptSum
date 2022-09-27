@@ -460,6 +460,8 @@ def main(args):
         # read datasets
         datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        if args.eval_abstractiveness:
+            keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
