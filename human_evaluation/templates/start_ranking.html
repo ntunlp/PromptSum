@@ -33,10 +33,20 @@
         <strong> Source document </strong>
         <div class="alert alert-success" style="align-content:center; overflow:visible; border:3px outset #179c52;"> {{source}} </div>
         <div class="card-body">
-            <p class="card-text" style="font-size: 1rem;">We have shown 2 summary candidates below the above text.
-                <strong>Please give your answers to the questions on the right panel.</strong></p>
+            <p class="card-text" style="font-size: 1rem;">We have shown 2 summary candidates below the above text.  <strong>Please give your answers to the questions on the right panel.</strong></p>
         </div>
     </div>
+
+    <div class="alert alert-primary" style="margin:0"> Example # {{ postid }}
+{#            <span class="badge badge-info" data-toggle="modal" data-target="#exampleModal">Help </span>#}
+        </div>
+        <form name="myForm" action="" method="post" onsubmit="">
+{#            <div class="card-header">#}
+{#                The summaries are given as follows:#}
+{#            </div>#}
+            <div class="alert alert-success" style="margin:0"> A: {{ cap1 }} </div>
+            <div class="alert alert-success" style="margin:0"> B: {{ cap2 }} </div>
+            <br>
 </div>
 
 <div style="width: 50%; float:right;max-height:100%;position:fixed;right:0;overflow:visible;">
@@ -48,56 +58,29 @@
 {#            <span class="badge badge-info" data-toggle="modal" data-target="#exampleModal">Help </span>#}
         </div>
         <form name="myForm" action="" method="post" onsubmit="">
-
             <ul class="list-group">
-                <li class="list-group-item"> Which summary is more informative?: </li>
+                <li class="list-group-item"> Which summary do you PREFER?: </li>
                 <li class="option list-group-item">
-                    <input type="radio" name="info" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="info" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="info" value='a'> It's a tie.
+                    <input type="radio" name="preference" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="preference" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="preference" value='a'> It's a tie.
                 </li>
             </ul>
 
             <br>
             <ul class="list-group">
-                <li class="list-group-item"> Which summary is more factually consistent with the source?: </li>
-                <li class="option list-group-item">
-                    <input type="radio" name="fact" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="fact" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="fact" value='a'> It's a tie.
-                </li>
+                    <li class="list-group-item"> What is the REASON: </li>
+                    <li class="option list-group-item">
+                        <input type="radio" name="reason" value='1'> 1/ It is more INFORMATIVE. &nbsp;<br>
+                        <input type="radio" name="reason" value='2'> 2/ It is more FLUENT or GRAMMATICAL. &nbsp;<br>
+                        <input type="radio" name="reason" value='3'> 3/ It is more FACTUALLY CONSISTENT with the document. <br>
+                        <input type="radio" name="reason" value='4'> 4/ 1 + 2 (informative + fluent). <br>
+                        <input type="radio" name="reason" value='5'> 5/ 1 + 3 (informative + factually consistent). <br>
+                        <input type="radio" name="reason" value='6'> 6/ 2 + 3 (fluent + factually consistent). <br>
+                        <input type="radio" name="reason" value='7'> 7/ 1 + 2 + 3 (all of them!).<br>
+                        <input type="radio" name="reason" value='a'> No specific reason.
+                    </li>
             </ul>
-
-            <br>
-            <ul class="list-group">
-                <li class="list-group-item"> Which summary is more relevant?: </li>
-                <li class="option list-group-item">
-                    <input type="radio" name="rel" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="rel" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="rel" value='a'> It's a tie.
-                </li>
-            </ul>
-
-            <br>
-            <ul class="list-group">
-                <li class="list-group-item"> Which summary is more fluent?: </li>
-                <li class="option list-group-item">
-                    <input type="radio" name="fluent" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="fluent" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="fluent" value='a'> It's a tie.
-                </li>
-            </ul>
-
-            <br>
-            <ul class="list-group">
-                <li class="list-group-item"> Which summary is more coherent?: </li>
-                <li class="option list-group-item">
-                    <input type="radio" name="coh" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="coh" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="coh" value='a'> It's a tie.
-                </li>
-            </ul>
-
             <br>
 
             <input type='text' name="postid" value={{ postid }} readonly style='display:none'>
