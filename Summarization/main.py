@@ -273,6 +273,9 @@ def set_args():
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
+    parser.add_argument("--seeds_to_keep", 
+                        default="0,1,2", help = "to select which seeds to run the exps on")
+
     args = parser.parse_args()
 
     args.few_shot = int(args.few_shot)
@@ -328,6 +331,8 @@ def set_args():
         else:
             args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
+
+    args.seeds_to_keep = args.seeds_to_keep.split(",")
 
     return args
 
@@ -460,6 +465,9 @@ def main(args):
         # read datasets
         datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        if args.eval_abstractiveness:
+            keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
+            keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
@@ -467,6 +475,9 @@ def main(args):
         count = 0
         for (train_dataset, valid_dataset, seed) in datasets:
             logger.info('SEED {}'.format(seed))
+            if not(str(seed) in args.seeds_to_keep):
+                print("SKIPPING THIS SEED")
+                continue
             args.model_save_path = args.model_save_folder + f'seed_{seed}/'
             logger.info('args.model_save_path {}'.format(args.model_save_path))
             logger.info('args.save_model {}'.format(args.save_model))

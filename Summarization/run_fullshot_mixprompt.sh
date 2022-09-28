@@ -1,6 +1,6 @@
 ### dataset
-dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="3"
+dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+device="2"
 cache='/home/mathieu/hf_models/pegasus-large/'
 
 ### backbone model
@@ -36,7 +36,7 @@ pretrain_prompt_ckpt="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_4
 #echo "start full-shot prompt-tune_entity - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache
 #echo "start full-shot prompt-tune_summary - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --reuse_entity_file
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --reuse_entity_file --
 
 ############################ MixPrompt - oracle
 

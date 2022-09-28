@@ -228,6 +228,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     model.eval()
     logger.info("Do one eval!")
     allysrc, allytrue, allypred = [], [], []
+    count = 0
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
@@ -251,6 +252,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 allysrc.extend(sen)
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+            count += batch[0].shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for j in range(len(allytrue)):
@@ -319,7 +324,9 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("saved the model prompt!", path)
     # abstractivness
     if args.eval_abstractiveness:
-        new_unigrams, new_bigrams, new_trigrams = [], [], []
+        print("Running new n-grams counts...")
+        new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
+        new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target = [], [], [], []
         for i in tqdm(range(len(allysrc))):
             text_words = allysrc[i].lower()
             text_words = word_tokenize(text_words)
@@ -329,7 +336,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
 
             summary_words = allypred[i].lower()
             summary_words = word_tokenize(summary_words)
-            unigrams, bigrams, trigrams = 0, 0, 0
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
             for j in range(len(summary_words)):
                 if not(summary_words[j] in text_words):
                     unigrams += 1
@@ -339,15 +346,65 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 if j < len(summary_words) - 2:
                     if not([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
                         trigrams += 1
+                if j < len(summary_words) - 3:
+                    if not([summary_words[j], summary_words[j + 1], summary_words[j + 2], summary_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
             unigrams /= max(1, len(summary_words))
             bigrams /= max(1, len(summary_words)-1)
             trigrams /= max(1, len(summary_words)-2)
+            quadrigrams /= max(1, len(summary_words)-3)
             new_unigrams.append(unigrams)
             new_bigrams.append(bigrams)
             new_trigrams.append(trigrams)
-        print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}%".format(
-            100*np.mean(new_unigrams), 100*np.mean(new_bigrams), 100*np.mean(new_trigrams)
+            new_quadrigrams.append(quadrigrams)
+
+            target_words = allytrue[i].lower()
+            target_words = word_tokenize(target_words)
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
+            for j in range(len(target_words)):
+                if not(target_words[j] in text_words):
+                    unigrams += 1
+                if j < len(target_words) - 1:
+                    if not([target_words[j], target_words[j + 1]] in text_bigrams):
+                        bigrams += 1
+                if j < len(target_words) - 2:
+                    if not([target_words[j], target_words[j + 1], target_words[j + 2]] in text_trigrams):
+                        trigrams += 1
+                if j < len(target_words) - 3:
+                    if not([target_words[j], target_words[j + 1], target_words[j + 2], target_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
+            unigrams /= max(1, len(target_words))
+            bigrams /= max(1, len(target_words)-1)
+            trigrams /= max(1, len(target_words)-2)
+            quadrigrams /= max(1, len(target_words)-3)
+            new_unigrams_target.append(unigrams)
+            new_bigrams_target.append(bigrams)
+            new_trigrams_target.append(trigrams)
+            new_quadrigrams_target.append(quadrigrams)
+
+        new_unigrams = 100 * np.mean(new_unigrams)
+        new_bigrams = 100 * np.mean(new_bigrams)
+        new_trigrams = 100 * np.mean(new_trigrams)
+        new_quadrigrams = 100 * np.mean(new_quadrigrams)
+        print("\nAbstractiveness - MODEL || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
+            new_unigrams, new_bigrams, new_trigrams, new_quadrigrams
         ))
+        result_dict["new_unigrams"] = new_unigrams
+        result_dict["new_bigrams"] = new_bigrams
+        result_dict["new_trigrams"] = new_trigrams
+        result_dict["new_quadrigrams"] = new_quadrigrams
+
+        new_unigrams_target = 100 * np.mean(new_unigrams_target)
+        new_bigrams_target = 100 * np.mean(new_bigrams_target)
+        new_trigrams_target = 100 * np.mean(new_trigrams_target)
+        new_quadrigrams_target = 100 * np.mean(new_quadrigrams_target)
+        print("Abstractiveness - TARGET || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
+            new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target
+        ))
+        result_dict["new_unigrams_target"] = new_unigrams_target
+        result_dict["new_bigrams_target"] = new_bigrams_target
+        result_dict["new_trigrams_target"] = new_trigrams_target
+        result_dict["new_quadrigrams_target"] = new_quadrigrams_target
 
     return result_dict
 

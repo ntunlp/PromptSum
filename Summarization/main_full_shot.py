@@ -41,7 +41,7 @@ from models_summarization.model_mixture import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -509,6 +509,9 @@ def main(args):
                                              save_path = args.save_dir)
 
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        if args.eval_abstractiveness:
+            keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
+            keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
@@ -635,17 +638,17 @@ def main(args):
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
                 elif args.full_testset:
                     respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
-                if args.use_pretrained_ckpt:
+                if args.use_pretrain_ckpt:
                     respath = respath[:-4] + "_from_pretrained.pkl"
                 if args.tune_weights:
                     respath = respath[:-4] + "_full_weights.pkl"
                 if not (os.path.isfile(respath) and args.reuse_entity_file):
                     if args.big_testset or args.full_testset:
                         alldata = args.test_dataset.data
-                        logger.info("test size: ", len(alldata))
+                        logger.info(f"test size: {len(alldata)}")
                     else:
                         alldata = valid_dataset.data
-                        logger.info("valid size: ", len(alldata))
+                        logger.info(f"valid size: {len(alldata)}")
                     allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                     logger.info(len(allresofvalid))
                     with open(respath, "wb") as f:
@@ -659,7 +662,7 @@ def main(args):
                     args.test_dataset.set_allent_for_valid(respath)
                 else:
                     valid_dataset.set_allent_for_valid(respath)
-                logger.info('Set valid ents for path: ', respath)
+                logger.info(f'Set valid ents for path: {respath}')
 
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)
