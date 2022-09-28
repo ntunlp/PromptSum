@@ -595,6 +595,22 @@ def main(args):
     )
     allysrc, allytrue, allypred = doinference(model, test_dataloader, scaler, logger, args)
 
+    d = {}
+    d['src'] = []
+    d['model'] = []
+    model_name = "pegasus"
+    if "Mix" in args.model:
+        model_name = "promptsum"
+    for i in range(len(allysrc)):
+        src = allysrc[i]
+        pred = allypred[i]
+        d['src'].append(src)
+        d['model'].append(pred)
+    filename = "../human_evaluation/data/{}_{}_{}.pkl".format(args.dataset, model_name, args.max_test_size)
+    with open(filename, 'wb') as f:
+        pickle.dump(d, f)
+        print("exported predictions!")
+
 
 
 if __name__ == "__main__":

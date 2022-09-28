@@ -1,0 +1,20 @@
+name: human_eval
+channels:
+  - defaults
+dependencies:
+  - _libgcc_mutex=0.1=main
+  - ca-certificates=2021.4.13=h06a4308_1
+  - certifi=2020.6.20=pyhd3eb1b0_3
+  - libffi=3.3=he6710b0_2
+  - libgcc-ng=9.1.0=hdf63c60_0
+  - libstdcxx-ng=9.1.0=hdf63c60_0
+  - ncurses=6.2=he6710b0_1
+  - pip=19.3.1=py27_0
+  - python=2.7.18=h15b4118_1
+  - readline=8.1=h27cfd23_0
+  - setuptools=44.0.0=py27_0
+  - sqlite=3.35.4=hdfb4753_0
+  - tk=8.6.10=hbc83047_0
+  - wheel=0.36.2=pyhd3eb1b0_0
+  - zlib=1.2.11=h7b6447c_3
+prefix: /home/ruochen/anaconda3/envs/human_eval
