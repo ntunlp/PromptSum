@@ -59,30 +59,58 @@
         </div>
         <form name="myForm" action="" method="post" onsubmit="">
             <ul class="list-group">
-                <li class="list-group-item"> Which summary do you PREFER?: </li>
+                <li class="list-group-item"> Which summary is more INFORMATIVE? </li>
                 <li class="option list-group-item">
-                    <input type="radio" name="preference" value='1'> Summary A. &nbsp;<br>
-                    <input type="radio" name="preference" value='2'> Summary B. &nbsp;<br>
-                    <input type="radio" name="preference" value='a'> It's a tie.
+                    <input type="radio" name="info" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="info" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="info" value='a'> It's a tie.
                 </li>
             </ul>
 
             <br>
             <ul class="list-group">
-                    <li class="list-group-item"> What is the REASON: </li>
-                    <li class="option list-group-item">
-                        <input type="radio" name="reason" value='1'> 1/ It is more INFORMATIVE. &nbsp;<br>
-                        <input type="radio" name="reason" value='2'> 2/ It is more FLUENT or GRAMMATICAL. &nbsp;<br>
-                        <input type="radio" name="reason" value='3'> 3/ It is more FACTUALLY CONSISTENT with the document. <br>
-                        <input type="radio" name="reason" value='4'> 4/ 1 + 2 (informative + fluent). <br>
-                        <input type="radio" name="reason" value='5'> 5/ 1 + 3 (informative + factually consistent). <br>
-                        <input type="radio" name="reason" value='6'> 6/ 2 + 3 (fluent + factually consistent). <br>
-                        <input type="radio" name="reason" value='7'> 7/ 1 + 2 + 3 (all of them!).<br>
-                        <input type="radio" name="reason" value='a'> No specific reason.
-                    </li>
+                <li class="list-group-item"> Which summary is more FACTUALLY CONSISTENT with the source? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="fact" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="fact" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="fact" value='a'> It's a tie.
+                </li>
             </ul>
             <br>
 
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more RELEVANT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="rel" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="rel" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="rel" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more FLUENT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="fluent" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="fluent" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="fluent" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more COHERENT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="coh" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="coh" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="coh" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+            
             <input type='text' name="postid" value={{ postid }} readonly style='display:none'>
             <input type='text' name="reversed_" value={{ reversed_ }} readonly style='display:none'>
 
