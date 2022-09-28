@@ -439,3 +439,140 @@ def entity_eval(ytrue, ypred):
     print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
     
     return p, r, f1
+
+
+def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
+    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
+        model = modeltoeval.module
+    else:
+        model = modeltoeval
+    model.eval()
+
+    # load weights
+    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
+        if args.tune_weights:
+            path = args.model_save_path + 'bestckpt_full_weights'
+            if args.use_pretrain_ckpt:
+                path += "_from_pretrained"
+        else:
+            path = args.model_save_path + 'full_weights'
+        if args.guidance_mode == "target":
+            path += "_oracle"
+        model.load_state_dict(torch.load(path))
+        print("loaded the full model weights!", path)
+    else:
+        path = args.model_save_path + 'bestckpt'
+        if args.use_pretrain_ckpt:
+            path += "_from_pretrained"
+        if args.guidance_mode == "target":
+            path += "_oracle"
+        if args.counterfactual_removal:
+            path = f'{path}_counterfactual'
+        best_val_ckpt = torch.load(path)
+        model.promptnumber = best_val_ckpt["promptnumber"]
+        model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+        print("loaded the model prompt!", path)
+
+    logger.info("Do inference!")
+    allysrc, allytrue, allypred = [], [], []
+    count = 0
+    with torch.no_grad():
+        logger.info(len(valid_dataloader))
+        for step, batch in tqdm(enumerate(valid_dataloader)):
+            if step % args.log_step_finetune == 0:
+                logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
+            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+            if scaler is not None:
+                with autocast():
+                    sen, target, preds = model._generative_step(inputs)
+                    tarres, predres = target, preds
+                    allysrc.extend(sen)
+                    allytrue.extend(tarres)
+                    allypred.extend(predres)
+            else:
+                # for k in inputs.keys():
+                #    print(k, inputs[k].shape)
+                sen, target, preds = model._generative_step(inputs)
+                tarres, predres = target, preds
+                allysrc.extend(sen)
+                allytrue.extend(tarres)
+                allypred.extend(predres)
+            count += batch[0].shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    r1s, r2s, rls = [], [], []
+    for j in range(len(allytrue)):
+        label = allytrue[j]
+        summary = allypred[j]
+        if args.highlights:
+            label = "\n".join(sent_tokenize(label))
+            summary = "\n".join(sent_tokenize(summary))
+        rouge_score = scorer.score(label, summary)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+
+    r1 = 100 * np.mean(r1s)
+    r2 = 100 * np.mean(r2s)
+    rl = 100 * np.mean(rls)
+    p, r, f1 = entity_eval(allytrue, allypred)
+
+    logger.info('----Validation Results Summary----')
+    logger.info("Size of the dataset: {}".format(len(allypred)))
+    logger.info("R-1: {:.4f}".format(r1))
+    logger.info("R-2: {:.4f}".format(r2))
+    logger.info("R-L: {:.4f}".format(rl))
+    logger.info("Precision: {:.4f}".format(p))
+    logger.info("Recall: {:.4f}".format(r))
+    logger.info("F-1: {:.4f}".format(f1))
+
+    # abstractivness
+    if args.eval_abstractiveness:
+        print("Running new n-grams counts...")
+        new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
+        for i in tqdm(range(len(allysrc))):
+            text_words = allysrc[i].lower()
+            text_words = word_tokenize(text_words)
+            text_bigrams = [[text_words[j], text_words[j + 1]] for j in range(len(text_words) - 1)]
+            text_trigrams = [[text_words[j], text_words[j + 1], text_words[j + 2]] for j in range(len(text_words) - 2)]
+            text_quadrigrams = [[text_words[j], text_words[j + 1], text_words[j + 2], text_words[j + 3]] for j in range(len(text_words) - 3)]
+
+            summary_words = allypred[i].lower()
+            summary_words = word_tokenize(summary_words)
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
+            for j in range(len(summary_words)):
+                if not (summary_words[j] in text_words):
+                    unigrams += 1
+                if j < len(summary_words) - 1:
+                    if not ([summary_words[j], summary_words[j + 1]] in text_bigrams):
+                        bigrams += 1
+                if j < len(summary_words) - 2:
+                    if not ([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
+                        trigrams += 1
+                if j < len(summary_words) - 3:
+                    if not ([summary_words[j], summary_words[j + 1], summary_words[j + 2],
+                             summary_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
+            unigrams /= max(1, len(summary_words))
+            bigrams /= max(1, len(summary_words) - 1)
+            trigrams /= max(1, len(summary_words) - 2)
+            quadrigrams /= max(1, len(summary_words) - 3)
+            new_unigrams.append(unigrams)
+            new_bigrams.append(bigrams)
+            new_trigrams.append(trigrams)
+            new_quadrigrams.append(quadrigrams)
+
+        new_unigrams = 100 * np.mean(new_unigrams)
+        new_bigrams = 100 * np.mean(new_bigrams)
+        new_trigrams = 100 * np.mean(new_trigrams)
+        new_quadrigrams = 100 * np.mean(new_quadrigrams)
+        logger.infor("New unigrams: {:.4f}".format(new_unigrams))
+        logger.infor("New bigrams: {:.4f}".format(new_bigrams))
+        logger.infor("New trigrams: {:.4f}".format(new_trigrams))
+        logger.infor("New quadrigrams: {:.4f}".format(new_quadrigrams))
+
+    return allysrc, allytrue, allypred

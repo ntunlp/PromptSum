@@ -120,6 +120,15 @@ class SummarizationDataset(Dataset):
         self.tagger = tagger
         self.tagtokenizer = tokenizer
 
+    def shuffle_and_subsample(self):
+        p = np.random.permutation(len(self.data))
+        p = p[:self.args.max_test_size]
+        self.data = [self.data[x] for x in p]
+        self.num_entries = len(self.data)
+        print("\nShuffled and subsampled!")
+        print("First data point:")
+        print(self.data[0])
+
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
