@@ -335,8 +335,6 @@ def set_args():
             args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
 
-    args.seeds_to_keep = args.seeds_to_keep.split(",")
-
     return args
 
 

@@ -570,9 +570,9 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         new_bigrams = 100 * np.mean(new_bigrams)
         new_trigrams = 100 * np.mean(new_trigrams)
         new_quadrigrams = 100 * np.mean(new_quadrigrams)
-        logger.infor("New unigrams: {:.4f}".format(new_unigrams))
-        logger.infor("New bigrams: {:.4f}".format(new_bigrams))
-        logger.infor("New trigrams: {:.4f}".format(new_trigrams))
-        logger.infor("New quadrigrams: {:.4f}".format(new_quadrigrams))
+        logger.info("New unigrams: {:.4f}".format(new_unigrams))
+        logger.info("New bigrams: {:.4f}".format(new_bigrams))
+        logger.info("New trigrams: {:.4f}".format(new_trigrams))
+        logger.info("New quadrigrams: {:.4f}".format(new_quadrigrams))
 
     return allysrc, allytrue, allypred
