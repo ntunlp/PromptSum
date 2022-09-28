@@ -75,16 +75,22 @@ def thanks():
 def start(uid):
     if request.method == 'POST':
 
-        preference = request.form['preference']
-        reason = request.form['reason']
+        info = request.form['info']
+        fact = request.form['fact']
+        rel = request.form['rel']
+        fluent = request.form['fluent']
+        coh = request.form['coh']
         # print lan_ranks
         reversed_ = request.form['reversed_']
         # print reversed_
-        postid =request.form['postid']
+        postid = request.form['postid']
 
         result = {
-            'preference': preference,
-            'reason': reason,
+            'informative': info,
+            'factually consistent': fact,
+            'relevant': rel,
+            'fluent': fluent,
+            'coherent': coh,
             'reversed_': reversed_
         }
 
