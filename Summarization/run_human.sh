@@ -16,7 +16,7 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_4
 
 ##### test
 echo "start k-shot baseline-1: all-params finetune summary - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python human_eval.py --model PegasusFinetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --max_test_size $size --valid_size_per_gpu_summary $bs
+#CUDA_VISIBLE_DEVICES=$device python human_eval.py --model PegasusFinetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --max_test_size $size --valid_size_per_gpu_summary $bs
 
 ############################ MixPrompt (PromptSum)
 

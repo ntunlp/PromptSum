@@ -202,6 +202,8 @@ def set_args():
                         default=1.0, help="max grad norm")
     parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
                         default=10000, help="how many steps to eval")
+    parser.add_argument("--label_smoothing", dest="label_smoothing", type = float,
+                        default = 0.0)
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
@@ -223,7 +225,7 @@ def set_args():
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
-                        default=2.5, help="repetition penalty")
+                        default=1.0, help="repetition penalty")
     parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                         default=1.0, help="length penalty")
 
@@ -291,7 +293,7 @@ def set_args():
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
     lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
     max_epoch_entity = [3, 3, 5, 5, 5, 5]
-    max_epoch_summary = [5, 5, 10, 10, 20, 30]
+    max_epoch_summary = [10, 10, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
     test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
@@ -427,6 +429,7 @@ def main(args):
     logger.info("\nData size: train: {}, val: {}, test: {}".format(
         len(train_data), len(valid_data), len(test_data)))
     train_data = train_data[:args.max_train_size]
+    valid_data = valid_data.shuffle()
     valid_data = valid_data[:args.max_val_size]
     test_data = test_data[:args.max_test_size]
     logger.info("\nFinal data size: train: {}, val: {}, test: {}".format(

@@ -4,99 +4,109 @@ import numpy as np
 
 
 
-users = ["ravoxsamsum_0"]
+users = ["chengwei", "hailin", "ruochen", "ravox", "florian"]
 n_summaries = 50
 
-all_choices = [[], [], []]
+attributes = ["informative", "factually consistent", "relevant", "fluent", "coherent"]
+all_user_info, all_user_fact, all_user_rel, all_user_fluent, all_user_coh = [], [], [], [], []
 for user in users:
     user_dir = "users/{}/result/".format(user)
-    user_preferences, user_info, user_fluent, user_factual = [], [], [], []
+    user_info, user_fact, user_rel, user_fluent, user_coh = [], [], [], [], []
     user_labels = []
+    print("*"*50 + " User: {}".format(user))
     for i in range(n_summaries):
         summary_path = user_dir + "{}.json".format(i)
         with open(summary_path, "rb") as f:
             res_i = json.load(f)
-            preference = res_i["preference"]
-            if preference == "a":
-                preference = 0
+            # informative
+            info = res_i["informative"]
+            if info == "a":
+                info = 0
             else:
-                preference = int(preference)
-            user_preferences.append(preference)
-            reason = res_i["reason"]
-            info = 0
-            fluent = 0
-            factual = 0
-            if reason in ["1", "4", "5", "7"]:
-                info = 1
-            if reason in ["2", "4", "6", "7"]:
-                fluent = 1
-            if reason in ["3", "5", "6", "7"]:
-                factual = 1
+                info = int(info)
             user_info.append(info)
+            # factually consistent
+            fact = res_i["factually consistent"]
+            if fact == "a":
+                fact = 0
+            else:
+                fact = int(fact)
+            user_fact.append(fact)
+            # relevant
+            rel = res_i["relevant"]
+            if rel == "a":
+                rel = 0
+            else:
+                rel = int(rel)
+            user_rel.append(rel)
+            # fluent 
+            fluent = res_i["fluent"]
+            if fluent == "a":
+                fluent = 0
+            else:
+                fluent = int(fluent)
             user_fluent.append(fluent)
-            user_factual.append(factual)
+            # coherent
+            coh = res_i["coherent"]
+            if coh == "a":
+                coh = 0
+            else:
+                coh = int(coh)
+            user_coh.append(coh)
+
             label = res_i["reversed_"]
             label = int(label == 'True')
             user_labels.append(label)
-    user_preferences = np.array(user_preferences)
     user_info = np.array(user_info)
+    user_fact = np.array(user_fact)
+    user_rel = np.array(user_rel)
     user_fluent = np.array(user_fluent)
-    user_factual = np.array(user_factual)
+    user_coh = np.array(user_coh)
     user_labels = np.array(user_labels)
-    user_new_model = []
-    for i in range(len(user_labels)):
-        if user_labels[i] == 0:
-            user_new_model.append(2)
-        else:
-            user_new_model.append(1)
-    user_new_model = np.array(user_new_model)
-    print("\nUser: {}".format(user))
-    for j in [0,1,2]:
-        print(j, np.sum(user_preferences == j))
-    user_choice = []
-    for i in range(len(user_new_model)):
-        if user_preferences[i] == 0:
-            user_choice.append(0)
-        else:
-            if user_new_model[i] != user_preferences[i]:
-                user_choice.append(1)
+    all_user_info.append(user_info)
+    all_user_fact.append(user_fact)
+    all_user_rel.append(user_rel)
+    all_user_fluent.append(user_fluent)
+    all_user_coh.append(user_coh)
+
+    not_reversed_idx = list(np.arange(len(user_labels))[user_labels == 0])
+    reversed_idx = list(np.arange(len(user_labels))[user_labels == 1])
+    print("# not reversed: {}, # reversed: {}".format(len(not_reversed_idx), len(reversed_idx)))
+    arrs = [user_info, user_fact, user_rel, user_fluent, user_coh]
+    for j in range(len(arrs)):
+        arr = arrs[j]
+        pegasus_count, promptsum_count, tie_count = 0, 0, 0
+        for i in range(len(arr)):
+            if arr[i] == 0:
+                tie_count += 1
+            elif arr[i] == 1:
+                if i in not_reversed_idx:
+                    pegasus_count += 1
+                else:
+                    promptsum_count += 1
             else:
-                user_choice.append(2)
-    user_choice = np.array(user_choice)
-    base_idx = np.arange(len(user_choice))[user_choice == 1]
-    new_idx = np.arange(len(user_choice))[user_choice == 2]
+                if i in not_reversed_idx:
+                    promptsum_count += 1
+                else:
+                    pegasus_count += 1
+        print("Aspect {}, PEGASUS count: {}, PromptSum: {}, Tie: {}".format(
+            attributes[j], pegasus_count, promptsum_count, tie_count))
+    
+arrs = [all_user_info, all_user_fact, all_user_rel, all_user_fluent, all_user_coh]
+for k in range(len(arrs)):
+    arr = arrs[k]
+    agree = 0
+    for i in range(len(arr[0])):
+        preds = []
+        for j in range(len(arr)):
+            preds.append(arr[j][i])
+        preds = np.array(preds)
+        els = np.unique(preds)
+        counts = np.array([np.sum(preds == el) for el in els])
+        max_count = np.max(counts) 
+        ag = 100 * max_count / len(arr)
+        agree += ag
+    agree /= len(arr[0])
+    print("Attribute {}, agreement between humans: {:.4f}".format(attributes[k], agree))
 
-    tie_perc = 100 * np.sum(user_preferences == 0) / n_summaries
-    all_choices[0].append(tie_perc)
-    print("% User chooses tie: {} ({:.4f}%)".format(np.sum(user_preferences==0), tie_perc))
 
-    old_model = np.sum(user_new_model != user_preferences) - np.sum(user_preferences == 0)
-    old_model_perc = 100 * old_model / n_summaries
-    all_choices[1].append(old_model_perc)
-    print("% User chooses baseline: {} ({:.4f}%)".format(old_model, old_model_perc))
-    base_info = np.sum(user_info[base_idx] == 1)
-    base_fluent = np.sum(user_fluent[base_idx] == 1)
-    base_factual = np.sum(user_factual[base_idx] == 1)
-    print("Including # informative: {}, # fluent: {}, # factually correct: {}".format(base_info, base_fluent, base_factual))
-
-    new_model = np.sum(user_new_model == user_preferences)
-    new_model_perc = 100 * new_model / n_summaries
-    all_choices[2].append(new_model_perc)
-    print("% User prefers new model: {} ({:.4f}%)".format(new_model, new_model_perc))
-    new_info = np.sum(user_info[new_idx] == 1)
-    new_fluent = np.sum(user_fluent[new_idx] == 1)
-    new_factual = np.sum(user_factual[new_idx] == 1)
-    print("Including # informative: {}, # fluent: {}, # factually correct: {}".format(new_info, new_fluent, new_factual))
-
-for j in range(len(all_choices)):
-    all_choices[j] = np.array(all_choices[j])
-m_tie = np.mean(all_choices[0])
-std_tie = np.std(np.array(all_choices[0]))
-print("\n")
-print("Mean fraction of tie: {:.4f}%, std: {:.4f}".format(m_tie, std_tie))
-m_old = np.mean(all_choices[1])
-std_old = np.std(all_choices[1])
-print("Mean fraction of old model (PEGASUS) preference: {:.4f}%, std: {:.4f}".format(m_old, std_old))
-m_new = np.mean(all_choices[2])
-std_new = np.std(all_choices[2])
-print("Mean fraction of new model (SummaFusion) preference: {:.4f}%, std: {:.4f}".format(m_new, std_new))
