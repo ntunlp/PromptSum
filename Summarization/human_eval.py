@@ -570,6 +570,7 @@ def main(args):
                 alldata = args.test_dataset.data
                 logger.info(f"test size: {len(alldata)}")
                 allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
+                print(allpreds[:5])
                 logger.info(len(allresofvalid))
                 with open(respath, "wb") as f:
                     pickle.dump(allresofvalid, f)
