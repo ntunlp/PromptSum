@@ -217,7 +217,9 @@ def set_args():
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
     parser.add_argument("--eval_epoch_0", action="store_true", 
-                        default=False, help="whether to evaluate before trainin")
+                        default=False, help="whether to evaluate before training")
+    parser.add_argument("--test_on_val", action="store_true",
+                        default=False, help="whether to use the validation for test inference")
 
     # generation
     parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
@@ -292,8 +294,8 @@ def set_args():
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
     lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
-    max_epoch_entity = [3, 3, 5, 5, 5, 5]
-    max_epoch_summary = [10, 10, 10, 10, 20, 30]
+    max_epoch_entity = [5, 5, 5, 5, 5, 5]
+    max_epoch_summary = [5 if not("Finetune" in args.model) else 10, 5 if not("Finetune" in args.model) else 10, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
     test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
@@ -510,6 +512,8 @@ def main(args):
                                              save_path = args.save_dir)
         valid_dataset = SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
                                              save_path = args.save_dir)
+        if args.test_on_val:
+            args.test_dataset = valid_dataset
 
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         if args.eval_abstractiveness:
