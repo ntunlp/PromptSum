@@ -55,7 +55,7 @@ def set_args():
     parser.add_argument("--debug", action='store_true',
                         default=False, help="whether debug with breakpoint")
     parser.add_argument("--log_dir", dest="log_dir", type=str,
-                            default='./log', help="The path to log dir")
+                        default='./log', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='dummy', help="The file name of log file")
 
