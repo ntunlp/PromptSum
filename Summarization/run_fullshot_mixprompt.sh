@@ -1,15 +1,15 @@
 ### dataset
 dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 device="7"
-cache='/data/mathieu/hf_models/pegasus-large/'
+cache='/home/mathieu/hf_models/pegasus-large/'
 
 ### backbone model
 ##### T5-large backbone
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 
 ############################ MixPrompt (PromptSum) - no pre-training
