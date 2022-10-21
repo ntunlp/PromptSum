@@ -84,8 +84,7 @@ def set_args():
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
-                        "facebook/bart-large", "google/pegasus-large"])
+                        default="google/pegasus-large", choices=["google/t5-v1_1-large", "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -217,6 +216,8 @@ def set_args():
                         default=True)
 
     # generation
+    parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
+                        default=128, help="maximum length of the generated entity chain")
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
@@ -266,6 +267,9 @@ def set_args():
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
+
+    parser.add_argument("--seeds_to_keep", 
+                        default="0,1,2", help = "to select which seeds to run the exps on")
 
     args = parser.parse_args()
 
@@ -322,6 +326,8 @@ def set_args():
         else:
             args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
+
+    args.seeds_to_keep = args.seeds_to_keep.split(",")
 
     return args
 
@@ -398,7 +404,7 @@ def main(args):
 
     # load datasets
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    print("Few shot save dir:", args.few_shot_save_dir)
+    logger.info(f"Few shot save dir: {args.few_shot_save_dir}")
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
         os.makedirs(args.few_shot_save_dir)
@@ -430,30 +436,33 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        print('args.big_testset: ', args.big_testset)
+        logger.info(f'args.big_testset: {args.big_testset}')
         if args.big_testset:
             args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-            logger.info(f'args.test_dataset.num_entries: ', args.test_dataset.num_entries)
-        print('args.full_testset: ', args.full_testset)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
+        logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            print(args.test_file)
+            logger.info(args.test_file)
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
-                print('creating')
+                logger.info('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = T5SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
         datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        if args.eval_abstractiveness:
+            keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
+            keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
         result_dict_total = {}
         for k in keys:
             result_dict_total[k] = []
@@ -461,6 +470,9 @@ def main(args):
         count = 0
         for (train_dataset, valid_dataset, seed) in datasets:
             logger.info('SEED {}'.format(seed))
+            if not(str(seed) in args.seeds_to_keep):
+                print("SKIPPING THIS SEED")
+                continue
             args.model_save_path = args.model_save_folder + f'seed_{seed}/'
             logger.info('args.model_save_path {}'.format(args.model_save_path))
             logger.info('args.save_model {}'.format(args.save_model))
@@ -481,15 +493,15 @@ def main(args):
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model in ['T5Finetune', 'PegasusFinetune']:
+            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
                 logger.info('\nFinetuning')
                 model = ModelFinetune(args, basemodel, tokenizer, args.model)
-            elif args.model in ['T5SoftPrompt', 'PegasusSoftPrompt']:
+            elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
                 logger.info('\nSoft prompt tuning')
                 model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
                 model.set_prompt_embedding(promptnumber, promptembedding)
-            elif args.model in ['T5MixPrompt', 'PegasusMixPrompt']:
+            elif args.model in ['T5MixPrompt', 'BartMixPrompt', 'PegasusMixPrompt']:
                 logger.info('\nMix prompt tuning')
                 model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
                 promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -501,7 +513,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
+            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
@@ -537,25 +549,30 @@ def main(args):
                         entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
                         enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
                         entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
-                    logger.info("Loading the pre-trained NER model!")
 
-                    # model weights
-                    ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-                    dic = {}
-                    for x in ckpt.keys():
-                        if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
-                            continue
-                        if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
-                            dic[x[7:]] = ckpt[x]
-                    if args.max_position_embeddings > 1024:
-                        dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
-                        dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
-                    entmodel.load_state_dict(dic)
-    
-                    # just prompt
+                    # Entity model weights
+
+                    # from pre-training checkpoint
+                    if args.use_pretrain_ckpt:
+                        ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+                        dic = {}
+                        for x in ckpt.keys():
+                            if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                                continue
+                            if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
+                                dic[x[7:]] = ckpt[x]
+                        if args.max_position_embeddings > 1024:
+                            dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()["model.encoder.embed_positions.weight"]
+                            dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()["model.decoder.embed_positions.weight"]
+                        entmodel.load_state_dict(dic)
+                        logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
+
+                    # from entity tuning round
                     if not(args.zero_shot):
                         if args.tune_weights:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_full_weights'
+                            if args.use_pretrain_ckpt:
+                                onepath += "_from_pretrained"
                             oneckpt = torch.load(onepath)
                             d = {}
                             for k in entmodel.state_dict().keys():
@@ -565,12 +582,14 @@ def main(args):
                             entmodel.promptembedding = oneckpt["promptembedding"]
                         else:
                             onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                            if args.use_pretrain_ckpt:
+                                onepath += "_from_pretrained"
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
-                        print("Loaded the entity model from: {}".format(onepath))
+                        logger.info("Loaded the entity model from: {}".format(onepath))
                     else:
-                        print("Zero-shot - loading the prompt from pre-training ckpt")
+                        logger.info("Zero-shot - loading the prompt from pre-training ckpt")
                         ckpt = torch.load(args.pretrain_prompt_ckpt)
                         entmodel.promptnumber = ckpt["promptnumber"]
                         entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
@@ -587,31 +606,18 @@ def main(args):
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
                     elif args.full_testset:
                         respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                    if args.use_pretrain_ckpt:
+                        respath = respath[:-4] + "_from_pretrained.pkl"
                     if args.tune_weights:
-                        respath = respath[:-4] + "full_weights.pkl"
+                        respath = respath[:-4] + "_full_weights.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data
-                            print("test size: ", len(alldata))
+                            logger.info(f"test size: {len(alldata)}")
                         else:
                             alldata = valid_dataset.data
-                            print("valid size: ", len(alldata))
-                        allresofvalid = {}
-                        with torch.no_grad():
-                            for step in tqdm(range(len(alldata))):
-                                onedata = alldata[step]
-                                inputdata = onedata[0]
-                                tempdata = re.sub(' +', ' ', inputdata).strip()
-                                inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
-                                input_ids = inputres["input_ids"].to(args.device)
-                                attention_mask = inputres["attention_mask"].to(args.device)
-                                input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                                tagpreds = entmodel._generative_step_for_tagger(input)
-                                allentitylist = tagpreds[0].split(',')
-                                if allentitylist == []:
-                                    allentitylist = ["none"]
-                                input_guidance = args.separator.join(list(dict.fromkeys(allentitylist)))
-                                allresofvalid[tempdata] = input_guidance
+                            logger.info(f"valid size: {len(alldata)}")
+                        allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
                         logger.info(len(allresofvalid))
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)
@@ -623,7 +629,7 @@ def main(args):
                         args.test_dataset.set_allent_for_valid(respath)
                     else:
                         valid_dataset.set_allent_for_valid(respath)
-                    print('Set valid ents for path: ', respath)
+                    logger.info(f'Set valid ents for path: {respath}')
 
             # counterfactual removal to enhance training
             if args.counterfactual_removal != False:

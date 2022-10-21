@@ -365,7 +365,7 @@ def main(args):
     if not os.path.isfile(valid_file_name):
         dataset_args = [args.dataset_name, args.dataset_version]
         subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     scaler = None
     # For each sentence

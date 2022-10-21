@@ -86,13 +86,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "f1": 0.0
     }
 
-    if args.zero_shot:
-        if args.full_testset:
-            dooneeval(model, test_dataloader, scaler, result_dict, logger, 0, args)
-        else:
-            dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
-        return result_dict
-
     global_step = 0
 
     if args.big_testset:
@@ -158,29 +151,34 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             model.train()
     # after everything, do it with test:
     if args.big_testset or args.full_testset:
-        if (args.model in ['T5Finetune', 'PegasusFinetune']) or args.tune_weights:
-            if args.tune_weights:
-                path = args.model_save_path + 'bestckpt_full_weights'
+        if not(args.zero_shot):
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
+                if args.tune_weights:
+                    path = args.model_save_path + 'bestckpt_full_weights'
+                    if args.use_pretrain_ckpt:
+                        path += "_from_pretrained"
+                else:
+                    path = args.model_save_path + 'full_weights'
+                if args.guidance_mode == "target":
+                    path += "_oracle"
+                if args.label_smoothing > 0:
+                    path += "_ls"
+                model.load_state_dict(torch.load(path))
+                print("loaded the full model weights!", path)
+            else:
+                path = args.model_save_path + 'bestckpt'
                 if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
-            else:
-                path = args.model_save_path + 'full_weights'
-            if args.guidance_mode == "target":
-                path += "_oracle"
-            model.load_state_dict(torch.load(path))
-            print("loaded the full model weights!", path)
-        else:
-            path = args.model_save_path + 'bestckpt'
-            if args.use_pretrain_ckpt:
-                path += "_from_pretrained"
-            if args.guidance_mode == "target":
-                path += "_oracle"
-            if args.counterfactual_removal:
-                path = f'{path}_counterfactual'
-            best_val_ckpt = torch.load(path)
-            model.promptnumber = best_val_ckpt["promptnumber"]
-            model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-            print("loaded the model prompt!", path)
+                if args.guidance_mode == "target":
+                    path += "_oracle"
+                if args.counterfactual_removal:
+                    path = f'{path}_counterfactual'
+                if args.label_smoothing > 0:
+                    path += "_ls"
+                best_val_ckpt = torch.load(path)
+                model.promptnumber = best_val_ckpt["promptnumber"]
+                model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+                print("loaded the model prompt!", path)
         # no need to save again
         args.save_model = False
         args.log_step_finetune = 100
@@ -234,6 +232,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     model.eval()
     logger.info("Do one eval!")
     allysrc, allytrue, allypred = [], [], []
+    count = 0
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
@@ -257,6 +256,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 allysrc.extend(sen)
                 allytrue.extend(tarres)
                 allypred.extend(predres)
+            count += batch[0].shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     r1s, r2s, rls = [], [], []
     for j in range(len(allytrue)):
@@ -298,7 +301,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if (args.model in ['T5Finetune', "PegasusFinetune"]) or args.tune_weights:
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
                 if args.tune_weights:
                     path = args.model_save_path + 'bestckpt_full_weights'
                     if args.use_pretrain_ckpt:
@@ -307,6 +310,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     path = args.model_save_path + 'full_weights'
                 if args.guidance_mode == "target":
                     path += "_oracle"
+                if args.label_smoothing > 0:
+                    path += "_ls"
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
@@ -317,6 +322,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     path += "_oracle"
                 if args.counterfactual_removal:
                     path = f'{path}_counterfactual'
+                if args.label_smoothing > 0:
+                    path += "_ls"
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding
@@ -325,7 +332,9 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("saved the model prompt!", path)
     # abstractivness
     if args.eval_abstractiveness:
-        new_unigrams, new_bigrams, new_trigrams = [], [], []
+        print("Running new n-grams counts...")
+        new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
+        new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target = [], [], [], []
         for i in tqdm(range(len(allysrc))):
             text_words = allysrc[i].lower()
             text_words = word_tokenize(text_words)
@@ -335,7 +344,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
 
             summary_words = allypred[i].lower()
             summary_words = word_tokenize(summary_words)
-            unigrams, bigrams, trigrams = 0, 0, 0
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
             for j in range(len(summary_words)):
                 if not(summary_words[j] in text_words):
                     unigrams += 1
@@ -345,15 +354,65 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 if j < len(summary_words) - 2:
                     if not([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
                         trigrams += 1
+                if j < len(summary_words) - 3:
+                    if not([summary_words[j], summary_words[j + 1], summary_words[j + 2], summary_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
             unigrams /= max(1, len(summary_words))
             bigrams /= max(1, len(summary_words)-1)
             trigrams /= max(1, len(summary_words)-2)
+            quadrigrams /= max(1, len(summary_words)-3)
             new_unigrams.append(unigrams)
             new_bigrams.append(bigrams)
             new_trigrams.append(trigrams)
-        print("\nAbstractiveness || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}%".format(
-            100*np.mean(new_unigrams), 100*np.mean(new_bigrams), 100*np.mean(new_trigrams)
+            new_quadrigrams.append(quadrigrams)
+
+            target_words = allytrue[i].lower()
+            target_words = word_tokenize(target_words)
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
+            for j in range(len(target_words)):
+                if not(target_words[j] in text_words):
+                    unigrams += 1
+                if j < len(target_words) - 1:
+                    if not([target_words[j], target_words[j + 1]] in text_bigrams):
+                        bigrams += 1
+                if j < len(target_words) - 2:
+                    if not([target_words[j], target_words[j + 1], target_words[j + 2]] in text_trigrams):
+                        trigrams += 1
+                if j < len(target_words) - 3:
+                    if not([target_words[j], target_words[j + 1], target_words[j + 2], target_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
+            unigrams /= max(1, len(target_words))
+            bigrams /= max(1, len(target_words)-1)
+            trigrams /= max(1, len(target_words)-2)
+            quadrigrams /= max(1, len(target_words)-3)
+            new_unigrams_target.append(unigrams)
+            new_bigrams_target.append(bigrams)
+            new_trigrams_target.append(trigrams)
+            new_quadrigrams_target.append(quadrigrams)
+
+        new_unigrams = 100 * np.mean(new_unigrams)
+        new_bigrams = 100 * np.mean(new_bigrams)
+        new_trigrams = 100 * np.mean(new_trigrams)
+        new_quadrigrams = 100 * np.mean(new_quadrigrams)
+        print("\nAbstractiveness - MODEL || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
+            new_unigrams, new_bigrams, new_trigrams, new_quadrigrams
         ))
+        result_dict["new_unigrams"] = new_unigrams
+        result_dict["new_bigrams"] = new_bigrams
+        result_dict["new_trigrams"] = new_trigrams
+        result_dict["new_quadrigrams"] = new_quadrigrams
+
+        new_unigrams_target = 100 * np.mean(new_unigrams_target)
+        new_bigrams_target = 100 * np.mean(new_bigrams_target)
+        new_trigrams_target = 100 * np.mean(new_trigrams_target)
+        new_quadrigrams_target = 100 * np.mean(new_quadrigrams_target)
+        print("Abstractiveness - TARGET || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
+            new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target
+        ))
+        result_dict["new_unigrams_target"] = new_unigrams_target
+        result_dict["new_bigrams_target"] = new_bigrams_target
+        result_dict["new_trigrams_target"] = new_trigrams_target
+        result_dict["new_quadrigrams_target"] = new_quadrigrams_target
 
     return result_dict
 
@@ -388,3 +447,140 @@ def entity_eval(ytrue, ypred):
     print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
     
     return p, r, f1
+
+
+def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
+    if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
+        model = modeltoeval.module
+    else:
+        model = modeltoeval
+    model.eval()
+
+    # load weights
+    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']) or args.tune_weights:
+        if args.tune_weights:
+            path = args.model_save_path + 'bestckpt_full_weights'
+            if args.use_pretrain_ckpt:
+                path += "_from_pretrained"
+        else:
+            path = args.model_save_path + 'full_weights'
+        if args.guidance_mode == "target":
+            path += "_oracle"
+        model.load_state_dict(torch.load(path))
+        print("loaded the full model weights!", path)
+    else:
+        path = args.model_save_path + 'bestckpt'
+        if args.use_pretrain_ckpt:
+            path += "_from_pretrained"
+        if args.guidance_mode == "target":
+            path += "_oracle"
+        if args.counterfactual_removal:
+            path = f'{path}_counterfactual'
+        best_val_ckpt = torch.load(path)
+        model.promptnumber = best_val_ckpt["promptnumber"]
+        model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+        print("loaded the model prompt!", path)
+
+    logger.info("Do inference!")
+    allysrc, allytrue, allypred = [], [], []
+    count = 0
+    with torch.no_grad():
+        logger.info(len(valid_dataloader))
+        for step, batch in tqdm(enumerate(valid_dataloader)):
+            if step % args.log_step_finetune == 0:
+                logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
+            inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+            if scaler is not None:
+                with autocast():
+                    sen, target, preds = model._generative_step(inputs)
+                    tarres, predres = target, preds
+                    allysrc.extend(sen)
+                    allytrue.extend(tarres)
+                    allypred.extend(predres)
+            else:
+                # for k in inputs.keys():
+                #    print(k, inputs[k].shape)
+                sen, target, preds = model._generative_step(inputs)
+                tarres, predres = target, preds
+                allysrc.extend(sen)
+                allytrue.extend(tarres)
+                allypred.extend(predres)
+            count += batch[0].shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    r1s, r2s, rls = [], [], []
+    for j in range(len(allytrue)):
+        label = allytrue[j]
+        summary = allypred[j]
+        if args.highlights:
+            label = "\n".join(sent_tokenize(label))
+            summary = "\n".join(sent_tokenize(summary))
+        rouge_score = scorer.score(label, summary)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+
+    r1 = 100 * np.mean(r1s)
+    r2 = 100 * np.mean(r2s)
+    rl = 100 * np.mean(rls)
+    p, r, f1 = entity_eval(allytrue, allypred)
+
+    logger.info('----Validation Results Summary----')
+    logger.info("Size of the dataset: {}".format(len(allypred)))
+    logger.info("R-1: {:.4f}".format(r1))
+    logger.info("R-2: {:.4f}".format(r2))
+    logger.info("R-L: {:.4f}".format(rl))
+    logger.info("Precision: {:.4f}".format(p))
+    logger.info("Recall: {:.4f}".format(r))
+    logger.info("F-1: {:.4f}".format(f1))
+
+    # abstractivness
+    if args.eval_abstractiveness:
+        print("Running new n-grams counts...")
+        new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
+        for i in tqdm(range(len(allysrc))):
+            text_words = allysrc[i].lower()
+            text_words = word_tokenize(text_words)
+            text_bigrams = [[text_words[j], text_words[j + 1]] for j in range(len(text_words) - 1)]
+            text_trigrams = [[text_words[j], text_words[j + 1], text_words[j + 2]] for j in range(len(text_words) - 2)]
+            text_quadrigrams = [[text_words[j], text_words[j + 1], text_words[j + 2], text_words[j + 3]] for j in range(len(text_words) - 3)]
+
+            summary_words = allypred[i].lower()
+            summary_words = word_tokenize(summary_words)
+            unigrams, bigrams, trigrams, quadrigrams = 0, 0, 0, 0
+            for j in range(len(summary_words)):
+                if not (summary_words[j] in text_words):
+                    unigrams += 1
+                if j < len(summary_words) - 1:
+                    if not ([summary_words[j], summary_words[j + 1]] in text_bigrams):
+                        bigrams += 1
+                if j < len(summary_words) - 2:
+                    if not ([summary_words[j], summary_words[j + 1], summary_words[j + 2]] in text_trigrams):
+                        trigrams += 1
+                if j < len(summary_words) - 3:
+                    if not ([summary_words[j], summary_words[j + 1], summary_words[j + 2],
+                             summary_words[j + 3]] in text_quadrigrams):
+                        quadrigrams += 1
+            unigrams /= max(1, len(summary_words))
+            bigrams /= max(1, len(summary_words) - 1)
+            trigrams /= max(1, len(summary_words) - 2)
+            quadrigrams /= max(1, len(summary_words) - 3)
+            new_unigrams.append(unigrams)
+            new_bigrams.append(bigrams)
+            new_trigrams.append(trigrams)
+            new_quadrigrams.append(quadrigrams)
+
+        new_unigrams = 100 * np.mean(new_unigrams)
+        new_bigrams = 100 * np.mean(new_bigrams)
+        new_trigrams = 100 * np.mean(new_trigrams)
+        new_quadrigrams = 100 * np.mean(new_quadrigrams)
+        logger.info("New unigrams: {:.4f}".format(new_unigrams))
+        logger.info("New bigrams: {:.4f}".format(new_bigrams))
+        logger.info("New trigrams: {:.4f}".format(new_trigrams))
+        logger.info("New quadrigrams: {:.4f}".format(new_quadrigrams))
+
+    return allysrc, allytrue, allypred

@@ -250,7 +250,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
                         input_ids = inputres["input_ids"].to(args.device)
                         attention_mask = inputres["attention_mask"].to(args.device)
                         input = {"input_ids": input_ids, "attention_mask": attention_mask}
-                        tagpreds = entmodel._generative_step_for_tagger(input)
+                        _, _, tagpreds = entmodel._generative_step(input)
                         allentitylist = tagpreds[0].split(',')
                         if allentitylist == []:
                             input_guidance = 'none'
@@ -394,8 +394,13 @@ def main(args):
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
+<<<<<<< HEAD
     if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
         ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+=======
+    if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
+        ckptsum = torch.load(args.pretrain_ckpt)
+>>>>>>> main
         dicsum = {}
         for x in ckptsum.keys():
             if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -440,11 +445,11 @@ def main(args):
         if not os.path.isfile(valid_file_name):
             dataset_args = [args.dataset_name, args.dataset_version]
             subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+        valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     else:
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
+        valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
     scaler = None
     spacy_nlp = spacy.load("en_core_web_sm")
     eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp)

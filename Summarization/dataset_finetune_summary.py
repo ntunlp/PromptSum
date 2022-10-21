@@ -21,9 +21,10 @@ from rouge_score import rouge_scorer
 from nltk.corpus import stopwords
 
 
-class T5SummarizationDataset(Dataset):
+
+class SummarizationDataset(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
-        super(T5SummarizationDataset, self).__init__()
+        super(SummarizationDataset, self).__init__()
 
         self.filename = filename
         self.maxlen = maxlen
@@ -43,7 +44,6 @@ class T5SummarizationDataset(Dataset):
         self.num_entries = len(self.data)
 
         self.split = split
-
         self.tagger = None
         self.tagtokenizer = None
 
@@ -80,7 +80,6 @@ class T5SummarizationDataset(Dataset):
         return allres
 
     def set_allent_for_valid(self, entpath):
-        #entpath = f'{self.save_path}seed_{self.seed}/data_for_bert_{self.seed}/T5valident.pkl'
         # entpath = f'tagger_ckpt/{self.args.dataset}/{self.args.few_shot}/seed_{self.seed}/T5valident.pkl'
         print("entpath: ",entpath)
         with open(entpath, "rb") as f:
@@ -121,6 +120,15 @@ class T5SummarizationDataset(Dataset):
         self.tagger = tagger
         self.tagtokenizer = tokenizer
 
+    def shuffle_and_subsample(self):
+        p = np.random.permutation(len(self.data))
+        p = p[:self.args.max_test_size]
+        self.data = [self.data[x] for x in p]
+        self.num_entries = len(self.data)
+        print("\nShuffled and subsampled!")
+        print("First data point:")
+        print(self.data[0])
+
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
@@ -128,98 +136,67 @@ class T5SummarizationDataset(Dataset):
         input_guidance = "None"
         
         stop_words = set(stopwords.words('english'))
-        # 1st option: based on entities
-        if self.args.guidance_type == "ents":
-            if not self.args.use_t5_tagger:
-                if self.args.guidance_mode == "target":
-                    ents = self.spacy_nlp(targetdata).ents
-                    ents = [ent.text for ent in ents]
-                    if ents == []:
-                        ents = ["none"]
-                if "target_unique" in self.args.guidance_mode:
-                    old_ents = self.spacy_nlp(targetdata).ents
-                    if 'filter' in self.args.guidance_mode:
-                        if self.args.filter_type!=None:
-                            old_ents = [ent.text for ent in old_ents if ent.label_ != self.args.filter_type]
-                        else:
-                            old_ents = [ent.text for ent in old_ents]
-                        old_ents = [w for w in old_ents if not w.lower() in stop_words]
+
+        if not self.args.use_t5_tagger:
+            if self.args.guidance_mode == "target":
+                ents = self.spacy_nlp(targetdata).ents
+                ents = [ent.text for ent in ents]
+                if ents == []:
+                    ents = ["none"]
+            if "target_unique" in self.args.guidance_mode:
+                old_ents = self.spacy_nlp(targetdata).ents
+                if 'filter' in self.args.guidance_mode:
+                    if self.args.filter_type!=None:
+                        old_ents = [ent.text for ent in old_ents if ent.label_ != self.args.filter_type]
                     else:
                         old_ents = [ent.text for ent in old_ents]
-                    # remove entities case-insensitively
-                    marker = set()
-                    ents = []
-                    for l in old_ents:
-                        ll = l.lower()
-                        if ll not in marker:  # test presence
-                            marker.add(ll)
-                            ents.append(l)
-                    if len(ents) == 0:
-                        ents_x = self.spacy_nlp(inputdata).ents
-                        ents_x = [ent.text for ent in ents_x]
-                        ents = ents_x[:2]
-                    if "shuffle" in self.args.guidance_mode:
-                        # shuffle ents
-                        random.shuffle(ents, random.random)
-                elif self.args.guidance_mode == "input_and_target":
+                    old_ents = [w for w in old_ents if not w.lower() in stop_words]
+                else:
+                    old_ents = [ent.text for ent in old_ents]
+                # remove entities case-insensitively
+                marker = set()
+                ents = []
+                for l in old_ents:
+                    ll = l.lower()
+                    if ll not in marker:  # test presence
+                        marker.add(ll)
+                        ents.append(l)
+                if len(ents) == 0:
                     ents_x = self.spacy_nlp(inputdata).ents
                     ents_x = [ent.text for ent in ents_x]
-                    ents_y = self.spacy_nlp(targetdata).ents
-                    ents_y = [ent.text for ent in ents_y]
-                    ents_intersection = [ent for ent in ents_x if ent in ents_y]
-                    ents_intersection = list(dict.fromkeys(ents_intersection))  # remove duplicates, while keeping order
-                    if ents_intersection == []:
-                        ents_intersection = ents_x[:max(2,len(ents_y))]
-                elif self.args.guidance_mode == "input_salient_sents":
-                    top_sents = self.find_salient_sents(inputdata, 5)
-                    ents = self.spacy_nlp(top_sents).ents
-                    ents = [ent.text for ent in ents]
-                elif self.args.guidance_mode == "input_most_frequent":
-                    ents = self.spacy_nlp(inputdata).ents
-                    ents = [ent.text for ent in ents]
-                    counts = {}
-                    for ent in ents:
-                        if not (ent in counts.keys()):
-                            counts[ent] = 0
-                        counts[ent] += 1
-                    sorted_counts = dict(sorted(counts.items(), key=lambda item: item[1], reverse=True))
-                    top_ents = []
-                    for k in sorted_counts.keys():
-                        top_ents.append(k)
-                        if len(top_ents) >= 20:
-                            break
+                    ents = ents_x[:2]
+                if "shuffle" in self.args.guidance_mode:
+                    # shuffle ents
+                    random.shuffle(ents, random.random)
+            else:
+                ents = self.spacy_nlp(inputdata).ents
+                ents = [ent.text for ent in ents]
+            # input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
+            input_guidance = ','.join(list(dict.fromkeys(ents)))
+        else: #use bert_tagger
+            ####for train
+            if self.split.startswith("train"):
+                tempdata = re.sub(' +', ' ', inputdata).strip()
+                if tempdata in self.allent.keys():
+                    input_guidance = self.allent[tempdata]
                 else:
-                    ents = self.spacy_nlp(inputdata).ents
-                    ents = [ent.text for ent in ents]
-                # input_guidance = self.args.separator.join(ents) # can decide which delimiter works the best, just pick comma first
-                input_guidance = ','.join(list(dict.fromkeys(ents))) 
-            else: #use bert_tagger
-                ####for train
-                if self.split.startswith("train"):
+                    print("We can not find TRANING inputdata in the dictionary!! There should be some errors!")
+            else:
+                if self.args.guidance_mode == 'target':
                     tempdata = re.sub(' +', ' ', inputdata).strip()
                     if tempdata in self.allent.keys():
                         input_guidance = self.allent[tempdata]
                     else:
-                        print("We can not find TRANING inputdata in the dictionary!! There should be some errors!")
+                        print("We can not find VALIDATION - TARGET inputdata in the dictionary!! There should be some errors!")
                 else:
-                    if self.args.guidance_mode == 'target':
-                        tempdata = re.sub(' +', ' ', inputdata).strip()
-                        if tempdata in self.allent.keys():
-                            input_guidance = self.allent[tempdata]
-                        else:
-                            print("We can not find VALIDATION - TARGET inputdata in the dictionary!! There should be some errors!")
+                    tempdata = re.sub(' +', ' ', inputdata).strip()
+                    if tempdata in self.allent.keys():
+                        input_guidance = self.allent[tempdata]
                     else:
-                        tempdata = re.sub(' +', ' ', inputdata).strip()
-                        if tempdata in self.allent.keys():
-                            input_guidance = self.allent[tempdata]
-                        else:
-                            print("For valid: we can not find VALIDATION - PREDICTION inputdata in the dictionary!! There should be some errors!")
-            # after finding it, I remove the 'REMOVEDN' argument:
-            inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
-        # 2nd option: based on salient sentences
-        elif self.args.guidance_type == "sents":
-            salient_sents = self.find_salient_sents(inputdata, 1)
-            input_guidance = salient_sents
+                        print("For valid: we can not find VALIDATION - PREDICTION inputdata in the dictionary!! There should be some errors!")
+        # after finding it, I remove the 'REMOVEDN' argument:
+        inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
+
         if len(targetdata.split()) == 0:
             targetdata = "None"
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,  return_tensors="pt")
@@ -417,9 +394,9 @@ def read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, ar
       
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        train_dataset = T5SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        train_dataset = SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
-        valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
+        valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
 
     return datasets

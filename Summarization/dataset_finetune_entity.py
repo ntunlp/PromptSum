@@ -153,7 +153,7 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
         t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
         tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
         model = T5forFinetuneEntity(t5model, tokenizer, args)
-        test_dataset = T5DatasetPretrainConll(sumwithfakelabel, 512, tokenizer)
+        test_dataset = DatasetPretrainEntity(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
         test_dataloader = get_dataloader_tag(4, test_dataset, 8, 512, test_dataset.tokenizer.pad_token_id, test_sampler)
 

@@ -17,7 +17,7 @@ pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained
 
 ##### train & val
 #echo "start full-shot baseline-1: all-params finetune summary"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusFinetune --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusFinetune --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --label_smoothing 0.1
 ##### test
 #echo "start full-shot baseline-1: all-params finetune summary - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusFinetune --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache
@@ -39,28 +39,26 @@ pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained
 #echo "start full-shot baseline-3: simple prompt-tune summary with pretrained ckpt"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
 ##### test
-
 #echo "start full-shot baseline-3: simple prompt-tune summary with pretrained ckpt - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0  --cache_path $cache
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache
 
+############################ Baseline v4: Soft prompt tuning with TUNE WEIGHTS
 
-############################ Baseline v4: Soft prompt tuning TUNE WEIGHTS
-
-##### train & val
-# echo "start full-shot baseline-4: simple prompt-tune summary TUNE WEIGHTS"
-# CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --model_version baseline_v4 --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy  --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache  --tune_weights #--eval_epoch_0
-##### test
-#echo "start k-shot baseline-5: simple prompt-tune summary with pretrained ckpt TUNE WEIGHTS - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights
-
-
+# ##### train & val
+#echo "start full-shot baseline-4: simple prompt-tune summary TUNE WEIGHTS"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights --valid_size_per_gpu_summary 2 --batch_size_per_gpu_summary 1 --gradient_accumulation_steps_summary 256 
+# ##### test
+#echo "start full-shot baseline-4: simple prompt-tune summary TUNE WEIGHTS - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights
 
 ############################ Baseline v5: Soft prompt tuning from our pre-trained checkpoint TUNE WEIGHTS
 
 ##### train & val
-echo "start full-shot baseline-5: simple prompt-tune summary with pretrained ckpt TUNE WEIGHTS"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --model_version baseline_v5_n --dataset_name $dataset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy  --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
-#### test
-#echo "start k-shot baseline-5: simple prompt-tune summary with pretrained ckpt TUNE WEIGHTS - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights
+#echo "start full-shot baseline-5: simple prompt-tune summary with pretrained ckpt TUNE WEIGHTS"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --tune_weights
+##### test
+echo "start full-shot baseline-5: simple prompt-tune summary with pretrained ckpt TUNE WEIGHTS - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --tune_weights 
+
+
 
