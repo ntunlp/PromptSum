@@ -202,6 +202,8 @@ def set_args():
                         default=1.0, help="max grad norm")
     parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
                         default=10000, help="how many steps to eval")
+    parser.add_argument("--label_smoothing", dest="label_smoothing", type = float,
+                        default = 0.0)
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
@@ -215,7 +217,9 @@ def set_args():
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
     parser.add_argument("--eval_epoch_0", action="store_true", 
-                        default=False, help="whether to evaluate before trainin")
+                        default=False, help="whether to evaluate before training")
+    parser.add_argument("--test_on_val", action="store_true",
+                        default=False, help="whether to use the validation for test inference")
 
     # generation
     parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
@@ -223,7 +227,7 @@ def set_args():
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
-                        default=2.5, help="repetition penalty")
+                        default=1.0, help="repetition penalty")
     parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                         default=1.0, help="length penalty")
 
@@ -290,8 +294,8 @@ def set_args():
     optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
     lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
-    max_epoch_entity = [3, 3, 5, 5, 5, 5]
-    max_epoch_summary = [5, 5, 10, 10, 20, 30]
+    max_epoch_entity = [5, 5, 5, 5, 5, 5]
+    max_epoch_summary = [5 if not("Finetune" in args.model) else 10, 5 if not("Finetune" in args.model) else 10, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
     val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
     test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
@@ -427,6 +431,7 @@ def main(args):
     logger.info("\nData size: train: {}, val: {}, test: {}".format(
         len(train_data), len(valid_data), len(test_data)))
     train_data = train_data[:args.max_train_size]
+    valid_data = valid_data.shuffle()
     valid_data = valid_data[:args.max_val_size]
     test_data = test_data[:args.max_test_size]
     logger.info("\nFinal data size: train: {}, val: {}, test: {}".format(
@@ -507,6 +512,8 @@ def main(args):
                                              save_path = args.save_dir)
         valid_dataset = SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
                                              save_path = args.save_dir)
+        if args.test_on_val:
+            args.test_dataset = valid_dataset
 
         keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
         if args.eval_abstractiveness:

@@ -29,6 +29,8 @@ class ModelFinetune(nn.Module):
             param.requires_grad = True
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
+        if args.label_smoothing > 0:
+            self.loss_fct = nn.CrossEntropyLoss(label_smoothing = args.label_smoothing)
 
     def _step(
             self, input_ids, attention_mask=None, decoder_input_ids=None, labels=None, decoder_attention_mask=None
@@ -60,6 +62,11 @@ class ModelFinetune(nn.Module):
         )
 
         loss = outputs[0]
+        if self.args.label_smoothing > 0:
+            logits = outputs[1]
+            flat_logits = logits.reshape((logits.shape[0] * logits.shape[1], logits.shape[2]))
+            flat_labels = lm_labels.reshape((lm_labels.shape[0] * lm_labels.shape[1]))
+            loss = self.loss_fct(flat_logits, flat_labels)
 
         return loss
 

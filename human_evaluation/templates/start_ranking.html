@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Index</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<!--     <script>
+        var history_ = '{{ history }}';
+    </script> -->
+</head>
+<body>
+
+<div class="progress">
+    <div class="progress-bar bg-success" role="progressbar" style="width: {{ prog }}%" aria-valuenow="{{ prog }}"
+         aria-valuemin="0" aria-valuemax="100">{{ prog }}%
+    </div>
+</div>
+
+<div style="width: 50%; float:left;height:100%">
+    <div class="card" style="width: 100%;">
+
+        <br>
+        <strong> Source document </strong>
+        <div class="alert alert-success" style="align-content:center; overflow:visible; border:3px outset #179c52;"> {{source}} </div>
+        <div class="card-body">
+            <p class="card-text" style="font-size: 1rem;">We have shown 2 summary candidates below the above text.  <strong>Please give your answers to the questions on the right panel.</strong></p>
+        </div>
+    </div>
+
+    <div class="alert alert-primary" style="margin:0"> Example # {{ postid }}
+    </div>
+    <form name="myForm" action="" method="post" onsubmit="">
+    	<div class="alert alert-success" style="margin:0"> A: {{ cap1 }} </div>
+        <div class="alert alert-success" style="margin:0"> B: {{ cap2 }} </div>
+        <br>
+    </form>
+</div>
+
+<div style="width: 50%; float:right;max-height:100%;right:0;overflow:visible;">
+    <div class="card" style="width: 100%; float:center">
+
+        <br>
+        <br>
+        <div class="alert alert-primary" style="margin:0"> Example # {{ postid }}
+{#            <span class="badge badge-info" data-toggle="modal" data-target="#exampleModal">Help </span>#}
+        </div>
+        <form name="myForm" action="" method="post" onsubmit="">
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more INFORMATIVE? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="info" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="info" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="info" value='a'> It's a tie.
+                </li>
+            </ul>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more FACTUALLY CONSISTENT with the source? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="fact" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="fact" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="fact" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more RELEVANT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="rel" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="rel" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="rel" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more FLUENT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="fluent" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="fluent" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="fluent" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <br>
+            <ul class="list-group">
+                <li class="list-group-item"> Which summary is more COHERENT? </li>
+                <li class="option list-group-item">
+                    <input type="radio" name="coh" value='1'> Summary A. &nbsp;<br>
+                    <input type="radio" name="coh" value='2'> Summary B. &nbsp;<br>
+                    <input type="radio" name="coh" value='a'> It's a tie.
+                </li>
+            </ul>
+            <br>
+
+            <input type='text' name="postid" value={{ postid }} readonly style='display:none'>
+            <input type='text' name="reversed_" value={{ reversed_ }} readonly style='display:none'>
+
+            <p><input type=submit value=Next name="Submit" id="Submit" class="btn btn-dark btn-lg btn-block"></p>
+        </form>
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel"
+     aria-hidden="true" style="width: 100%">
+    <div class="modal-dialog" role="document" style="width: 100%;max-width:1000px">
+        <div class="modal-content">
+            <img style="width: 100%" src="static/he.png" alt="Help">
+
+        </div>
+    </div>
+</div>
+</body>
+<script>
+    // Delegate submit action
+    $(document).on('submit', 'form', function () {
+
+        var validate = true;
+        var unanswered = new Array();
+
+        // Loop through available sets
+        $('.option').each(function () {
+            // Question text
+            var question = $(this).prev();
+            // Validate
+            if (!$(this).find('input').is(':checked')) {
+                // Didn't validate ... dispaly alert or do something
+                unanswered.push(question.text());
+                question.css('color', 'red'); // Highlight unanswered question
+                validate = false;
+            }
+        });
+        if (unanswered.length > 0) {
+            msg = "Please answer the following questions:\n" + unanswered.join('\n');
+            alert(msg);
+        }
+        return validate;
+    });
+</script>
+</html>
