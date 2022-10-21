@@ -13,7 +13,7 @@ from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
-from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -351,7 +351,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 d = model_to_save.state_dict()
                 d["promptnumber"] = model_to_save.promptnumber
                 torch.save(d, os.path.join(path, "bestckpt_full_weights"))
-            else:
+            if hasattr(model_to_save, "promptnumber"):
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding

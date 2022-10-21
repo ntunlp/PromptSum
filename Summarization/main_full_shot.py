@@ -184,13 +184,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=2, help="batch size per gpu")
+                        default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
                         default=16, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
-                        default=16, help="test size per gpu")
+                        default=25, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=128, help="gradient accumulation steps")
+                        default=256, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=5, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -331,7 +331,7 @@ def set_args():
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
     args.max_test_size = min(args.max_test_size, test_sizes[idx])
 
-    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model_version}/'
+    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
     os.makedirs(args.model_save_folder, exist_ok=True)
 
     return args

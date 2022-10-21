@@ -13,27 +13,34 @@ from nltk.tokenize import sent_tokenize
 from pathlib import Path
 import random
 import copy
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    data_root = "/data/ruochen/"
-    root = "/data/mathieu/"
+    root = "/export/home/"
+    data_root = "/export/home/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= data_root + "dataset/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                             default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
+                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
+    parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
+                        default="bestckpt_from_pretrained", help="model ckpt name") 
+    parser.add_argument("--tagger_ckpt_name", dest="tagger_ckpt_name", type=str,
+                        default="bestckpt_prompt", help="tagger ckpt name")                     
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
+                        "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/t5-v1-large/",
+                        default=root + "hf_models/pegasus-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
@@ -52,7 +59,7 @@ def set_args():
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                         default=0, help="dataloader num_workers")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=4, help="valid size per gpu")
+                        default=16, help="valid size per gpu")
     parser.add_argument("--max_length", dest="max_length", type=int,
                         default=512, help="max sentence length")
     parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -88,6 +95,8 @@ def set_args():
     parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
+    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
+                        default=False)
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -120,6 +129,7 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_summary_length = max_summary_lengths[idx]
+    args.max_position_embeddings = 1024
     return args
 
 def set_logger(args):
@@ -142,15 +152,18 @@ def hallucinated(entity_chain, input, spacy_nlp):
     ents_true = spacy_nlp(input).ents
     ents_true = [ent.text for ent in ents_true]
     hallucinated = [ent for ent in input_guidance_list if ent not in ents_true]
+    # hallucinated = [ent for ent in input_guidance_list if ent.lower() not in input.lower()]
     if len(hallucinated)>0:
-        non_hallucinated = [ent for ent in input_guidance_list if ent in ents_true]
+        non_hallucinated = [ent for ent in input_guidance_list if ent not in hallucinated]
         return ','.join(non_hallucinated), True
     else:
         return ','.join(input_guidance_list), False
 
 def count_hallucination_percentage(allytrue, allypred, spacy_nlp): #CAN CHANGE HERE
-    hallucinated_count = 0
-    all_count = 0
+    # hallucinated_count = 0
+    # all_count = 0
+    hallucination_rates = []
+    no_entity_preds = 0
     for i, ytrue in enumerate(allytrue):
         ents_true = spacy_nlp(ytrue).ents
         ents_true = [ent.text for ent in ents_true]
@@ -158,11 +171,19 @@ def count_hallucination_percentage(allytrue, allypred, spacy_nlp): #CAN CHANGE H
         ents_pred = spacy_nlp(ypred).ents
         ents_pred = [ent.text for ent in ents_pred]
         hallucinated_ents = [ent for ent in ents_pred if ent not in ents_true]
-        hallucinated_count += len(hallucinated_ents)
-        all_count += len(ents_pred)
-    return hallucinated_count/all_count
+        # hallucinated_count += len(hallucinated_ents)
+        # all_count += len(ents_pred)
+        if len(ents_pred) == 0:
+            no_entity_preds += 1
+            # logger.info(f"no ent predicted: {ypred}")
+        else:
+            hallucination_rates.append(len(hallucinated_ents)/len(ents_pred))
+    logger.info(f"in count_hallucination_percentage: # no entity preds: {no_entity_preds}")
+    return hallucination_rates
 
 def new_valid_dataset(valid_dataset, indices, ents):
+    # new_valid_dataset = T5SummarizationDatasetForControlGen('dummy', "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+
     valid_dataset_new = copy.deepcopy(valid_dataset)
     valid_dataset_new.data =[valid_dataset_new.data[i] for i in indices]
     valid_dataset_new.num_entries = len(valid_dataset_new.data)
@@ -173,16 +194,19 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
     model.eval()
     model = model.to(args.device)
     all_ents = []
-    if args.use_t5_tagger and args.model == "T5MixPrompt" and args.guidance_mode != "target":
+    if args.use_t5_tagger and args.model in ['T5MixPrompt', 'PegasusMixPrompt'] and args.guidance_mode != "target":
         if args.infer_val_entities:
             ########## predict the validation entity chains with the 1st prompt tuning stage model
-            entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+            # entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
+            # enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
+            # entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+            entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
+            enttokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir = args.cache_path)
+            entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
             logger.info("Loading the pre-trained NER model!")
 
             # model weights
-            ckpt = torch.load(args.pretrain_ckpt)
+            ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
             dic = {}
             for x in ckpt.keys():
                 if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -191,9 +215,9 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
 
             # just prompt
             #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.tagger_ckpt_name}'
             print(onepath)
-            oneckpt = torch.load(onepath)
+            oneckpt = torch.load(onepath, map_location="cuda:0")
             entmodel.promptnumber = oneckpt["promptnumber"]
             entmodel.promptembedding = oneckpt["promptembedding"]
         
@@ -217,6 +241,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
                 all_ents = []
                 with torch.no_grad():
                     for step in range(len(alldata)):
+                        if step % 100 == 0:
+                            logger.info(f"gen step: {step}")
                         onedata = alldata[step]
                         inputdata = onedata[0]
                         tempdata = re.sub(' +', ' ', inputdata)
@@ -266,9 +292,11 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         else:
             dic['nh_indices'].append(i)
             dic['nh_ents'][tempdata] = entity_chain
+        
     valid_dataset_nh = new_valid_dataset(valid_dataset, dic['nh_indices'], dic['nh_ents'])
     valid_dataset_h = new_valid_dataset(valid_dataset, dic['h_indices'], dic['h_ents'])
     valid_dataset_hr = new_valid_dataset(valid_dataset, dic['h_indices'], dic['hr_ents'])
+    
     logger.info(f'{valid_dataset_h.num_entries} hallucinated examples')
     logger.info(f'{valid_dataset_nh.num_entries} NON-hallucinated examples')
     names = ['NOT HALLUCINATED', 'HALLUCINATED AS-IS', 'HALLUCINATED WITH HALLUCINATION REMOVED']
@@ -279,17 +307,20 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         all_inputs = []
         allytrue = []
         allypred = []
+        allent = []
         with torch.no_grad():
             for step, batch in enumerate(valid_dataloader):
                 # logger.info(step)
                 inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
-                        "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
-                        "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device),
-                        "predents_ids": batch[6].to(args.device), "predents_mask": batch[7].to(args.device)}
+                      "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
+                      "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
+                
                 allinp = []
                 for k in range(inputs["ents_ids"].shape[0]):
                     # print(inputs['input_ids'][k])
-                    allinp.append(tokenizer.decode(inputs['input_ids'][k]))
+                    allinp.append(tokenizer.decode(inputs['input_ids'][k], skip_special_tokens=True))
+                    allent.append(tokenizer.decode(inputs['ents_ids'][k], skip_special_tokens=True))
+
                 if scaler is not None:
                     with autocast():
                         sen, target, preds = model._generative_step(inputs)
@@ -323,14 +354,20 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         }
         p, r, f1 = entity_eval(allytrue, allypred)
         # percentage of hallucinated entities
-        percent_hal = count_hallucination_percentage(allytrue, allypred, spacy_nlp)
+        percent_hals = count_hallucination_percentage(all_inputs, allypred, spacy_nlp)
+
+        for i in range(min(10, len(allypred))): # only print limited examples
+            logger.info('-----')
+            logger.info(f'INPUT: {all_inputs[i]}')
+            # logger.info(f'LABEL: {labels0[i]}')
+            logger.info(f'ENTS: {allent[i]}; hallucination rate: {percent_hals[i]}; SUMMARY: {allypred[i]}')
 
         logger.info(f'--------{names[idx]}--------')
         logger.info(f'entity-level p: {p}, r: {r}, f1: {f1}')
         logger.info(f'ROUGE score r1: {rouge_score["rouge1"]}, r2: {rouge_score["rouge2"]}, r3: {rouge_score["rougeLsum"]}')
         mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
         logger.info(f'mean-rouge: {mean_rouge}')
-        logger.info(f'Percentage of hallucination in predictions: {percent_hal*100}%')
+        logger.info(f'Percentage of hallucination in predictions: {np.mean(percent_hals)*100}%, min: {np.min(percent_hals)*100}%, max: {np.max(percent_hals)*100}%, std: {np.std(percent_hals)*100}')
         logger.info(f'--------EVAL FINISHED--------')
 
 
@@ -345,16 +382,20 @@ def main(args):
     thistaskname = "cnn daily mail" if args.dataset=='cnndm' else args.dataset
     thistaskfold = args.dataset
     args.taskfold = thistaskfold
+
     # First load the trained ckpt
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    # tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+    args.allnumber_path = 'allnumber.pickle_newforpegasus'
+    # basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
     model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
-    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
-    if args.use_pretrain_ckpt and args.model != "T5Finetune":
-        ckptsum = torch.load(args.pretrain_ckpt)
+    if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
+        ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
         dicsum = {}
         for x in ckptsum.keys():
             if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -368,11 +409,14 @@ def main(args):
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':
         args.model_save_folder += f'{args.model}/'
-    args.model_save_path = args.model_save_folder + f'seed_{seed}/'
-    path = args.model_save_path + 'bestckpt'
-    if args.counterfactual_trained:
-        path = f'{path}_counterfactual'
-    ckptsum = torch.load(path)
+    # args.model_save_path = args.model_save_folder + f'seed_{seed}/'
+    # path = args.model_save_path + 'bestckpt'
+    # if args.counterfactual_trained:
+    #     path = f'{path}_counterfactual'
+    args.model_save_path = args.model_save_folder + f'seed_{args.seed}/'
+    path = args.model_save_path + args.ckpt_name
+    logger.info(f"loading checkpoint from {path}")
+    ckptsum = torch.load(path, map_location="cuda:0")
     model.promptnumber = ckptsum["promptnumber"]
     model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
 

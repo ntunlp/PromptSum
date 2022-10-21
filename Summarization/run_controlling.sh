@@ -1,3 +1,7 @@
+dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+k_shot="full" # in ["1", "10", "100"]
+device="4"
+cache='/export/home/cache'
 # pretrain_ckpt="/data/hailin/PromptSumm/006_bestckpt_full_model"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/006_bestckpt_prompt"
 # pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_15k/bestckpt_full_model"
@@ -6,8 +10,8 @@
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
 # pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_135k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_135k/bestckpt_prompt"
-pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
+pretrain_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 # 10-shot
 # echo "start 10-shot prompt-tune_entity"
@@ -46,10 +50,10 @@ pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_e
 # CUDA_VISIBLE_DEVICES=2 python controllability_fixed.py  --big_testset --dataset_name=xsum --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt
 # # nohup bash run_controlling.sh > full_controlling_xsum_log 2>&1 &
 
-# echo "CONTROLLING EXPS FOR CNNDM - NO COUNTERFACTUAL TRAINING"
-# CUDA_VISIBLE_DEVICES=3 python controllability_fixed.py --big_testset --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --dataset_name ccdv/cnn_dailymail
+echo "CONTROLLING EXPS FOR CNNDM - NO COUNTERFACTUAL TRAINING"
+CUDA_VISIBLE_DEVICES=$device python controllability_fixed.py --big_testset --few_shot $k_shot --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --dataset_name $dataset
 # # nohup bash run_controlling.sh > full_controlling_cnndm_log 2>&1 &
 
-echo "CONTROLLING EXPS FOR CNNDM - WITH COUNTERFACTUAL TRAINING"
-CUDA_VISIBLE_DEVICES=5 python controllability_fixed.py --big_testset --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --dataset_name ccdv/cnn_dailymail --counterfactual_trained
+# echo "CONTROLLING EXPS FOR CNNDM - WITH COUNTERFACTUAL TRAINING"
+# CUDA_VISIBLE_DEVICES=5 python controllability_fixed.py --big_testset --few_shot 100 --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --dataset_name $dataset --counterfactual_trained
 # nohup bash run_controlling.sh > full_controlling_cnndm_ct_log 2>&1 &
