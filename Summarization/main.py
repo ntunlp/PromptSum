@@ -45,10 +45,10 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
-    data_root = "/data/mathieu/"
+    data_root = "/home/mathieu/"
     # data_root = "/data/mathieu/"
 
     # general stuff
@@ -203,6 +203,8 @@ def set_args():
                         default=1.0, help="max grad norm")
     parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
                         default=15000, help="how many steps to eval")
+    parser.add_argument('--label_smoothing', dest='label_smoothing', type=float,
+                        default=0.0, help="label smoothing")
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
