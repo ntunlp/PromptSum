@@ -87,7 +87,9 @@ def set_args():
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
-                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
+                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt',
+                            'FROSTFinetune'
+                        ])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["google/t5-v1_1-large", "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
@@ -491,16 +493,18 @@ def main(args):
             if 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
-            elif 'Pegasus' in args.model:
+            elif 'Pegasus' in args.model or 'FROST' in args.model:
                 basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle_newforpegasus'
+                if 'FROST' in args.model:
+                    basemodel = load_frost(basemodel, args)
             else:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = 'allnumber.pickle'
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
+            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']:
                 logger.info('\nFinetuning')
                 model = ModelFinetune(args, basemodel, tokenizer, args.model)
             elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
@@ -520,7 +524,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
+            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune", "FROSTFinetune"]):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
