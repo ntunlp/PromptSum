@@ -15,8 +15,8 @@ device="2"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_135k/bestckpt_prompt"
 # pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 # pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
-pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
+pretrain_ckpt="/data/hailin/PromptSum/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/hailin/PromptSum/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt"
 cache='/data/ruochen/hf_models/pegasus-large/'
 
 

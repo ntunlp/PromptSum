@@ -1,6 +1,6 @@
 ### dataset
-dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="3"
+dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+device="0"
 cache='/data/mathieu/hf_models/pegasus-large/'
 
 ### backbone model
@@ -8,8 +8,8 @@ cache='/data/mathieu/hf_models/pegasus-large/'
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 
 ########################### Baseline v1: Fine-tuning
