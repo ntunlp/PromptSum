@@ -41,7 +41,7 @@ from models_summarization.model_mixture import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/mathieu/"
+    root = "/home/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
