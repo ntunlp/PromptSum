@@ -247,25 +247,26 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
             'val_rl': [],
             'best_val_meanR': Best_val_meanR
         }
-        if args.tune_weights:
-            onepath = os.path.join(output_dir, "bestckpt_full_weights")
-            if args.use_pretrain_ckpt:
-                onepath += "_from_pretrained"
-            oneckpt = torch.load(onepath)
-            d = {}
-            for k in model.state_dict().keys():
-                d[k] = oneckpt[k]
-            model.load_state_dict(d)
-            model.promptnumber = oneckpt["promptnumber"]
-            print("loaded all model weights")
-        else:
-            onepath = os.path.join(output_dir, "bestckpt_prompt")
-            if args.use_pretrain_ckpt:
-                onepath += "_from_pretrained"
-            oneckpt = torch.load(onepath)
-            model.promptnumber = oneckpt["promptnumber"]
-            model.promptembedding = oneckpt["promptembedding"]
-            print("loaded model prompt weights")
+        if not(args.zero_shot):
+            if args.tune_weights:
+                onepath = os.path.join(output_dir, "bestckpt_full_weights")
+                if args.use_pretrain_ckpt:
+                    onepath += "_from_pretrained"
+                oneckpt = torch.load(onepath)
+                d = {}
+                for k in model.state_dict().keys():
+                    d[k] = oneckpt[k]
+                model.load_state_dict(d)
+                model.promptnumber = oneckpt["promptnumber"]
+                print("loaded all model weights")
+            else:
+                onepath = os.path.join(output_dir, "bestckpt_prompt")
+                if args.use_pretrain_ckpt:
+                    onepath += "_from_pretrained"
+                oneckpt = torch.load(onepath)
+                model.promptnumber = oneckpt["promptnumber"]
+                model.promptembedding = oneckpt["promptembedding"]
+                print("loaded model prompt weights")
         dooneeval(model, test_dataloader, test_result_dict, 0, output_dir, args, save_model=False)
 
     torch.cuda.empty_cache()
@@ -372,6 +373,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
     allresofvalid = {}
     allpreds, alllabels = [], []
     spacy_nlp = spacy.load("en_core_web_sm")
+    count = 0
     with torch.no_grad():
         for step in tqdm(range(len(alldata))):
             onedata = alldata[step]
@@ -393,6 +395,10 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
             ents = [ent.text for ent in ents]
             target_ents = ','.join(ents)
             alllabels.append(target_ents)
+            count += input_ids.shape[0]
+            if count >= args.max_test_size:
+                print("Hit the max test size...")
+                break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     mean_rs, r1s, r2s, rls = [], [], [], []
     for x in range(len(allpreds)):

@@ -45,10 +45,10 @@ def set_args():
 
     # root = "/home/qin/"
     # data_root = "/home/qin/"
-    root = "/home/mathieu/"
+    root = "/data/mathieu/"
     # data_root = "/data/mathieu/"
     # root = "/home/ruochen/"
-    data_root = "/home/mathieu/"
+    data_root = "/data/mathieu/"
     # data_root = "/data/mathieu/"
 
     # general stuff
@@ -468,7 +468,7 @@ def main(args):
         logger.info("3/ Prompt tuning the summarization model...")
         # read datasets
         datasets = read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args)
-        keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', "BERTScore", 'precision', 'recall', 'f1']
         if args.eval_abstractiveness:
             keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
             keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
@@ -629,6 +629,12 @@ def main(args):
                             alldata = valid_dataset.data
                             logger.info(f"valid size: {len(alldata)}")
                         allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
+                        for xx in range(5):
+                            print("*"*50)
+                            print("Entity chain - pred:")
+                            print(allpreds[xx])
+                            print("Entity chain - label:")
+                            print(alllabels[xx])
                         logger.info(len(allresofvalid))
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)

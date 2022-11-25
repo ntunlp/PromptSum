@@ -10,6 +10,7 @@ gc.enable()
 
 from datasets import load_metric
 from rouge_score import rouge_scorer
+from bert_score import score
 from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
@@ -83,7 +84,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "val_rougeL": 0.0,
         "precision": 0.0,
         "recall": 0.0,
-        "f1": 0.0
+        "f1": 0.0,
+        "BERTScore": 0.0,
     }
 
     global_step = 0
@@ -192,7 +194,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "val_rougeL": 0.0,
             "precision": 0.0,
             "recall": 0.0,
-            "f1": 0.0
+            "f1": 0.0,
+            "BERTScore": 0.0,
         }
         result_dict['epoch'] = args.max_epoch_summary
         dooneeval(model, test_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
@@ -281,6 +284,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     logger.info(len(allypred))
     logger.info(rouge_score)
     p, r, f1 = entity_eval(allytrue, allypred)
+    bs_p, bs_r, bs_f1 = score(allypred, allytrue, lang='en', verbose=True)
+    bs_f1 = 100 * bs_f1.mean()
 
     # change accordingly
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
@@ -296,6 +301,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
+        result_dict["BERTScore"] = bs_f1
         
         if args.save_model:
             if not os.path.exists(args.model_save_path):

@@ -41,6 +41,9 @@ class SummarizationDataset(Dataset):
         self.data = []
         self.data = self.getalldata(self.filename)
         #self.data = self.data[:20]
+        p = np.random.permutation(len(self.data))
+        self.data = [self.data[x] for x in p]
+        print("permuted self.data")
         self.num_entries = len(self.data)
 
         self.split = split
