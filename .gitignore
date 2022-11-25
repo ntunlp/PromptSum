@@ -6,6 +6,7 @@ t5_tagger_pretrained_ckpt/
 checkpoint/*
 checkpoints/*
 bart.large.tar.gz
+datasets/*
 
 Summarization/.DS_Store
 Summarization/__pycache__/
