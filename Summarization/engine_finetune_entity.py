@@ -415,5 +415,5 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)
     ))
 
-    return allresofvalid, allpreds, alllabels
+    return allresofvalid, allpreds, alllabels, mean_rs
 

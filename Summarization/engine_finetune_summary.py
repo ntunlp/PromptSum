@@ -86,6 +86,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         "recall": 0.0,
         "f1": 0.0,
         "BERTScore": 0.0,
+        "mean_rs": []
     }
 
     global_step = 0
@@ -196,6 +197,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             "recall": 0.0,
             "f1": 0.0,
             "BERTScore": 0.0,
+            "mean_rs": []
         }
         result_dict['epoch'] = args.max_epoch_summary
         dooneeval(model, test_dataloader, scaler, result_dict, logger, args.max_epoch_summary, args)
@@ -264,7 +266,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 print("Hit the max test size...")
                 break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
-    r1s, r2s, rls = [], [], []
+    mean_rs, r1s, r2s, rls = [], [], [], []
     for j in range(len(allytrue)):
         label = allytrue[j]
         summary = allypred[j]
@@ -272,9 +274,14 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             label = "\n".join(sent_tokenize(label))
             summary = "\n".join(sent_tokenize(summary))
         rouge_score = scorer.score(label, summary)
-        r1s.append(rouge_score["rouge1"].fmeasure)
-        r2s.append(rouge_score["rouge2"].fmeasure)
-        rls.append(rouge_score["rougeLsum"].fmeasure)
+        r1 = rouge_score["rouge1"].fmeasure
+        r2 = rouge_score["rouge2"].fmeasure
+        rl = rouge_score["rougeLsum"].fmeasure
+        mean_r = (r1 + r2 + rl) / 3
+        mean_rs.append(mean_r)
+        r1s.append(r1)
+        r2s.append(r2)
+        rls.append(rl)
     rouge_score = {
         "rouge1": 100 * np.mean(r1s),
         "rouge2": 100 * np.mean(r2s),
@@ -302,6 +309,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['recall'] = r
         result_dict['f1'] = f1
         result_dict["BERTScore"] = bs_f1
+
+        result_dict["mean_rs"] = mean_rs
         
         if args.save_model:
             if not os.path.exists(args.model_save_path):
