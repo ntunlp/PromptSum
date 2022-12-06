@@ -9,7 +9,7 @@ gc.enable()
 
 from datasets import load_metric
 from rouge_score import rouge_scorer
-from nltk.tokenize import sent_tokenize
+from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
@@ -371,7 +371,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
 
 def infer_entity_model(alldata, enttokenizer, entmodel, args):
     allresofvalid = {}
-    allpreds, alllabels = [], []
+    alltexts, allpreds, alllabels = [], [], []
     spacy_nlp = spacy.load("en_core_web_sm")
     count = 0
     with torch.no_grad():
@@ -379,6 +379,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
             onedata = alldata[step]
             inputdata = onedata[0]
             tempdata = re.sub(' +', ' ', inputdata).strip()
+            alltexts.append(tempdata)
             inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
             input_ids = inputres["input_ids"].to(args.device)
             attention_mask = inputres["attention_mask"].to(args.device)
@@ -399,6 +400,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
             if count >= args.max_test_size:
                 print("Hit the max test size...")
                 break
+    # ROUGE
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     mean_rs, r1s, r2s, rls = [], [], [], []
     for x in range(len(allpreds)):
@@ -413,6 +415,46 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         rls.append(rl)
     print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
         100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)
+    ))
+    # abstractiveness
+    new_pred_ents, new_target_ents = [], []
+    for i in range(len(allpreds)):
+        text = alltexts[i]
+        text_words = word_tokenize(text)
+        pred_entities = allpreds[i]
+        pred_entities = pred_entities.split(",")
+        new_pred = 100 * len([x for x in pred_entities if not(x in text_words)]) / max(1, len(pred_entities))
+        new_pred_ents.append(new_pred)
+        target_entities = alllabels[i]
+        target_entities = target_entities.split(",")
+        new_target = 100 * len([x for x in target_entities if not(x in text_words)]) / max(1, len(target_entities))
+        new_target_ents.append(new_target)
+    print("Abstractive predicted entities: {:.4f}% | target entities: {:.4f}%".format(
+        np.mean(new_pred_ents), np.mean(new_target_ents)
+    ))
+    # repetition
+    rep_preds, rep_targets = [], []
+    for i in range(len(allpreds)):
+        pred_entities = allpreds[i]
+        pred_entities = pred_entities.split(",")
+        rep = 0
+        for j in range(1, len(pred_entities)):
+            if pred_entities[j] in pred_entities[:j]:
+                rep += 1
+        rep /= max(1, len(pred_entities)-1)
+        rep *= 100
+        rep_preds.append(rep)
+        target_entities = alllabels[i]
+        target_entities = target_entities.split(",")
+        rep = 0
+        for j in range(1, len(target_entities)):
+            if target_entities[j] in target_entities[:j]:
+                rep += 1
+        rep /= max(1, len(target_entities)-1)
+        rep *= 100
+        rep_targets.append(rep)
+    print("Repeated predicted entities: {:.4f}% | target entities: {:.4f}%".format(
+        np.mean(rep_preds), np.mean(rep_targets)
     ))
 
     return allresofvalid, allpreds, alllabels, mean_rs
