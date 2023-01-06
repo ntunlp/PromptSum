@@ -515,7 +515,7 @@ def main(args):
         if args.test_on_val:
             args.test_dataset = valid_dataset
 
-        keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+        keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', "BERTScore", 'precision', 'recall', 'f1']
         if args.eval_abstractiveness:
             keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
             keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
@@ -656,7 +656,7 @@ def main(args):
                     else:
                         alldata = valid_dataset.data
                         logger.info(f"valid size: {len(alldata)}")
-                    allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
+                    allresofvalid, allpreds, alllabels, mean_rs_entity = infer_entity_model(alldata, enttokenizer, entmodel, args)
                     logger.info(len(allresofvalid))
                     with open(respath, "wb") as f:
                         pickle.dump(allresofvalid, f)

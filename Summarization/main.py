@@ -231,7 +231,7 @@ def set_args():
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
-                        default=2.5, help="repetition penalty")
+                        default=1.0, help="repetition penalty")
     parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                         default=1.0, help="length penalty")
 
