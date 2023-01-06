@@ -704,8 +704,12 @@ def main(args):
             result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
             logger.info("Finish training")
             logger.info("The model has {} trainable parameters".format(n_params))
+            #print(keys)
+            #print(result_dict_total.keys())
+            #print(result_dict.keys())
             for k in keys:
-                result_dict_total[k].append(result_dict[k])
+                if k in result_dict.keys():
+                    result_dict_total[k].append(result_dict[k])
 
             mean_rs_summary = result_dict["mean_rs"]
             if mean_rs_entity != None:
