@@ -224,6 +224,8 @@ def set_args():
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")                 
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
+    parser.add_argument("--test_on_val", action="store_true",
+                        default=False, help="whether to use the validation for test inference")
 
     # generation
     parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
@@ -489,6 +491,10 @@ def main(args):
             count += 1
             if count <=0:
                 continue
+
+            if args.big_testset or args.full_testset:
+                if args.test_on_val:
+                    args.test_dataset = valid_dataset
 
             # base model
             if 'Bart' in args.model:
