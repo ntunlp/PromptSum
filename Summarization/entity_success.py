@@ -75,7 +75,7 @@ def set_args():
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
                         default=0, help="dataloader num_workers")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
-                        default=16, help="valid size per gpu")
+                        default=128, help="valid size per gpu")
     parser.add_argument("--max_length", dest="max_length", type=int,
                         default=512, help="max sentence length")
     parser.add_argument("--max_guidance_length", dest="max_guidance_length", type=int,
@@ -259,7 +259,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, nlp, idx_to_exam
             if args.model == 'CTRLsum':
                 sen = ids_to_clean_text(inputs["input_ids"])
                 target = ids_to_clean_text(inputs["target_ids"])
-                preds = model.generate(inputs["input_ids"], attention_mask=inputs['attention_mask'], num_beams=5) 
+                preds = model.generate(inputs["input_ids"], attention_mask=inputs['attention_mask'], num_beams=4) 
                 preds = ids_to_clean_text(preds) 
             else:
                 sen, target, preds = model._generative_step(inputs)
@@ -425,7 +425,7 @@ def main(args):
         dataset_args = [args.dataset_name, args.dataset_version]
         subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, n = 100)
     logger.info('generated dataset')
-    valid_dataset = T5SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
     new_valid_dataset = T5SummarizationDatasetForControlGen(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     scaler = None
@@ -554,8 +554,8 @@ def main(args):
             idx_to_example = {} # idx of eval case : example id
             ents_to_pass = {}
             for vi in range(valid_dataset.num_entries):
-                if vi > 20:
-                    break
+                # if vi >= 20:
+                #     break
                 original_data = valid_dataset.data[vi]
                 original_ents = all_ents[vi]
                 original_ents = list(set([ent for ent in original_ents if '.' not in ent]))
@@ -564,7 +564,7 @@ def main(args):
                 if len(original_ents) < test_k_entity:
                     logger.info(f"too few entities, skip")
                     continue
-                while len(sampled_ent_tuples) < 30 and sample_iter < 60:
+                while len(sampled_ent_tuples) < 20 and sample_iter < 60:
                     ents = tuple(random.sample(original_ents, test_k_entity))
                     if ents not in sampled_ent_tuples:
                         sampled_ent_tuples.add(ents)
@@ -584,6 +584,7 @@ def main(args):
                     ents_to_pass[idx] = {'k_entity':cur_ents}
                     idx_to_example[idx] = vi
                     idx += 1
+            logger.info(f"all data length: {len(new_data)}")
 
             if args.model == 'CTRLsum_origin':
                 logger.info(f'start CTRLsum_origin eval')
@@ -600,7 +601,7 @@ def main(args):
                 allnum += num
 
             example_id = 0
-            for i in range(min(1e9, len(inputs0))): # only print limited examples
+            for i in range(min(50, len(inputs0))): # only print limited examples
                 cur_example_id = idx_to_example[i]
                 if cur_example_id > example_id: # new example
                     example_id = cur_example_id
@@ -679,7 +680,7 @@ def main(args):
                 logger.info(f"ground truth summary: {tar}")
 
                 if True: # show entities
-                    _inp = ' '.join(inp.split()[:400])
+                    _inp = ' '.join(inp.split())
                     _inp_ents = valid_dataset.spacy_nlp(_inp).ents
                     _inp_ents_text = set([ent.text for ent in _inp_ents])
                     logger.info(f"source entities: {_inp_ents_text}")
@@ -701,7 +702,11 @@ def main(args):
                 inputs = {"input_ids": input_ids.to(args.device), "attention_mask":input_attn_mask.to(args.device),
                             "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
                             "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
-                sen, target, preds = model._generative_step(inputs)
+                if "CTRLsum" in args.model:
+                    new_text = f'{ent_chain} => {inp}'
+                    preds = model.sample([new_text], beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
+                else:
+                    sen, target, preds = model._generative_step(inputs)
                 logger.info(f"generated summary: {preds}")
         
             
@@ -765,6 +770,7 @@ if __name__ == "__main__":
     args = set_args()
     set_logger(args)
     logger.info(args)
+    seed_everything(args)
     main(args)
 
 
