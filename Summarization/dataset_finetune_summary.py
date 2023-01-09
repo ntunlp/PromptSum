@@ -323,7 +323,7 @@ class SmartBatchingCollate:
                 print(f'batch: {batch}')
                 print(f'ents: {ents}')
                 raise Exception('end')
-
+        
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
 
         return output
@@ -348,10 +348,10 @@ class SmartBatchingCollate:
         return padded_sequences, attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right=True):
-        try:
-            max_batch_len = max(len(sequence) for sequence in sequence_batch)
-        except TypeError:
-            max_batch_len = 1
+        # try:
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        # except TypeError:
+        #     max_batch_len = 1
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
