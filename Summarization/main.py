@@ -721,17 +721,18 @@ def main(args):
             if mean_rs_entity != None:
                 mean_rs_entity = np.array(mean_rs_entity)
                 mean_rs_summary = np.array(mean_rs_summary)
+                sort_idx = np.argsort(mean_rs_entity)
+                mean_rs_entity = mean_rs_entity[sort_idx]
+                mean_rs_summary = mean_rs_summary[sort_idx]
                 n_bins = 10
                 bin_size = int(100 / n_bins)
                 for k in range(n_bins):
-                    low = np.percentile(mean_rs_entity, k * bin_size)
-                    high = np.percentile(mean_rs_entity, (k+1) * bin_size)
-                    idx = (mean_rs_entity >= low) * (mean_rs_entity < high)
-                    size = np.sum(idx)
-                    mean_rs_entity_bin = np.mean(mean_rs_entity[idx])
-                    mean_rs_summary_bin = np.mean(mean_rs_summary[idx])
-                    print("Bin {}, Size: {}, Mean R entity between {:.4f} and {:.4f} (mean: {:.4f}), Mean R summary: {:.4f}".format(
-                        k, size, low, high, mean_rs_entity_bin, mean_rs_summary_bin
+                    low = k * bin_size
+                    high = (k+1) * bin_size
+                    mean_rs_entity_bin = np.mean(mean_rs_entity[low:high])
+                    mean_rs_summary_bin = np.mean(mean_rs_summary[low:high])
+                    print("Bin {}, Mean R entity {:.4f} , Mean R summary: {:.4f}".format(
+                        k, mean_rs_entity_bin, mean_rs_summary_bin
                     ))
                 p, _ = scipy.stats.pearsonr(mean_rs_entity, mean_rs_summary)
                 print("Pearson correlation: {:.4f}".format(p))
