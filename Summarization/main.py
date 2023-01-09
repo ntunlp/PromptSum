@@ -725,7 +725,7 @@ def main(args):
                 mean_rs_entity = mean_rs_entity[sort_idx]
                 mean_rs_summary = mean_rs_summary[sort_idx]
                 n_bins = 10
-                bin_size = int(100 / n_bins)
+                bin_size = int(len(mean_rs_entity) / n_bins)
                 for k in range(n_bins):
                     low = k * bin_size
                     high = (k+1) * bin_size
