@@ -301,6 +301,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, nlp, idx_to_exam
         elif args.mode == 'oracle':
             cur_oracle_ents = test_ents[j]['oracle']
             condition = all([ent.lower() in summary.lower() for ent in cur_oracle_ents])
+            # import pdb;pdb.set_trace()
         elif args.mode == 'oracle_add_test':
             cur_oracle_ents = test_ents[j]['oracle']
             to_add_ent = test_ents[j]['add']
@@ -628,6 +629,8 @@ def main(args):
         for vi in range(valid_dataset.num_entries):
             original_data = valid_dataset.data[vi]
             cur_oracle_ents = oracle_ents[vi]
+            if len(cur_oracle_ents) == 0: # no entity, skip this example
+                continue
             ents_to_pass[idx] = {'oracle':cur_oracle_ents}
             if "CTRLsum" in args.model:
                 ent_str = ' | '.join(cur_oracle_ents)
