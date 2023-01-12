@@ -14,6 +14,7 @@ from pathlib import Path
 from rouge_score import rouge_scorer
 import random
 import copy
+import json
 from dataset import *
 from nltk.tokenize import sent_tokenize
 from spacy.lang.en import English
@@ -685,24 +686,30 @@ def main(args):
     elif args.mode == 'interactive':
         model.eval()
         model = model.to(args.device)
+        username = input("What is your name?")
+        name_list = [i for i in os.listdir('../human_evaluation/users/controllable_{}/'.format(args.dataset_name))]
+        if not(username in name_list):
+            os.mkdir('../human_evaluation/users/controllable_{}/{}'.format(args.dataset_name, username))
+        n_attempts = 3
         with torch.no_grad():
             while True:
                 # interactive loop
                 index = int(input("select index:"))
                 inp, tar = valid_dataset.data[index]
-                
-                logger.info(f"selected {index} article: {inp[:100]}..{inp[-50:]}")
-                logger.info(f"ground truth summary: {tar}")
+
+                logger.info("*"*50)
+                logger.info("Selected article: {}".format(index))
+                logger.info("Source document: \n{}".format(inp[:1000]))
+                logger.info("Ground truth summary: \n{}".format(tar))
 
                 if True: # show entities
                     _inp = ' '.join(inp.split())
                     _inp_ents = valid_dataset.spacy_nlp(_inp).ents
                     _inp_ents_text = set([ent.text for ent in _inp_ents])
-                    logger.info(f"source entities: {_inp_ents_text}")
+                    logger.info("Source entities: \n{}".format(_inp_ents_text))
 
-                ent_chain = input("input entity chain:")
                 # process data
-                input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True,  return_tensors="pt")
+                input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
                 input_ids = input_res['input_ids']
                 input_attn_mask = input_res['attention_mask']
 
@@ -710,20 +717,49 @@ def main(args):
                 target_ids = target_res['input_ids']
                 target_attn_mask = target_res['attention_mask']
 
-                ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
-                ent_ids = ent_res['input_ids']
-                ent_attn_mask = ent_res['attention_mask']
-                
-                inputs = {"input_ids": input_ids.to(args.device), "attention_mask":input_attn_mask.to(args.device),
-                            "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
-                            "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
-                if "CTRLsum" in args.model:
-                    new_text = f'{ent_chain} => {inp}'
-                    preds = model.sample([new_text], beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
+                count = 0
+                satisfied = False
+                ents, summaries, satis = [], [], []
+                while count < n_attempts and not(satisfied):
+                    ent_chain = input("Input entity chain (Separate entities with commas, no space):")
+                    ents.append(ent_chain)
+                    ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+                    ent_ids = ent_res['input_ids']
+                    ent_attn_mask = ent_res['attention_mask']
+
+                    inputs = {"input_ids": input_ids.to(args.device), "attention_mask":input_attn_mask.to(args.device),
+                                "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
+                                "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
+
+                    if "CTRLsum" in args.model:
+                        new_text = f'{ent_chain} => {inp}'
+                        preds = model.sample([new_text], beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
+                    else:
+                        sen, target, preds = model._generative_step(inputs)
+
+                    summary = preds[0]
+                    logger.info("Generated summary: \n{}".format(summary))
+                    summaries.append(summary)
+
+                    count += 1
+                    satisfied = input("Are you satisfied with the summary? (Yes/No answer)") == "Yes"
+                    satis.append(satisfied)
+                if satisfied:
+                    logger.info("Reached a good summary in {} attempts".format(count))
                 else:
-                    sen, target, preds = model._generative_step(inputs)
-                logger.info(f"generated summary: {preds}")
-        
+                    logger.info("Did not reach a good summary")
+
+                dic = {
+                    "source": inp,
+                    "target": tar,
+                    "entity chains": ents,
+                    "generated summaries": summaries,
+                    "satisfaction": satis
+                }
+                save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset_name, username, index)
+                with open(save_path, 'w') as outfile:
+                    json.dump(dic, outfile)
+                    print("saved the results!", save_path)
             
     elif args.mode == 'oracle_add_test':
         for (idx, all_ents) in enumerate([full_ents, lead3_ents, other_ents]):
