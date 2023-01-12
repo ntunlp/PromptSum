@@ -3,10 +3,11 @@
 
 t5_tagger_pretrained_ckpt/
 
+bart.*
 Summarization/.DS_Store
 Summarization/__pycache__/
 Summarization/*log*
-Summarization/log/
+Summarization/log/*
 Summarization/t5_sum_ckpt
 Summarization/tagger/__pycache__
 Summarization/tagger/sumdata

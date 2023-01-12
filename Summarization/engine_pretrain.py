@@ -1,4 +1,5 @@
 import gc
+
 import logging
 import os
 import numpy as np
@@ -10,9 +11,9 @@ import spacy
 import nltk
 import pickle
 
-from transformers import (AdamW, BertConfig, BertForTokenClassification, BertTokenizer, get_linear_schedule_with_warmup)
+from transformers import (AdamW, get_linear_schedule_with_warmup)
 from transformers.optimization import Adafactor
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+#from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from torch.utils import data
 from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
 from torch.utils.data.distributed import DistributedSampler

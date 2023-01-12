@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import gc
 
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+#from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 
 
 

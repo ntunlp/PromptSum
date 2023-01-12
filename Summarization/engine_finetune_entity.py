@@ -12,7 +12,7 @@ from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+#from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data

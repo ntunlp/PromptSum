@@ -16,7 +16,7 @@ from tqdm import tqdm
 from torch.utils.data import Sampler, Dataset, DataLoader, SequentialSampler
 from rouge_score import rouge_scorer
 from utils import *
-from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
+#from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
 
 from dataset_pretrain import *
 from model_finetune_entity import ModelforFinetuneEntity

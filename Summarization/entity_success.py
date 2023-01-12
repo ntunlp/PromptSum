@@ -11,6 +11,7 @@ from engine_finetune_summary import *
 from models_summarization.model_mixture import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
+from rouge_score import rouge_scorer
 import random
 import copy
 from dataset import *
@@ -23,10 +24,12 @@ from itertools import combinations
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/export/home/"
-    data_root = "/export/home/"
+    #root = "/export/home/"
+    #data_root = "/export/home/"
+    root = "/data/mathieu/"
+    data_root = "/data/mathieu/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "dataset/PromptSumm/")
+                        default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
                         default='/export/home/ctrl-sum/cnndm_ctrlsum_100')
     parser.add_argument("--mode", dest="mode", type=str,
@@ -244,7 +247,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, nlp, idx_to_exam
     all_ents = []
     with torch.no_grad():
         global_batch_step = 0
-        for batch in valid_dataloader:
+        for batch in tqdm(valid_dataloader):
             # logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
@@ -602,15 +605,24 @@ def main(args):
                 allnum += num
 
             example_id = 0
-            for i in range(min(50, len(inputs0))): # only print limited examples
+            scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
+            for i in range(min(1000, len(inputs0))): # only print limited examples
                 cur_example_id = idx_to_example[i]
                 if cur_example_id > example_id: # new example
                     example_id = cur_example_id
-                    logger.info('-----')
-                    logger.info(f'{example_id} INPUT: {inputs0[i]}')
-                # logger.info(f'LABEL: {labels0[i]}')
+                    logger.info('---------------------------')
+                    logger.info("{} INPUT: {}".format(example_id, inputs0[i]))
+                    logger.info("LABEL: {}".format(labels0[i].replace("\n", " ")))
                 if suc_list[i]:
-                    logger.info(f'ENTS: {all_ents0[i]}; success: {suc_list[i]}; SUMMARY: {summaries0[i]}')
+                    label = " ".join(sent_tokenize(labels0[i]))
+                    summary = " ".join(sent_tokenize(summaries0[i]))
+                    rouge_score = scorer.score(label, summary)
+                    r1 = 100 * rouge_score["rouge1"].fmeasure
+                    r2 = 100 * rouge_score["rouge2"].fmeasure
+                    rl = 100 * rouge_score["rougeLsum"].fmeasure
+                    mean_r = (r1 + r2 + rl) / 3
+                    logger.info("ENTS: {}; success: {}, mean-R: {:.4f} \nSUMMARY: {}".format(all_ents0[i], suc_list[i], mean_r, summaries0[i].replace("\n", " ")))
+            print("all lengths", len(inputs0), len(labels0), len(all_ents0), len(summaries0))
 
             logger.info(f'successes: {allsec}; number: {allnum}')
             logger.info(f'success rate: {allsec/allnum}')
@@ -658,7 +670,7 @@ def main(args):
             allsec += successes
             allnum += num
 
-        for i in range(min(100, len(inputs0))): # only print limited examples
+        for i in range(min(1000, len(inputs0))): # only print limited examples
             logger.info('-----')
             logger.info(f'INPUT: {inputs0[i]}')
             # logger.info(f'LABEL: {labels0[i]}')
