@@ -81,7 +81,7 @@ def set_args():
     # model
     ##### base model
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusMixPrompt", choices=["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                        default="PegasusFinetune", choices=["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                         "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                         "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
@@ -206,6 +206,8 @@ def set_args():
                         default=1.0, help="max grad norm")
     parser.add_argument("--eval_step_summary", dest="eval_step_summary", type=int,
                         default=15000, help="how many steps to eval")
+    parser.add_argument('--label_smoothing', dest='label_smoothing', type=float,
+                        default=0.0, help="label smoothing")
 
     # evaluation
     parser.add_argument("--log_step_pretrain", dest="log_step_pretrain", type=int,
@@ -256,10 +258,10 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model",
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model",
                         help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt",
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt",
                         help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
@@ -270,12 +272,12 @@ def set_args():
     parser.add_argument("--finetune_summary", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
     parser.add_argument("--infer_val_entities", action="store_false",
-                        default=True, help="whether to run inference with the T5 entity chain prediction on val set")
+                        default=False, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain", action='store_false',
-                        default=True,
+                        default=False,
                         help="whether to use the chain of predicted entities or not at all")  # KEEP IT TRUE
     parser.add_argument("--use_t5_tagger", action='store_false',
-                        default=True, help="whether use a t5 tagger")
+                        default=False, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
@@ -569,7 +571,7 @@ def main(args):
             if not (os.path.isfile(respath) and args.reuse_entity_file):  # to generate, path is there & reuse at the same time
                 alldata = args.test_dataset.data
                 logger.info(f"test size: {len(alldata)}")
-                allresofvalid, allpreds, alllabels = infer_entity_model(alldata, enttokenizer, entmodel, args)
+                allresofvalid, allpreds, alllabels, _ = infer_entity_model(alldata, enttokenizer, entmodel, args)
                 print(allpreds[:5])
                 logger.info(len(allresofvalid))
                 with open(respath, "wb") as f:

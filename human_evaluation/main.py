@@ -9,10 +9,10 @@ ip_address = "10.97.26.125"
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '7d441f27d441f27567d441f2b6176a'
 
-text_pegasus = pickle.load(open("data/cnndm_pegasus_50.pkl", "rb"))
+text_pegasus = pickle.load(open("data/xsum_pegasus_50.pkl", "rb"))
 print(text_pegasus.keys())
 print(len(text_pegasus["src"]))
-text_promptsum = pickle.load(open("data/cnndm_promptsum_50.pkl", "rb"))
+text_promptsum = pickle.load(open("data/xsum_promptsum_50.pkl", "rb"))
 print(text_promptsum.keys())
 print(len(text_promptsum["src"]))
 text = {}
