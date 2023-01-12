@@ -28,3 +28,7 @@ Summarization/models_summarization/__pycache__/
 Summarization/*controlling_xsum*
 Summarization/*prompt_baseline*
 Summarization/frost_baseline/frost_pretrained_ckpt.pt
+Summarization/controlling
+
+
+
