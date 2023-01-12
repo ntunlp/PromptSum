@@ -71,12 +71,12 @@ def set_args():
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
-                        default="10", help="number of data points for training AND validation")
+                        default="100", help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action='store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
     parser.add_argument("--max_test_size", dest="max_test_size", type=int,
-                        default=20000, help="max test set size")
+                        default=50, help="max test set size")
 
     # model
     ##### base model
@@ -229,7 +229,7 @@ def set_args():
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
-                        default=2.5, help="repetition penalty")
+                        default=1.0, help="repetition penalty")
     parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                         default=1.0, help="length penalty")
 
@@ -427,7 +427,7 @@ def main(args):
     logger.info("\n" + "*" * 50)
     logger.info("3/ Prompt tuning the summarization model...")
 
-    keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', 'precision', 'recall', 'f1']
+    keys = ['best_val_mean_rouge', 'val_rouge1', 'val_rouge2', 'val_rougeL', "BERTScore", 'precision', 'recall', 'f1']
     if args.eval_abstractiveness:
         keys += ["new_unigrams", "new_bigrams", "new_trigrams", "new_quadrigrams"]
         keys += ["new_unigrams_target", "new_bigrams_target", "new_trigrams_target", "new_quadrigrams_target"]
@@ -595,6 +595,24 @@ def main(args):
         args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args
     )
     allysrc, allytrue, allypred = doinference(model, test_dataloader, scaler, logger, args)
+
+    scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
+    r1s, r2s, rls = [], [], []
+    for j in range(len(allytrue)):
+        label = allytrue[j]
+        summary = allypred[j]
+        if args.highlights:
+            label = "\n".join(sent_tokenize(label))
+            summary = "\n".join(sent_tokenize(summary))
+        rouge_score = scorer.score(label, summary)
+        r1s.append(rouge_score["rouge1"].fmeasure)
+        r2s.append(rouge_score["rouge2"].fmeasure)
+        rls.append(rouge_score["rougeLsum"].fmeasure)
+    r1 = 100 * np.mean(r1s)
+    r2 = 100 * np.mean(r2s)
+    rl = 100 * np.mean(rls)
+    mean_r = (r1 + r2 + rl) / 3
+    print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
 
     d = {}
     d['src'] = []

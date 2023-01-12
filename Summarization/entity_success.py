@@ -614,8 +614,8 @@ def main(args):
                     logger.info("{} INPUT: {}".format(example_id, inputs0[i]))
                     logger.info("LABEL: {}".format(labels0[i].replace("\n", " ")))
                 if suc_list[i]:
-                    label = " ".join(sent_tokenize(labels0[i]))
-                    summary = " ".join(sent_tokenize(summaries0[i]))
+                    label = "\n".join(sent_tokenize(labels0[i]))
+                    summary = " \n".join(sent_tokenize(summaries0[i]))
                     rouge_score = scorer.score(label, summary)
                     r1 = 100 * rouge_score["rouge1"].fmeasure
                     r2 = 100 * rouge_score["rouge2"].fmeasure
