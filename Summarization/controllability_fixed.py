@@ -16,17 +16,25 @@ import copy
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    data_root = "/data/ruochen/"
-    root = "/data/mathieu/"
+    root = "/export/home/"
+    data_root = "/export/home/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= data_root + "dataset/PromptSumm/")
+    parser.add_argument("--cuda", dest="cuda", type=str,
+                        default="2", help="gpu id") 
+    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
+                        default=False)
+    parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
+                        default="bestckpt_from_pretrained", help="model ckpt name") 
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                             default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
-                        default="T5MixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt'])
+                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
+                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/t5-v1_1-large", help="{t5-base, google/t5-v1_1-base, facebook/bart-base, facebook/bart-large}")
+                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
+                        "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=1, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
     parser.add_argument("--lm_adapted_path", dest="lm_adapted_path", type=str,
@@ -155,7 +163,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
 
             # just prompt
             #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.ckpt_name}'
             print(onepath)
             oneckpt = torch.load(onepath)
             entmodel.promptnumber = oneckpt["promptnumber"]
@@ -298,11 +306,21 @@ def main(args):
     thistaskfold = args.dataset
     args.taskfold = thistaskfold
     # First load the trained ckpt
-    tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    if 'Bart' in args.model:
+        basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        args.allnumber_path = 'allnumber.pickle'
+    elif 'Pegasus' in args.model:
+        basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        logger.info('loaded pegasus models')
+        args.allnumber_path = 'allnumber.pickle_newforpegasus'
+    else:
+        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
-    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname)
+    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
     if args.use_pretrain_ckpt and args.model != "T5Finetune":
@@ -321,7 +339,7 @@ def main(args):
     if args.model != 'T5MixPrompt':
         args.model_save_folder += f'{args.model}/'
     args.model_save_path = args.model_save_folder + f'seed_{seed}/'
-    path = args.model_save_path + 'bestckpt'
+    path = args.model_save_path + args.ckpt_name
     if args.counterfactual_trained:
         path = f'{path}_counterfactual'
     ckptsum = torch.load(path)

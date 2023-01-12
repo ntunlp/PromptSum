@@ -135,7 +135,6 @@ class SummarizationDataset(Dataset):
     def __getitem__(self, idx):
         inputdata = self.data[idx][0]
         targetdata = self.data[idx][1]
-
         # guidance
         input_guidance = "None"
         
@@ -206,8 +205,8 @@ class SummarizationDataset(Dataset):
         inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,  return_tensors="pt")
         targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
         inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze()
+        
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze(dim=0)
 
     def __len__(self):
 
@@ -231,6 +230,62 @@ class SummarizationDataset(Dataset):
 
         return top_sents
 
+class T5SummarizationDatasetForControlGen(Dataset):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
+        super(T5SummarizationDatasetForControlGen, self).__init__()
+
+        self.filename = filename
+        self.maxlen = maxlen
+        self.tokenizer = tokenizer
+        self.gentasktoken = newtgentasktokens
+        self.answertoken = answertoken
+        self.args = args
+        if save_path != None:
+            self.save_path = save_path
+        else:
+            self.save_path = args.few_shot_save_dir
+        self.seed = seed
+
+        self.data = []
+        self.num_entries = len(self.data)
+
+        self.split = split
+
+        self.tagger = None
+        self.tagtokenizer = None
+
+        self.allent = [] # same idx as self.data
+        self.spacy_nlp = spacy.load("en_core_web_sm")
+        self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
+
+    def set_tagger_tokenizer(self, tagger, tokenizer):
+        self.tagger = tagger
+        self.tagtokenizer = tokenizer
+
+    def __getitem__(self, idx):
+        inputdata = self.data[idx][0]
+        targetdata = self.data[idx][1]
+        ents = self.allent[idx]
+
+        # guidance
+        input_guidance = "None"
+        
+        stop_words = set(stopwords.words('english'))
+        # 1st option: based on entities
+        if self.args.guidance_type == "ents":
+            input_guidance = ents
+            inputdata = re.sub('REMOVED[0-9]+ ', '', inputdata)
+
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True,  return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        inputentsres = self.tokenizer.batch_encode_plus([input_guidance], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze()
+
+    def __len__(self):
+
+        return self.num_entries
+
 
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
@@ -242,7 +297,6 @@ class SmartBatchingCollate:
 
     def __call__(self, batch):
         sequences, targets, ents = list(zip(*batch))
-
         # input
         input_ids, attention_mask = self.pad_sequence(
             sequences,
@@ -259,8 +313,9 @@ class SmartBatchingCollate:
         right = True
         ents_ids = target_ids
         ents_mask = target_mask
-        if self.args.model in ["T5MixPrompt", "PegasusMixPrompt"]:
+        if self.args.model in ["T5MixPrompt", "PegasusMixPrompt", "CTRLsum"]:
             try:
+                # import pdb;pdb.set_trace()
                 ents_ids, ents_mask = self.pad_sequence(
                     ents,
                     max_sequence_length=self._max_guidance_length,
@@ -271,7 +326,7 @@ class SmartBatchingCollate:
                 print(f'batch: {batch}')
                 print(f'ents: {ents}')
                 raise Exception('end')
-
+        
         output = input_ids, attention_mask, target_ids, target_mask, ents_ids, ents_mask
 
         return output
@@ -296,10 +351,10 @@ class SmartBatchingCollate:
         return padded_sequences, attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right=True):
-        try:
-            max_batch_len = max(len(sequence) for sequence in sequence_batch)
-        except TypeError:
-            max_batch_len = 1
+        # try:
+        max_batch_len = max(len(sequence) for sequence in sequence_batch)
+        # except TypeError:
+        #     max_batch_len = 1
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
@@ -348,3 +403,5 @@ def read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, ar
         datasets.append((train_dataset, valid_dataset, seed))
 
     return datasets
+
+

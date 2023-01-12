@@ -44,13 +44,8 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    # root = "/home/qin/"
-    # data_root = "/home/qin/"
-    root = "/data/mathieu/"
-    # data_root = "/data/mathieu/"
-    # root = "/home/ruochen/"
-    data_root = "/data/mathieu/"
-    # data_root = "/data/mathieu/"
+    root = "/export/home/"
+    data_root = "/export/home/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -70,11 +65,11 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= data_root + "dataset/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+                        default="/export/home/dataset_cache", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default="10", help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -99,7 +94,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
+                        default=root + "cache",
                         help="The path of huggingface cache: /data/mathieu/hf_models/t5-v1-large/, /data/ruochen/hf_models/bart-base/, /data/ruochen/hf_models/pegasus-large/")
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
                         default=False)
@@ -260,9 +255,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
+                        default="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
