@@ -586,6 +586,8 @@ def main(args):
     ########## 2nd prompt tuning stage: summarization
     args.test_dataset.check_entity_keys()
 
+    print(args.test_dataset.data[0])
+    raise Exception
     model.to(args.device)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))

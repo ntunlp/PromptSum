@@ -423,16 +423,18 @@ def main(args):
         tokenizer.add_tokens(list(special_tokens.values()))
         tokenizer.add_tokens(['[SEP]'])
     # use the whole testset
-    valid_file_name = args.data_dir + args.dataset + '/100_test.txt'
+    valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
+    print(valid_file_name)
     args.logger = logger
     # check if we have already generated it
-    if not os.path.isfile(valid_file_name):
-        dataset_args = [args.dataset_name, args.dataset_version]
-        subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, n = 100)
+    #if not os.path.isfile(valid_file_name):
+    #    dataset_args = [args.dataset_name, args.dataset_version]
+    #    subsample_2k_testset(dataset_args, valid_file_name, args.seed, args, n = 1000000, human_eval=True)
     logger.info('generated dataset')
-    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, human_eval = True)
     new_valid_dataset = T5SummarizationDatasetForControlGen(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
+    valid_dataset.data = valid_dataset.data[:100]
     scaler = None
     # find all entities for all inputs
     # lead 3 VS others
@@ -440,7 +442,7 @@ def main(args):
     other_ents = []
     full_ents = []
     oracle_ents = []
-    for i, (inp, tar) in enumerate(valid_dataset.data):
+    for i, (inp, tar) in tqdm(enumerate(valid_dataset.data)):
         # get oracle entities
         tgt_sents = ''.join(sent_tokenize(tar))
         oraclents = valid_dataset.spacy_nlp(tgt_sents).ents
@@ -686,27 +688,28 @@ def main(args):
     elif args.mode == 'interactive':
         model.eval()
         model = model.to(args.device)
-        username = input("What is your name?")
+        username = input("What is your name? ")
         name_list = [i for i in os.listdir('../human_evaluation/users/controllable_{}/'.format(args.dataset_name))]
         if not(username in name_list):
-            os.mkdir('../human_evaluation/users/controllable_{}/{}'.format(args.dataset_name, username))
+            os.mkdir('../human_evaluation/users/controllable_{}/{}/'.format(args.dataset_name, username))
         n_attempts = 3
+        count = 0
         with torch.no_grad():
             while True:
                 # interactive loop
-                index = int(input("select index:"))
+                index = int(input("select index: "))
                 inp, tar = valid_dataset.data[index]
 
-                logger.info("*"*50)
-                logger.info("Selected article: {}".format(index))
-                logger.info("Source document: \n{}".format(inp[:1000]))
-                logger.info("Ground truth summary: \n{}".format(tar))
+                logger.info("\n" + "*"*50 + "\n")
+                logger.info("\nSelected article: {}".format(index))
+                logger.info("\nSource document: \n{}".format(inp[:2000]))
+                #logger.info("Ground truth summary: \n{}".format(tar))
 
                 if True: # show entities
                     _inp = ' '.join(inp.split())
                     _inp_ents = valid_dataset.spacy_nlp(_inp).ents
                     _inp_ents_text = set([ent.text for ent in _inp_ents])
-                    logger.info("Source entities: \n{}".format(_inp_ents_text))
+                    logger.info("\nSource entities: \n{}".format(_inp_ents_text))
 
                 # process data
                 input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
@@ -719,9 +722,15 @@ def main(args):
 
                 count = 0
                 satisfied = False
-                ents, summaries, satis = [], [], []
+                ents, summaries, satis, causes = [], [], [], []
                 while count < n_attempts and not(satisfied):
-                    ent_chain = input("Input entity chain (Separate entities with commas, no space):")
+                    logger.info("\nAttempt {} / {}".format(count + 1, n_attempts))
+                    ent_chain = input("\nInput entity chain (Separate entities with commas, no space, no quotation mark, like: entity_1,entity_2): ")
+                    valid_chain = len([x for x in ent_chain.split(",") if x in _inp_ents_text]) == len(ent_chain.split(","))
+                    while not(valid_chain):
+                        ent_chain = input("\nInput entity chain (Separate entities with commas, no space, no quotation mark, like: entity_1,entity_2): ")
+                        valid_chain = len([x for x in ent_chain.split(",") if x in _inp_ents_text]) == len(ent_chain.split(","))
+
                     ents.append(ent_chain)
                     ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
                     ent_ids = ent_res['input_ids']
@@ -742,8 +751,13 @@ def main(args):
                     summaries.append(summary)
 
                     count += 1
-                    satisfied = input("Are you satisfied with the summary? (Yes/No answer)") == "Yes"
+                    satisfied = input("Are you satisfied with the summary? (Yes/No answer) ") == "Yes"
                     satis.append(satisfied)
+
+                    cause = "_"
+                    if satisfied == False:
+                        cause = input("What is wrong? Pick a number among (1) Not grammatical / (2) Not factual / (3) Not containing the entities ")
+                        causes.append(cause)
                 if satisfied:
                     logger.info("Reached a good summary in {} attempts".format(count))
                 else:
@@ -754,7 +768,8 @@ def main(args):
                     "target": tar,
                     "entity chains": ents,
                     "generated summaries": summaries,
-                    "satisfaction": satis
+                    "satisfaction": satis,
+                    "causes": causes
                 }
                 save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset_name, username, index)
                 with open(save_path, 'w') as outfile:

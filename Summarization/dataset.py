@@ -45,7 +45,7 @@ def subsample(dataset_args, few_shot_seeds, args):
     np.random.seed(args.seed)
 
 
-def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000, valid = False):
+def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000, valid = False, human_eval = False):
     '''
     Function that subsamples a 2k test set that can be reused
     args:
@@ -65,8 +65,11 @@ def subsample_2k_testset(dataset_args, file_path, seed, args, n = 2000, valid = 
         convert_data_to_txt(valid_data, file_path, args)
     else:
         len_valid = len(valid_data)
-        np.random.seed(seed)
-        indices = np.random.choice(range(len_valid), n)
+        if human_eval:
+            indices = np.arange(min(n, len(valid_data)))
+        else:
+            np.random.seed(seed)
+            indices = np.random.choice(range(len_valid), n)
         valid_data_new = valid_data.select(indices)
         # save
         convert_data_to_txt(valid_data_new, file_path, args)

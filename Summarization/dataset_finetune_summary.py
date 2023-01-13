@@ -23,7 +23,7 @@ from nltk.corpus import stopwords
 
 
 class SummarizationDataset(Dataset):
-    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
+    def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None, human_eval=False):
         super(SummarizationDataset, self).__init__()
 
         self.filename = filename
@@ -41,8 +41,16 @@ class SummarizationDataset(Dataset):
         self.data = []
         self.data = self.getalldata(self.filename)
         #self.data = self.data[:20]
-        p = np.random.permutation(len(self.data))
-        self.data = [self.data[x] for x in p]
+        if human_eval:
+            init_p = pickle.load(open("human_eval_permutations/init_{}.pkl".format(args.dataset_name), "rb"))
+            self.data = [self.data[x] for x in init_p]
+            new_p = pickle.load(open("human_eval_permutations/{}.pkl".format(args.dataset_name), "rb"))
+            self.data = [self.data[x] for x in new_p]
+        else:
+            p = np.random.permutation(len(self.data))
+            with open("human_eval_permutations/init_{}.pkl".format(args.dataset_name), "wb") as f:
+                pickle.dump(p, f)
+            self.data = [self.data[x] for x in p]
         print("permuted self.data")
         self.num_entries = len(self.data)
 
@@ -125,6 +133,10 @@ class SummarizationDataset(Dataset):
 
     def shuffle_and_subsample(self):
         p = np.random.permutation(len(self.data))
+        print(p[:50])
+        with open("human_eval_permutations/{}.pkl".format(self.args.dataset_name), "wb") as f:
+            pickle.dump(p, f)
+            print("saved the permutation")
         p = p[:self.args.max_test_size]
         self.data = [self.data[x] for x in p]
         self.num_entries = len(self.data)

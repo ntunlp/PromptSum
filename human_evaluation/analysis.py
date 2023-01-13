@@ -4,7 +4,7 @@ import numpy as np
 
 
 
-users = ["chengwei", "hailin", "ruochen", "ravox", "florian"]
+users = ["ravox_0"]
 n_summaries = 50
 
 attributes = ["informative", "factually consistent", "relevant", "fluent", "coherent"]
