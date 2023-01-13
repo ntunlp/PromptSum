@@ -710,7 +710,8 @@ def main(args):
                     _inp_ents = valid_dataset.spacy_nlp(_inp).ents
                     _inp_ents_text = set([ent.text for ent in _inp_ents])
                     logger.info("\nSource entities: \n{}".format(_inp_ents_text))
-
+                logger.info("\nSuggested entity chain length: CNN/DM: 6, Xsum: 3, BillSum: 14, SAMSum: 3")
+    
                 # process data
                 input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
                 input_ids = input_res['input_ids']
