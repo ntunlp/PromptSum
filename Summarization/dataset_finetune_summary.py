@@ -43,8 +43,10 @@ class SummarizationDataset(Dataset):
         #self.data = self.data[:20]
         if human_eval:
             init_p = pickle.load(open("human_eval_permutations/init_{}.pkl".format(args.dataset_name), "rb"))
+            print(len(init_p))
             self.data = [self.data[x] for x in init_p]
             new_p = pickle.load(open("human_eval_permutations/{}.pkl".format(args.dataset_name), "rb"))
+            print(len(new_p))
             self.data = [self.data[x] for x in new_p]
         else:
             p = np.random.permutation(len(self.data))
