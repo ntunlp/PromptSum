@@ -42,10 +42,10 @@ class SummarizationDataset(Dataset):
         self.data = self.getalldata(self.filename)
         #self.data = self.data[:20]
         if human_eval:
-            init_p = pickle.load(open("human_eval_permutations/init_{}.pkl".format(args.dataset_name), "rb"))
+            init_p = pickle.load(open("human_eval_permutations/init_{}.pkl".format(args.dataset), "rb"))
             print(len(init_p))
             self.data = [self.data[x] for x in init_p]
-            new_p = pickle.load(open("human_eval_permutations/{}.pkl".format(args.dataset_name), "rb"))
+            new_p = pickle.load(open("human_eval_permutations/{}.pkl".format(args.dataset), "rb"))
             print(len(new_p))
             self.data = [self.data[x] for x in new_p]
         else:
@@ -136,7 +136,7 @@ class SummarizationDataset(Dataset):
     def shuffle_and_subsample(self):
         p = np.random.permutation(len(self.data))
         print(p[:50])
-        with open("human_eval_permutations/{}.pkl".format(self.args.dataset_name), "wb") as f:
+        with open("human_eval_permutations/{}.pkl".format(self.args.dataset), "wb") as f:
             pickle.dump(p, f)
             print("saved the permutation")
         p = p[:self.args.max_test_size]

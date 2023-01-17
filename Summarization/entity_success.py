@@ -689,9 +689,9 @@ def main(args):
         model.eval()
         model = model.to(args.device)
         username = input("What is your name? ")
-        name_list = [i for i in os.listdir('../human_evaluation/users/controllable_{}/'.format(args.dataset_name))]
+        name_list = [i for i in os.listdir('../human_evaluation/users/controllable_{}/'.format(args.dataset))]
         if not(username in name_list):
-            os.mkdir('../human_evaluation/users/controllable_{}/{}/'.format(args.dataset_name, username))
+            os.mkdir('../human_evaluation/users/controllable_{}/{}/'.format(args.dataset, username))
         n_attempts = 3
         count = 0
         with torch.no_grad():
