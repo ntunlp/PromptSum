@@ -2,14 +2,18 @@ import json
 import numpy as np
 
 
-users = ["ravox"]
+dataset = "cnndm"
+#dataset = "xsum"
+users = ["ruochen"]
+#users = ["ravox", "ruochen"]
 n = 50
 
 all_counts = []
 for user in users:
+    print("*"*30, "User: {}".format(user))
     counts = []
     for i in range(n):
-        path = "users/controllable_xsum/ravox/{}.json".format(i)
+        path = "users/controllable_{}/{}/{}.json".format(dataset, user, i)
         res = json.load(open(path,"r"))
         satisfaction = res["satisfaction"]
         idx = 0
