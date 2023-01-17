@@ -3,14 +3,14 @@ import json
 import numpy as np
 
 
-
-users = ["ravox_0"]
+dataset = "generic_xsum"
+users = ["chengwei", "hailin", "ravox", "ruochen"]
 n_summaries = 50
 
 attributes = ["informative", "factually consistent", "relevant", "fluent", "coherent"]
 all_user_info, all_user_fact, all_user_rel, all_user_fluent, all_user_coh = [], [], [], [], []
 for user in users:
-    user_dir = "users/{}/result/".format(user)
+    user_dir = "users/{}/{}/result/".format(dataset, user)
     user_info, user_fact, user_rel, user_fluent, user_coh = [], [], [], [], []
     user_labels = []
     print("*"*50 + " User: {}".format(user))

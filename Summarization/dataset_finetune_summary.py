@@ -48,7 +48,7 @@ class SummarizationDataset(Dataset):
             self.data = [self.data[x] for x in new_p]
         else:
             p = np.random.permutation(len(self.data))
-            with open("human_eval_permutations/init_{}.pkl".format(args.dataset_name), "wb") as f:
+            with open("human_eval_permutations/init_{}.pkl".format(args.dataset), "wb") as f:
                 pickle.dump(p, f)
             self.data = [self.data[x] for x in p]
         print("permuted self.data")
@@ -409,6 +409,7 @@ def read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, ar
       
     for seed in few_shot_seeds:
         train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
+        print(args.few_shot_save_dir)
         train_dataset = SummarizationDataset(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
         valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)

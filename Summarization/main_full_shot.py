@@ -86,7 +86,7 @@ def set_args():
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt'])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/pegasus-large", choices = ["t5-base, google/t5-v1_1-base, facebook/bart-base, "
+                        default="google/pegasus-large", choices = ["t5-base", "google/t5-v1_1-base", "google/t5-v1_1-large", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
@@ -585,6 +585,7 @@ def main(args):
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
             logger.info("The model has {} trainable parameters".format(n_params))
 
+        mean_rs_entity = None
         model.eval()
         #### add t5 tagger
         if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
