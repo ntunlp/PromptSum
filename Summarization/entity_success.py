@@ -772,7 +772,7 @@ def main(args):
                     "satisfaction": satis,
                     "causes": causes
                 }
-                save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset_name, username, index)
+                save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset, username, index)
                 with open(save_path, 'w') as outfile:
                     json.dump(dic, outfile)
                     print("saved the results!", save_path)

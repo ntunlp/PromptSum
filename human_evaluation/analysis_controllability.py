@@ -4,7 +4,7 @@ import numpy as np
 
 dataset = "cnndm"
 #dataset = "xsum"
-users = ["ruochen"]
+users = ["ravox", "ruochen"]
 #users = ["ravox", "ruochen"]
 n = 50
 
