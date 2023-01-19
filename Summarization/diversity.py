@@ -81,7 +81,7 @@ def set_args():
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
-                        default='10', help="number of data points for training AND validation")
+                        default='100', help="number of data points for training AND validation")
     parser.add_argument("--use_t5_tagger",  action='store_false',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--infer_val_entities", action="store_false",
@@ -108,7 +108,7 @@ def set_args():
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")    
     # parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,
-                        default=42, help="seed for network")
+                        default=0, help="seed for network")
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
