@@ -110,6 +110,8 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=0, help="seed for network")
     
+    parser.add_argument("--diversity_entity", type=bool, default=True)
+
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
@@ -238,6 +240,7 @@ def main(args):
         special_tokens = {"ans_token": answertoken}
         tokenizer.add_tokens(list(special_tokens.values()))
         tokenizer.add_tokens(['[SEP]'])
+    model = model.to(args.device)
 
     # use the whole testset
     valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
@@ -245,6 +248,8 @@ def main(args):
     args.logger = logger
     logger.info('generated dataset')
     valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, human_eval = True)
+    print("1st data point:")
+    print(valid_dataset.data[0][0][:500])
 
     # generation
     n_gen = 500
@@ -272,6 +277,11 @@ def main(args):
             _inp = ' '.join(inp.split())
             _inp_ents = valid_dataset.spacy_nlp(_inp).ents
             _inp_ents_text = [ent.text for ent in _inp_ents]
+            new_ents_text = []
+            for x in _inp_ents_text:
+                if not(x in new_ents_text):
+                    new_ents_text.append(x)
+            _inp_ents_text = new_ents_text
 
             summaries = []
             for j in range(n_chains):
@@ -279,7 +289,7 @@ def main(args):
                 for k in range(n_entities):
                     ent = _inp_ents_text[np.random.randint(len(_inp_ents_text))]
                     ent_chain.append(ent)
-
+                ent_chain = ",".join(ent_chain)
                 ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
                 ent_ids = ent_res['input_ids']
                 ent_attn_mask = ent_res['attention_mask']
@@ -293,8 +303,8 @@ def main(args):
             all_summaries.append(summaries)
 
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
-    # oracle F1
-    all_oracles = []
+    # random and oracle R-1
+    all_random, all_oracles = [], []
     for i in tqdm(range(len(all_summaries))):
         summaries = all_summaries[i]
         label = all_labels[i]
@@ -304,12 +314,17 @@ def main(args):
             summary = summaries[j]
             summary = "\n".join(sent_tokenize(summary))
             rouge_scores = scorer.score(label, summary)
-            r1 = rouge_scores["rouge1"].fmeasure
+            r1 = 100 * rouge_scores["rouge1"].fmeasure
             r1s.append(r1)
         r1s = np.array(r1s)
+        random = r1s[np.random.randint(len(r1s))]
+        all_random.append(random)
         oracle = np.max(r1s)
         all_oracles.append(oracle)
-    print("Oracle score: {:4f}".format(np.mean(all_oracles)))
+    all_random = np.array(all_random)
+    print("Random score: {:.4f}, std: {:.4f}".format(np.mean(all_random), np.std(all_random)))
+    all_oracles = np.array(all_oracles)
+    print("Oracle score: {:.4f}, std: {:.4f}".format(np.mean(all_oracles), np.std(all_oracles)))
 
     # inter-ROUGE
     all_inter = []
@@ -323,15 +338,16 @@ def main(args):
                 summary_k = summaries[k]
                 summary_k = "\n".join(sent_tokenize(summary_k))
                 rouge_scores = scorer.score(summary_j, summary_k)
-                r1_j_k = rouge_scores["rouge1"].fmeasure
+                r1_j_k = 100 * rouge_scores["rouge1"].fmeasure
                 rouge_scores = scorer.score(summary_k, summary_j)
-                r1_k_j = rouge_scores["rouge1"].fmeasure
+                r1_k_j = 100 * rouge_scores["rouge1"].fmeasure
                 r1 = (r1_j_k + r1_k_j) / 2
                 r1s.append(r1)
         r1s = np.array(r1s)
         r1 = np.mean(r1s)
         all_inter.append(r1)
-    print("Inter-candidates score: {:4f}".format(np.mean(all_inter)))
+    all_inter = np.array(all_inter)
+    print("Inter-candidates score: {:.4f}, std: {:.4f}".format(np.mean(all_inter), np.std(all_inter)))
 
 
 
