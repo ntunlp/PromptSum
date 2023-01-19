@@ -2,10 +2,10 @@ import json
 import numpy as np
 
 
-dataset = "cnndm"
-#dataset = "xsum"
-users = ["ravox", "ruochen"]
+#dataset = "cnndm"
+dataset = "xsum"
 #users = ["ravox", "ruochen"]
+users = ["hailin", "ravox", "ruochen"]
 n = 50
 
 all_counts = []
