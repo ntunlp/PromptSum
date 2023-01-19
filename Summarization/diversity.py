@@ -40,11 +40,9 @@ def set_args():
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
                         default="bestckpt_from_pretrained", help="model ckpt name")                     
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                            default="xsum")
+                        default="xsum")
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                            "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
-                            "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
+                        default="PegasusMixPrompt", choices = ["PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
@@ -54,8 +52,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
-                        help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
+                        default=root + "hf_models/pegasus-large/", help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
@@ -65,7 +62,7 @@ def set_args():
     parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
-                            default='./log', help="The path to log dir")
+                        default='./log', help="The path to log dir")
     # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
     #                         default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
@@ -110,7 +107,11 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=0, help="seed for network")
     
-    parser.add_argument("--diversity_entity", type=bool, default=True)
+    parser.add_argument("--diversity_dbs", type=bool, default=True)
+    parser.add_argument("--diversity_entity", type=bool, default=False)
+
+    parser.add_argument('--num_beam_groups', type=int, default=10)  # default: 10
+    parser.add_argument('--diversity_penalty', type=float, default=1.0)  # default: 1.0
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -184,21 +185,12 @@ def main(args):
         tokenizer = PreTrainedTokenizerFast.from_pretrained("hyunwoongko/ctrlsum-cnndm",cache_dir=args.cache_path)
         allgentasktokens, answertoken = None, None
         args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-
     else:
-        if 'Bart' in args.model:
-            basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle'
-        elif 'Pegasus' in args.model:
-            basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            logger.info('loaded pegasus models')
-            args.allnumber_path = 'allnumber.pickle_newforpegasus'
-        else:
-            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        logger.info('loaded pegasus models')
+        args.allnumber_path = 'allnumber.pickle_newforpegasus'
         model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
         promptnumber = args.prompt_number
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -242,6 +234,34 @@ def main(args):
         tokenizer.add_tokens(['[SEP]'])
     model = model.to(args.device)
 
+    if "Mix" in args.model:
+        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings=args.max_position_embeddings, cache_dir=args.cache_path)
+        enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+        if args.use_pretrain_ckpt:
+            ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+            dic = {}
+            for x in ckpt.keys():
+                if (args.max_position_embeddings > 1024) and ("embed_positions" in x):
+                    continue
+                if not (x in ["module.promptnumber", "module.promptembedding", "module.promptnumberforsum",
+                              "module.promptembeddingforsum"]):
+                    dic[x[7:]] = ckpt[x]
+            if args.max_position_embeddings > 1024:
+                dic["model.model.encoder.embed_positions.weight"] = entbasemodel.state_dict()[
+                    "model.encoder.embed_positions.weight"]
+                dic["model.model.decoder.embed_positions.weight"] = entbasemodel.state_dict()[
+                    "model.decoder.embed_positions.weight"]
+            entmodel.load_state_dict(dic)
+            logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
+
+            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+            if args.use_pretrain_ckpt:
+                onepath += "_from_pretrained"
+            oneckpt = torch.load(onepath)
+            entmodel.promptnumber = oneckpt["promptnumber"]
+            entmodel.promptembedding = oneckpt["promptembedding"]
+
     # use the whole testset
     valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
     print(valid_file_name)
@@ -252,13 +272,50 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 500
+    n_gen = 5
     n_chains = 10
     n_entities = 3
     n_beams = 10
 
     all_summaries, all_labels = [], []
-    if args.diversity_entity:
+    # 1 - just DBS
+    if args.diversity_dbs and not(args.diversity_entity):
+        print("Diversity based on DBS")
+        for i in tqdm(range(n_gen)):
+            inp, tar = valid_dataset.data[i]
+
+            # target
+            all_labels.append(tar)
+            target_res = valid_dataset.tokenizer.batch_encode_plus([tar], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+            target_ids = target_res['input_ids']
+            target_attn_mask = target_res['attention_mask']
+
+            # source
+            input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+            input_ids = input_res['input_ids']
+            input_attn_mask = input_res['attention_mask']
+
+            if "Mix" in args.model:
+                # prediction with entities model
+                input = {"input_ids": input_ids, "attention_mask": input_attn_mask}
+                _, _, tagpreds = entmodel._generative_step(input)
+                ent_chain = tagpreds[0]
+
+                # encode entities
+                ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+                ent_ids = ent_res['input_ids']
+                ent_attn_mask = ent_res['attention_mask']
+
+                # summary prediction
+                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
+                          "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
+                          "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
+                sen, target, preds = model._diverse_generative_step(inputs)
+                all_summaries.append(preds)
+
+    # 2 - just entities
+    if not(args.diversity_dbs) and args.diversity_entity:
+        print("Diversity based on entities")
         for i in tqdm(range(n_gen)):
             inp, tar = valid_dataset.data[i]
 
@@ -297,7 +354,6 @@ def main(args):
                 inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
                           "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
                           "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
-
                 sen, target, preds = model._generative_step(inputs)
                 summaries.append(preds[0])
             all_summaries.append(summaries)
