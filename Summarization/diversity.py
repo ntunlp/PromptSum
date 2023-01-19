@@ -33,12 +33,6 @@ def set_args():
                         default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
                         default='/export/home/ctrl-sum/cnndm_ctrlsum_100')
-    parser.add_argument("--mode", dest="mode", type=str,
-                        default="single_entity_test", choices = ["single_entity_test", "oracle_add_test", "oracle_drop_test", "oracle", "k_entity_test", "interactive"])
-    parser.add_argument("--k_entity", dest="k_entity", type=int,
-                        default=2)                    
-    parser.add_argument("--single_word", action='store_true',
-                        default=False, help="whether to filter out multiple token entities")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id") 
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
@@ -46,7 +40,7 @@ def set_args():
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
                         default="bestckpt_from_pretrained", help="model ckpt name")                     
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                            default="ccdv/cnn_dailymail")
+                            default="xsum")
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
@@ -97,7 +91,7 @@ def set_args():
     parser.add_argument("--num_beams", dest="num_beams", type=int,
                         default=4, help="number of beams in beam search")
     parser.add_argument("--repetition_penalty", dest="repetition_penalty", type=float,
-                        default=2.5, help="repetition penalty")
+                        default=1.0, help="repetition penalty")
     parser.add_argument("--length_penalty", dest="length_penalty", type=float,
                         default=1.0, help="length penalty")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
@@ -107,9 +101,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     # parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")  
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")    
     # parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
@@ -122,8 +116,6 @@ def set_args():
     summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
     validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
     test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
     
     args = parser.parse_args()
     ## SET HERE FOR PRETRAIN
