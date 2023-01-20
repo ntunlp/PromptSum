@@ -44,8 +44,8 @@ from pathlib import Path
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/data/mathieu/"
-    data_root = "/data/mathieu/"
+    root = "/export/home/"
+    data_root = "/export/home/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,

@@ -25,12 +25,12 @@ from itertools import combinations
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    #root = "/export/home/"
-    #data_root = "/export/home/"
-    root = "/data/mathieu/"
-    data_root = "/data/mathieu/"
+    root = "/export/home/"
+    data_root = "/export/home/"
+    # root = "/data/mathieu/"
+    # data_root = "/data/mathieu/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= data_root + "dataset/PromptSumm/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
                         default='/export/home/ctrl-sum/cnndm_ctrlsum_100')
     parser.add_argument("--mode", dest="mode", type=str,
