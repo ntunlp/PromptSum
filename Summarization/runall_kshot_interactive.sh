@@ -1,10 +1,10 @@
-cache='/data/mathieu/hf_models/pegasus-large/'
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+cache='/data/qin/hf_models/pegasus-large/'
+pretrain_ckpt="/data/qin/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/qin/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 ### parameters to change
-dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-dataset_name="cnndm" # in ["cnndm", "xsum", "billsum", "samsum"]
+dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+dataset_name="xsum" # in ["cnndm", "xsum", "billsum", "samsum"]
 seed="0" # in [0, 0, 1, 1]
 device="1" 
 model="PegasusMixPrompt" # ["PegasusMixPrompt", "CTRLsum", "CTRLsum_origin"]
