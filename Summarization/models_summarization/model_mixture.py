@@ -172,11 +172,11 @@ class ModelMixPrompt(nn.Module):
             attention_mask=all_attention_mask,
             use_cache=True,
             max_length=self.args.max_summary_length,
-            diversity_penalty=self.args.diversity_penalty,
             num_beams=self.args.num_diverse_beams,
             num_beam_groups=self.args.num_beam_groups,
             repetition_penalty=self.args.repetition_penalty,
             length_penalty=self.args.length_penalty,
+            diversity_penalty=self.args.diversity_penalty,
             early_stopping=True,
             num_return_sequences=self.args.num_return_sequences,
         )

@@ -101,6 +101,39 @@ class ModelFinetune(nn.Module):
 
         return input, target, preds
 
+    def _diverse_generative_step(self, batch):
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        elif "Pegasus" in self.model_name or 'Bart' in self.model_name:
+            input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            input_embed_part = input_embed_part * embed_scale
+
+        decoder_input_ids = (
+            torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        )
+        generated_ids = self.model.generate(
+            inputs_embeds=input_embed_part,
+            decoder_input_ids=decoder_input_ids,
+            attention_mask=batch["attention_mask"],
+            #decoder_attention_mask=batch['target_mask'],
+            max_length = self.args.max_summary_length,
+            num_beams = self.args.num_diverse_beams,
+            num_beam_groups=self.args.num_beam_groups,
+            repetition_penalty = self.args.repetition_penalty,
+            length_penalty = self.args.length_penalty,
+            diversity_penalty = self.args.diversity_penalty,
+            use_cache = True,
+            early_stopping = True
+        )
+
+        preds = self.ids_to_clean_text(generated_ids)
+        target = self.ids_to_clean_text(batch["target_ids"])
+        input = self.ids_to_clean_text(batch["input_ids"])
+
+        return input, target, preds
+
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
