@@ -139,6 +139,53 @@ class ModelMixPrompt(nn.Module):
         
         return input, target, preds
 
+    def _diverse_generative_step(self, batch):
+        if 'T5' in self.model_name:
+            input_embed_part = self.model.encoder.embed_tokens(batch["input_ids"])
+        else:
+            input_embed_part = self.model.get_encoder().embed_tokens(batch["input_ids"])
+
+        # prompt: soft + discrete
+        soft_prompt_embed = self.promptembedding.repeat(input_embed_part.size(0), 1, 1)
+        if 'T5' in self.model_name:
+            discrete_prompt_embed = self.model.encoder.embed_tokens(batch["ents_ids"])
+        else:
+            discrete_prompt_embed = self.model.get_encoder().embed_tokens(batch["ents_ids"])
+        prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
+
+        allembedding = torch.cat([input_embed_part, prompt_embed], 1)
+        if "Pegasus" in self.model_name:
+            embed_dim = self.model.config.d_model
+            embed_scale = math.sqrt(embed_dim)
+            allembedding = allembedding * embed_scale
+
+        all_attention_mask = torch.cat([batch["attention_mask"], mask_prompt], 1)
+        decoder_input_ids = (
+                torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long,
+                           device=batch["input_ids"].device) * self.decoder_start_token_id_use
+        )
+
+        generated_ids = self.model.generate(
+            inputs_embeds=allembedding,
+            decoder_input_ids=decoder_input_ids,
+            attention_mask=all_attention_mask,
+            use_cache=True,
+            max_length=self.args.max_summary_length,
+            diversity_penalty=self.args.diversity_penalty,
+            num_beams=self.args.num_diverse_beams,
+            num_beam_groups=self.args.num_beam_groups,
+            repetition_penalty=self.args.repetition_penalty,
+            length_penalty=self.args.length_penalty,
+            early_stopping=True,
+            num_return_sequences=self.args.num_return_sequences,
+        )
+        preds = self.ids_to_clean_text(generated_ids)
+        target = self.ids_to_clean_text(batch["target_ids"])
+        input = self.ids_to_clean_text(batch["input_ids"])
+
+        return input, target, preds
+
     def _generative_samples(self, batch):
         if 'T5' in self.model_name:
             input_embed_part = self.model.encoder.embed_tokens(batch['input_ids'])

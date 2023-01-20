@@ -107,9 +107,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
     # parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")  
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")    
     # parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
@@ -772,7 +772,7 @@ def main(args):
                     "satisfaction": satis,
                     "causes": causes
                 }
-                save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset_name, username, index)
+                save_path = '../human_evaluation/users/controllable_{}/{}/{}.json'.format(args.dataset, username, index)
                 with open(save_path, 'w') as outfile:
                     json.dump(dic, outfile)
                     print("saved the results!", save_path)

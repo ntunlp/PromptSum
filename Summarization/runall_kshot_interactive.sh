@@ -3,8 +3,8 @@ pretrain_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/0
 pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 ### parameters to change
-dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-dataset_name="cnndm" # in ["cnndm", "xsum", "billsum", "samsum"]
+dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+dataset_name="xsum" # in ["cnndm", "xsum", "billsum", "samsum"]
 seed="0" # in [0, 0, 1, 1]
 device="7" 
 model="PegasusMixPrompt" # ["PegasusMixPrompt", "CTRLsum", "CTRLsum_origin"]
