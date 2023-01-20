@@ -23,6 +23,11 @@ from collections import defaultdict
 from fairseq.models.bart import BARTModel
 from itertools import combinations
 
+from models_summarization.model_finetune import *
+from models_summarization.model_soft import *
+from models_summarization.model_mixture import *
+
+
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
     #root = "/export/home/"
@@ -42,7 +47,7 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusMixPrompt", choices = ["PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
+                        default="PegasusFinetune", choices = ["PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
@@ -109,7 +114,7 @@ def set_args():
     
     parser.add_argument("--max_length_entity", type=int, default=128)
     parser.add_argument("--diversity_dbs", type=bool, default=True)
-    parser.add_argument("--diversity_entity", type=bool, default=True)
+    parser.add_argument("--diversity_entity", type=bool, default=False)
 
     parser.add_argument('--num_beam_groups', type=int, default=10)  # default: 10
     parser.add_argument('--diversity_penalty', type=float, default=1.0)  # default: 1.0
@@ -195,7 +200,10 @@ def main(args):
         tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
         logger.info('loaded pegasus models')
         args.allnumber_path = 'allnumber.pickle_newforpegasus'
-        model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+        if "Finetune" in args.model:
+            model = ModelFinetune(args, basemodel, tokenizer, args.model)
+        elif "Mix" in args.model:
+            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
         promptnumber = args.prompt_number
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
         model.set_prompt_embedding(promptnumber, promptembedding)
@@ -277,7 +285,7 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 500
+    n_gen = 5
     n_chains = 10
     n_entities = 3
     n_beams = 10
