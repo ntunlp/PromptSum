@@ -43,7 +43,7 @@ def set_args():
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
                         default=False)
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
-                        default="bestckpt_from_pretrained", help="model ckpt name")                     
+                        default="full_weights", help="model ckpt name")                     
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--model", dest="model", type=str,
@@ -112,6 +112,8 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=0, help="seed for network")
     
+    parser.add_argument('--label_smoothing', type=float, default=0.0)
+
     parser.add_argument("--max_length_entity", type=int, default=128)
     parser.add_argument("--diversity_dbs", type=bool, default=True)
     parser.add_argument("--diversity_entity", type=bool, default=False)
@@ -204,9 +206,9 @@ def main(args):
             model = ModelFinetune(args, basemodel, tokenizer, args.model)
         elif "Mix" in args.model:
             model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
-        promptnumber = args.prompt_number
-        promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
-        model.set_prompt_embedding(promptnumber, promptembedding)
+            promptnumber = args.prompt_number
+            promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
+            model.set_prompt_embedding(promptnumber, promptembedding)
         # model weights
         if args.use_pretrain_ckpt and  "Finetune" not in args.model:
             print(f"device: {args.device}")
@@ -315,18 +317,20 @@ def main(args):
                 inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device)}
                 _, _, tagpreds = entmodel._generative_step(inputs)
                 ent_chain = tagpreds[0]
+            else:
+                ent_chain = "None"
+            
+            # encode entities
+            ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+            ent_ids = ent_res['input_ids']
+            ent_attn_mask = ent_res['attention_mask']
 
-                # encode entities
-                ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
-                ent_ids = ent_res['input_ids']
-                ent_attn_mask = ent_res['attention_mask']
-
-                # summary prediction
-                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
-                          "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
-                          "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
-                sen, target, preds = model._diverse_generative_step(inputs)
-                all_summaries.append(preds)
+            # summary prediction
+            inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
+                    "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
+                    "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
+            sen, target, preds = model._diverse_generative_step(inputs)
+            all_summaries.append(preds)
 
     # 2 - just entities
     if not(args.diversity_dbs) and args.diversity_entity:
