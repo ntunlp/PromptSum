@@ -107,11 +107,14 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=0, help="seed for network")
     
-    parser.add_argument("--diversity_dbs", type=bool, default=True)
-    parser.add_argument("--diversity_entity", type=bool, default=False)
+    parser.add_argument("--max_length_entity", type=int, default=128)
+    parser.add_argument("--diversity_dbs", type=bool, default=False)
+    parser.add_argument("--diversity_entity", type=bool, default=True)
 
     parser.add_argument('--num_beam_groups', type=int, default=10)  # default: 10
     parser.add_argument('--diversity_penalty', type=float, default=1.0)  # default: 1.0
+    parser.add_argument('--num_diverse_beams', type=int, default=10)
+    parser.add_argument('--num_return_sequences', type=int, default=10)
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -127,6 +130,7 @@ def set_args():
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     highlights = [True, False, False, False, False, False, False]
     
+    args.max_position_embeddings = 1024
     idx = dataset_names.index(args.dataset_name)
     if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
         idx = 0
@@ -235,7 +239,7 @@ def main(args):
     model = model.to(args.device)
 
     if "Mix" in args.model:
-        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings=args.max_position_embeddings, cache_dir=args.cache_path)
+        entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
         entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
         if args.use_pretrain_ckpt:
@@ -261,6 +265,7 @@ def main(args):
             oneckpt = torch.load(onepath)
             entmodel.promptnumber = oneckpt["promptnumber"]
             entmodel.promptembedding = oneckpt["promptembedding"]
+        entmodel = entmodel.to(args.device)
 
     # use the whole testset
     valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
@@ -268,19 +273,21 @@ def main(args):
     args.logger = logger
     logger.info('generated dataset')
     valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, human_eval = True)
-    print("1st data point:")
+    print("\n1st data point:")
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 5
+    n_gen = 500
     n_chains = 10
     n_entities = 3
     n_beams = 10
 
     all_summaries, all_labels = [], []
+    print(len(valid_dataset.data))
+    
     # 1 - just DBS
     if args.diversity_dbs and not(args.diversity_entity):
-        print("Diversity based on DBS")
+        print("\nDiversity based on DBS")
         for i in tqdm(range(n_gen)):
             inp, tar = valid_dataset.data[i]
 
@@ -297,8 +304,8 @@ def main(args):
 
             if "Mix" in args.model:
                 # prediction with entities model
-                input = {"input_ids": input_ids, "attention_mask": input_attn_mask}
-                _, _, tagpreds = entmodel._generative_step(input)
+                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device)}
+                _, _, tagpreds = entmodel._generative_step(inputs)
                 ent_chain = tagpreds[0]
 
                 # encode entities
@@ -315,7 +322,7 @@ def main(args):
 
     # 2 - just entities
     if not(args.diversity_dbs) and args.diversity_entity:
-        print("Diversity based on entities")
+        print("\nDiversity based on entities")
         for i in tqdm(range(n_gen)):
             inp, tar = valid_dataset.data[i]
 
@@ -339,6 +346,8 @@ def main(args):
                 if not(x in new_ents_text):
                     new_ents_text.append(x)
             _inp_ents_text = new_ents_text
+            if len(_inp_ents_text) == 0:
+                _inp_ents_text = ["None"]
 
             summaries = []
             for j in range(n_chains):
