@@ -108,7 +108,7 @@ def set_args():
                         default=0, help="seed for network")
     
     parser.add_argument("--max_length_entity", type=int, default=128)
-    parser.add_argument("--diversity_dbs", type=bool, default=False)
+    parser.add_argument("--diversity_dbs", type=bool, default=True)
     parser.add_argument("--diversity_entity", type=bool, default=True)
 
     parser.add_argument('--num_beam_groups', type=int, default=10)  # default: 10
@@ -277,7 +277,7 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 5
+    n_gen = 500
     n_chains = 10
     n_entities = 3
     n_beams = 10
@@ -413,6 +413,8 @@ def main(args):
                 sen, target, preds = model._diverse_generative_step(inputs)
                 summaries += preds
             all_summaries.append(summaries)
+
+    print("\nExtracted {} summaries / data point".format(len(all_summaries[0])))
 
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
     # random and oracle R-1
