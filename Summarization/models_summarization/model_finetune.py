@@ -125,7 +125,8 @@ class ModelFinetune(nn.Module):
             length_penalty = self.args.length_penalty,
             diversity_penalty = self.args.diversity_penalty,
             use_cache = True,
-            early_stopping = True
+            early_stopping = True,
+            num_return_sequences=self.args.num_return_sequences
         )
 
         preds = self.ids_to_clean_text(generated_ids)
