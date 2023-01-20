@@ -277,7 +277,7 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 500
+    n_gen = 5
     n_chains = 10
     n_entities = 3
     n_beams = 10
@@ -365,6 +365,53 @@ def main(args):
                           "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
                 sen, target, preds = model._generative_step(inputs)
                 summaries.append(preds[0])
+            all_summaries.append(summaries)
+
+    # 3 - DBS + entities
+    if args.diversity_dbs and args.diversity_entity:
+        print("\nDiversity based on DBS + entities")
+        for i in tqdm(range(n_gen)):
+            inp, tar = valid_dataset.data[i]
+
+            # target
+            all_labels.append(tar)
+            target_res = valid_dataset.tokenizer.batch_encode_plus([tar], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+            target_ids = target_res['input_ids']
+            target_attn_mask = target_res['attention_mask']
+
+            # source
+            input_res = valid_dataset.tokenizer.batch_encode_plus([inp], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+            input_ids = input_res['input_ids']
+            input_attn_mask = input_res['attention_mask']
+
+            # entities
+            _inp = ' '.join(inp.split())
+            _inp_ents = valid_dataset.spacy_nlp(_inp).ents
+            _inp_ents_text = [ent.text for ent in _inp_ents]
+            new_ents_text = []
+            for x in _inp_ents_text:
+                if not(x in new_ents_text):
+                    new_ents_text.append(x)
+            _inp_ents_text = new_ents_text
+            if len(_inp_ents_text) == 0:
+                _inp_ents_text = ["None"]
+
+            summaries = []
+            for j in range(n_chains):
+                ent_chain = []
+                for k in range(n_entities):
+                    ent = _inp_ents_text[np.random.randint(len(_inp_ents_text))]
+                    ent_chain.append(ent)
+                ent_chain = ",".join(ent_chain)
+                ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+                ent_ids = ent_res['input_ids']
+                ent_attn_mask = ent_res['attention_mask']
+
+                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
+                          "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
+                          "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
+                sen, target, preds = model._diverse_generative_step(inputs)
+                summaries += preds
             all_summaries.append(summaries)
 
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
