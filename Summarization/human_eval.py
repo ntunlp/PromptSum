@@ -67,7 +67,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default=data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                        default="ccdv/cnn_dailymail")
+                        default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
