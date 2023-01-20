@@ -5,7 +5,7 @@ import numpy as np
 #dataset = "cnndm"
 dataset = "xsum"
 #users = ["ravox", "ruochen"]
-users = ["hailin", "ravox", "ruochen"]
+users = ["chengwei", "xingxuan", "hailin", "ravox", "ruochen"]
 n = 50
 
 all_counts = []
