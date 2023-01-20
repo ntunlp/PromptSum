@@ -210,7 +210,7 @@ def main(args):
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         # model weights
-        if args.use_pretrain_ckpt and  "Finetune" not in args.model:
+        if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
             print(f"device: {args.device}")
             ckptsum = torch.load(args.pretrain_ckpt, map_location=args.device)
             dicsum = {}
@@ -228,7 +228,8 @@ def main(args):
         args.model_save_path = args.model_save_folder + f'seed_{args.seed}/'
         path = args.model_save_path + args.ckpt_name
         ckptsum = torch.load(path)
-        if 'full_weights' in args.ckpt_name:
+        print("loading from : {}".format(path))
+        if 'full_weights' in args.ckpt_name or (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
             model.load_state_dict(ckptsum)
         else:
             model.promptnumber = ckptsum["promptnumber"]
