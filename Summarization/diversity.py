@@ -231,6 +231,7 @@ def main(args):
         print("loading from : {}".format(path))
         if 'full_weights' in args.ckpt_name or (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
             model.load_state_dict(ckptsum)
+            print("HERE")
         else:
             model.promptnumber = ckptsum["promptnumber"]
             model.promptembedding = nn.parameter.Parameter(ckptsum["promptembedding"])
@@ -288,7 +289,7 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 5
+    n_gen = 500
     n_chains = 10
     n_entities = 3
     n_beams = 10
