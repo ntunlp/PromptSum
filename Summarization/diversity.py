@@ -3,6 +3,7 @@ import argparse
 import logging
 from utils import Nop
 import torch
+import random
 from dataset_finetune_entity import *
 from dataset_finetune_summary import *
 from engine_pretrain import *
@@ -37,7 +38,7 @@ def set_args():
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default= data_root + "DATASETS/PromptSumm/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
-                        default='/export/home/ctrl-sum/cnndm_ctrlsum_100')
+                        default='/data/mathieu/prompt_sum/Summarization/saved_models/xsum/100/CTRLsum_origin/')
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id") 
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
@@ -47,9 +48,9 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusFinetune", choices = ["PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
+                        default="CTRLsum_origin", choices = ["PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
+                        default="facebook/bart-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0, help="whether to use lm_adapted model") #if we use bart, then automatically don't use lm_adapted
@@ -191,11 +192,6 @@ def main(args):
         tokenizer = PreTrainedTokenizerFast.from_pretrained("hyunwoongko/ctrlsum-cnndm",cache_dir=args.cache_path) # no use, just placeholder
         allgentasktokens, answertoken = None, None
         args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
-    elif args.model == 'CTRLsum':
-        model = AutoModelForSeq2SeqLM.from_pretrained("hyunwoongko/ctrlsum-cnndm",cache_dir=args.cache_path)
-        tokenizer = PreTrainedTokenizerFast.from_pretrained("hyunwoongko/ctrlsum-cnndm",cache_dir=args.cache_path)
-        allgentasktokens, answertoken = None, None
-        args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
     else:
         basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
@@ -289,13 +285,26 @@ def main(args):
     print(valid_dataset.data[0][0][:500])
 
     # generation
-    n_gen = 500
+    n_gen = 5
     n_chains = 10
     n_entities = 3
     n_beams = 10
 
     all_summaries, all_labels = [], []
     print(len(valid_dataset.data))
+
+    # collect all entities first (for CTRLSum)
+    full_ents = []
+    for i, (inp, tar) in tqdm(enumerate(valid_dataset.data)):
+        inp = ' '.join(inp.split()[:400])  # mimic truncation
+        sents = sent_tokenize(inp)
+        if len(sents)>3:
+            full = ''.join(sents)
+        else:
+            full = ''.join(sents)
+        fullents = valid_dataset.spacy_nlp(full).ents
+        fullents = [ent.text for ent in fullents]
+        full_ents.append(fullents)
     
     # 1 - just DBS
     if args.diversity_dbs and not(args.diversity_entity):
@@ -314,25 +323,47 @@ def main(args):
             input_ids = input_res['input_ids']
             input_attn_mask = input_res['attention_mask']
 
-            if "Mix" in args.model:
-                # prediction with entities model
-                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device)}
-                _, _, tagpreds = entmodel._generative_step(inputs)
-                ent_chain = tagpreds[0]
-            else:
-                ent_chain = "None"
-            
-            # encode entities
-            ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
-            ent_ids = ent_res['input_ids']
-            ent_attn_mask = ent_res['attention_mask']
+            if "CTRLsum" in args.model:
+                original_ents = full_ents[i]
+                original_ents = list(set([ent for ent in original_ents if '.' not in ent]))
+                sample_iter, sampled_ent_tuples = 0, set()
+                while len(sampled_ent_tuples) < 20 and sample_iter < 60:
+                    ents = tuple(random.sample(original_ents, 3))
+                    if ents not in sampled_ent_tuples:
+                        sampled_ent_tuples.add(ents)
+                    sample_iter += 1
 
-            # summary prediction
-            inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
-                    "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
-                    "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
-            sen, target, preds = model._diverse_generative_step(inputs)
-            all_summaries.append(preds)
+                new_data = []
+                original_data = valid_dataset.data[i]
+                for cur_ents in sampled_ent_tuples[:1]:
+                    ent_str = ' | '.join(cur_ents)
+                    new_text = f'{ent_str} => {original_data[0]}'
+                    new_data.append([new_text, original_data[1]])
+
+                _, preds = eval_ctrlsum(model, new_data, logger)
+                print(preds)
+                raise Exception
+
+            else:
+                if "Mix" in args.model:
+                    # prediction with entities model
+                    inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device)}
+                    _, _, tagpreds = entmodel._generative_step(inputs)
+                    ent_chain = tagpreds[0]
+                else:
+                    ent_chain = "None"
+
+                # encode entities
+                ent_res = valid_dataset.tokenizer.batch_encode_plus([ent_chain], padding=False, max_length=valid_dataset.maxlen, truncation=True, return_tensors="pt")
+                ent_ids = ent_res['input_ids']
+                ent_attn_mask = ent_res['attention_mask']
+
+                # summary prediction
+                inputs = {"input_ids": input_ids.to(args.device), "attention_mask": input_attn_mask.to(args.device),
+                        "target_ids": target_ids.to(args.device), "target_mask": target_attn_mask.to(args.device),
+                        "ents_ids": ent_ids.to(args.device), "ents_mask": ent_attn_mask.to(args.device)}
+                sen, target, preds = model._diverse_generative_step(inputs)
+                all_summaries.append(preds)
 
     # 2 - just entities
     if not(args.diversity_dbs) and args.diversity_entity:
@@ -477,6 +508,33 @@ def main(args):
     all_inter = np.array(all_inter)
     print("Inter-candidates score: {:.4f}, std: {:.4f}".format(np.mean(all_inter), np.std(all_inter)))
 
+
+def eval_ctrlsum(model, data, logger):
+    '''
+    Args:
+        data: list of source texts
+        ents: list of control entities, one item for each source text
+    '''
+    model.cuda()
+    model.eval()
+    # model.half()
+    batch_size = args.valid_size_per_gpu_summary
+
+    all_inputs = []
+    allypred = []
+    with torch.no_grad():
+        logger.info(f"inf {len(data)} data points")
+        for i in range(0, len(data), batch_size):  # function as batch iterator
+            batch_inputs = data[i:i + batch_size]
+            batch_inputs = [v[0] for v in batch_inputs]
+
+            res = model.sample(batch_inputs, beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
+            allypred.extend(res)
+            all_inputs.extend(batch_inputs)
+            if i % 20 == 0:
+                logger.info(f"inf, {i} data points processed")
+
+    return all_inputs, allypred
 
 
 if __name__ == "__main__":

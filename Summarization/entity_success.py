@@ -194,7 +194,6 @@ def eval_ctrlsum(model, data, ents, idx_to_example, logger, test_ents=None):
     successes = 0
     success_list = []
 
-    
     for j, (pred, ents) in enumerate(zip(allypred, all_ents)):
         example_id = idx_to_example[j]
         if args.mode == 'single_entity_test':
@@ -216,11 +215,8 @@ def eval_ctrlsum(model, data, ents, idx_to_example, logger, test_ents=None):
             example_success[example_id].append(1)
         else:
             example_success[example_id].append(0)
-    
 
     return example_success, successes, all_inputs, allypred, all_ents, success_list
-
-
 
 
 def eval(model, valid_dataset, scaler, logger, args, tokenizer, nlp, idx_to_example, seed = 0, test_ents=None):
