@@ -252,6 +252,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 onepath = os.path.join(output_dir, "bestckpt_full_weights")
                 if args.use_pretrain_ckpt:
                     onepath += "_from_pretrained"
+                if args.prompt_number != 300:
+                    onepath += "_v2"
                 oneckpt = torch.load(onepath)
                 d = {}
                 for k in model.state_dict().keys():
@@ -263,6 +265,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 onepath = os.path.join(output_dir, "bestckpt_prompt")
                 if args.use_pretrain_ckpt:
                     onepath += "_from_pretrained"
+                if args.prompt_number != 300:
+                    onepath += "_v2"
                 oneckpt = torch.load(onepath)
                 model.promptnumber = oneckpt["promptnumber"]
                 model.promptembedding = oneckpt["promptembedding"]
@@ -356,6 +360,8 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 path = os.path.join(path, "bestckpt_full_weights")
                 if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
+                if args.prompt_number != 300:
+                    path += "_v2"
                 torch.save(d, path)
             else:
                 ckpt = {
@@ -365,6 +371,8 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 path = os.path.join(path, "bestckpt_prompt")
                 if args.use_pretrain_ckpt:
                     path += "_from_pretrained"
+                if args.prompt_number != 300:
+                    path += "_v2"
                 torch.save(ckpt, path)
             print("saved new entity model ckpt!")
 

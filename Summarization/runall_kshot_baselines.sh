@@ -1,36 +1,29 @@
 ### dataset
 dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 k_shot="100" # in ["1", "10", "100"]
-device=4
-cache='/data/mathieu/hf_models/t5-v1-large/'
+device=0
+cache='/data/mathieu/hf_models/pegasus-large/'
 
 ### backbone model
-##### T5-large backbone
-#pretrain_ckpt="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt_0520bak/bestckpt_full_model_114k"
-#pretrain_prompt_ckpt="/data/qin/PromptSumm/Summarization/t5_tagger_pretrained_ckpt_0520bak/bestckpt_prompt_114k"
-#pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_full_model"
-#pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_210k/bestckpt_prompt"
-#pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
-#pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
-##### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+##### PEGASUS backbone (015_n_400k / 016 / 019)
+pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
 
 
 ############################ Baseline v1: Fine-tuning
 
-# ##### train & val
+##### train & val
 #echo "start k-shot baseline-1: all-params finetune summary"
 #CUDA_VISIBLE_DEVICES=$device python main.py --model T5Finetune --dataset_name $dataset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 60 --model_name google/t5-v1_1-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 
-# ##### test
-echo "start k-shot baseline-1: all-params finetune summary - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main.py --model T5Finetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/t5-v1_1-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary 8 --repetition_penalty 2.5
+##### test
+#echo "start k-shot baseline-1: all-params finetune summary - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main.py --model T5Finetune --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/t5-v1_1-large --use_lm_adapted 0 --cache_path $cache --valid_size_per_gpu_summary 8 --repetition_penalty 2.5
 
 ############################ Baseline v2: Soft prompt tuning
 
 ##### train & val
-#echo "start k-shot baseline-2: simple prompt-tune summary"
-#CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0
+echo "start k-shot baseline-2: simple prompt-tune summary"
+CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_name $dataset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 60 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache --eval_epoch_0 --prompt_number 100
 ##### test
 #echo "start k-shot baseline-2: simple prompt-tune summary - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main.py --model PegasusSoftPrompt --dataset_name $dataset --full_testset --few_shot $k_shot --finetune_summary --use_pretrain_ckpt --infer_val_entities --use_entity_chain --use_t5_tagger --if_spacy --max_epoch_summary 0 --model_name google/pegasus-large --use_lm_adapted 0 --cache_path $cache

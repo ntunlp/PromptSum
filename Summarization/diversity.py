@@ -295,7 +295,7 @@ def main(args):
 
     # collect all entities first (for CTRLSum)
     full_ents = []
-    for i, (inp, tar) in tqdm(enumerate(valid_dataset.data)):
+    for i, (inp, tar) in tqdm(enumerate(valid_dataset.data[:100])):
         inp = ' '.join(inp.split()[:400])  # mimic truncation
         sents = sent_tokenize(inp)
         if len(sents)>3:
@@ -324,6 +324,7 @@ def main(args):
             input_attn_mask = input_res['attention_mask']
 
             if "CTRLsum" in args.model:
+                import random
                 original_ents = full_ents[i]
                 original_ents = list(set([ent for ent in original_ents if '.' not in ent]))
                 sample_iter, sampled_ent_tuples = 0, set()
@@ -335,12 +336,13 @@ def main(args):
 
                 new_data = []
                 original_data = valid_dataset.data[i]
-                for cur_ents in sampled_ent_tuples[:1]:
+                for cur_ents in sampled_ent_tuples:
                     ent_str = ' | '.join(cur_ents)
                     new_text = f'{ent_str} => {original_data[0]}'
                     new_data.append([new_text, original_data[1]])
+                    break
 
-                _, preds = eval_ctrlsum(model, new_data, logger)
+                _, preds = eval_ctrlsum(model, tokenizer, new_data, logger, dbs=True)
                 print(preds)
                 raise Exception
 
@@ -509,7 +511,7 @@ def main(args):
     print("Inter-candidates score: {:.4f}, std: {:.4f}".format(np.mean(all_inter), np.std(all_inter)))
 
 
-def eval_ctrlsum(model, data, logger):
+def eval_ctrlsum(model, tokenizer, data, logger, dbs=False):
     '''
     Args:
         data: list of source texts
@@ -528,7 +530,22 @@ def eval_ctrlsum(model, data, logger):
             batch_inputs = data[i:i + batch_size]
             batch_inputs = [v[0] for v in batch_inputs]
 
-            res = model.sample(batch_inputs, beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
+            if dbs:
+                #print(batch_inputs)
+                #tok = tokenizer(batch_inputs)
+                #print(type(tok))
+                #enc = model.encode(batch_inputs[0])
+                #print(enc.shape)
+                #enc = enc.unsqueeze(0)
+                #print(enc.shape)
+                #res = model.generate([enc], beam=4, sampling=True, nbest=4)
+                
+                res = model.sample(batch_inputs, nbest=4)
+
+                print(res)
+                raise Exception
+            else:
+                res = model.sample(batch_inputs, beam=4, prefix_tokens=None, lenpen=1.0, max_len_b=140, min_len=1, no_repeat_ngram_size=3, extra_gen_cls_kwargs=None)
             allypred.extend(res)
             all_inputs.extend(batch_inputs)
             if i % 20 == 0:
