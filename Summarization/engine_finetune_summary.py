@@ -166,8 +166,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     path += "_oracle"
                 if args.label_smoothing > 0:
                     path += "_ls"
-                if args.prompt_number != 300:
+                if "016" in args.pretrain_ckpt:
                     path += "_v2"
+                if "019" in args.pretrain_ckpt:
+                    path += "_v3"
                 model.load_state_dict(torch.load(path))
                 print("loaded the full model weights!", path)
             else:
@@ -180,8 +182,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     path = f'{path}_counterfactual'
                 if args.label_smoothing > 0:
                     path += "_ls"
-                if args.prompt_number != 300:
+                if "016" in args.pretrain_ckpt:
                     path += "_v2"
+                if "019" in args.pretrain_ckpt:
+                    path += "_v3"
                 best_val_ckpt = torch.load(path)
                 model.promptnumber = best_val_ckpt["promptnumber"]
                 model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
@@ -331,8 +335,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     path += "_oracle"
                 if args.label_smoothing > 0:
                     path += "_ls"
-                if args.prompt_number != 300:
+                if "016" in args.pretrain_ckpt:
                     path += "_v2"
+                if "019" in args.pretrain_ckpt:
+                    path += "_v3"
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
@@ -345,8 +351,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     path = f'{path}_counterfactual'
                 if args.label_smoothing > 0:
                     path += "_ls"
-                if args.prompt_number != 300:
+                if "016" in args.pretrain_ckpt:
                     path += "_v2"
+                if "019" in args.pretrain_ckpt:
+                    path += "_v3"
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding
