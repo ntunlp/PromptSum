@@ -169,7 +169,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 model.load_state_dict(torch.load(path))
                 print("loaded the full model weights!", path)
             else:
@@ -185,7 +186,8 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 best_val_ckpt = torch.load(path)
                 model.promptnumber = best_val_ckpt["promptnumber"]
                 model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
@@ -338,7 +340,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 torch.save(model_to_save.state_dict(), path)
                 print("saved the full model weights!", path)
             else:
@@ -354,7 +357,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 ckpt = {
                     "promptnumber": model_to_save.promptnumber,
                     "promptembedding": model_to_save.promptembedding

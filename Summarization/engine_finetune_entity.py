@@ -113,7 +113,7 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
             model.promptembedding = allckpt["promptembedding"]
         else:
             print("Initializing from scratch!")
-            promptnumber = 300
+            promptnumber = args.prompt_number
             taskname = "name entity recognition"
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
             print("prompt", promptembedding.shape)
@@ -255,7 +255,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 if "016" in args.pretrain_ckpt:
                     onepath += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    onepath += "_v3"
+                    #onepath += "_v3"
+                    onepath += "_v4"
                 oneckpt = torch.load(onepath)
                 d = {}
                 for k in model.state_dict().keys():
@@ -270,7 +271,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 if "016" in args.pretrain_ckpt:
                     onepath += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    onepath += "_v3"
+                    #onepath += "_v3"
+                    onepath += "_v4"
                 oneckpt = torch.load(onepath)
                 model.promptnumber = oneckpt["promptnumber"]
                 model.promptembedding = oneckpt["promptembedding"]
@@ -367,7 +369,8 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 torch.save(d, path)
             else:
                 ckpt = {
@@ -380,7 +383,8 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 if "016" in args.pretrain_ckpt:
                     path += "_v2"
                 if "019" in args.pretrain_ckpt:
-                    path += "_v3"
+                    #path += "_v3"
+                    path += "_v4"
                 torch.save(ckpt, path)
             print("saved new entity model ckpt!")
 

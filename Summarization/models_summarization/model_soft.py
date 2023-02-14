@@ -57,7 +57,7 @@ class ModelSoftPrompt(nn.Module):
             embed_dim = self.model.config.d_model
             embed_scale = math.sqrt(embed_dim)
             allembedding = allembedding * embed_scale
-
+        
         return self.model(
             inputs_embeds=allembedding,
             attention_mask=all_attention_mask,

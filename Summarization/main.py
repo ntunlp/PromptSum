@@ -71,7 +71,7 @@ def set_args():
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
-                        default="10", help="number of data points for training AND validation")
+                        default="100", help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
     parser.add_argument("--num_seeds", dest="num_seeds", type=int,
                         default=3, help="number of seeds to sample for training AND validation")
@@ -102,7 +102,7 @@ def set_args():
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
     parser.add_argument("--prompt_number", dest="prompt_number", type=int,
-                        default=300, help="The number of prompt")
+                        default=100, help="The number of prompt")
     ##### discrete prompt
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
                         default="ents")
@@ -182,13 +182,13 @@ def set_args():
     parser.add_argument("--lr_summary", dest="lr_summary", type=float,
                         default=5e-3, help='learning rate')
     parser.add_argument("--batch_size_per_gpu_summary", dest="batch_size_per_gpu_summary", type=int,
-                        default=2, help="batch size per gpu")
+                        default=1, help="batch size per gpu")
     parser.add_argument("--valid_size_per_gpu_summary", dest="valid_size_per_gpu_summary", type=int,
                         default=4, help="valid size per gpu")
     parser.add_argument("--test_size_per_gpu_summary", dest="test_size_per_gpu_summary", type=int,
                         default=4, help="test size per gpu")
     parser.add_argument("--gradient_accumulation_steps_summary", dest="gradient_accumulation_steps_summary", type=int,
-                        default=4, help="gradient accumulation steps")
+                        default=8, help="gradient accumulation steps")
     parser.add_argument("--max_epoch_summary", dest="max_epoch_summary", type=int,
                         default=60, help="max epoch number")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -255,9 +255,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model", help="path to pretrained model")
+                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -309,6 +309,10 @@ def set_args():
     args.test_key = test_keys[idx]
     args.highlights = highlights[idx]
     args.max_length = max_lengths[idx]
+    if args.prompt_number == 100 and args.dataset in ['cnndm', 'xsum']:
+        args.max_length = 768
+        if not(args.use_pretrain_ckpt) and "Mix" in args.model:
+            args.max_length = 704
     args.max_position_embeddings = max_position_embeddings[idx]
     args.max_summary_length = max_summary_lengths[idx]
     args.optimizer_entity = optimizers[idx]
@@ -590,7 +594,8 @@ def main(args):
                             if "016" in args.pretrain_ckpt:
                                 onepath += "_v2"
                             if "019" in args.pretrain_ckpt:
-                                onepath += "_v3"
+                                #onepath += "_v3"
+                                onepath += "_v4"
                             oneckpt = torch.load(onepath)
                             d = {}
                             for k in entmodel.state_dict().keys():
@@ -605,7 +610,8 @@ def main(args):
                             if "016" in args.pretrain_ckpt:
                                 onepath += "_v2"
                             if "019" in args.pretrain_ckpt:
-                                onepath += "_v3"
+                                #onepath += "_v3"
+                                onepath += "_v4"
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
