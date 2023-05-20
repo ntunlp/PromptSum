@@ -424,8 +424,8 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
     # ROUGE
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     mean_rs, r1s, r2s, rls = [], [], [], []
-    for x in range(len(allpreds)):
-        rouge_score = scorer.score(alllabels[x], allpreds[x])
+    for i in range(len(allpreds)):
+        rouge_score = scorer.score(alllabels[i], allpreds[i])
         r1 = rouge_score["rouge1"].fmeasure
         r2 = rouge_score["rouge2"].fmeasure
         rl = rouge_score["rougeLsum"].fmeasure
@@ -436,6 +436,31 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         rls.append(rl)
     print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
         100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)
+    ))
+    # Precision, Recall, F-1
+    ps, rs, f1s = [], [], []
+    for i in range(len(allpreds)):
+        preds_i = allpreds[i].lower().split(",")
+        labels_i = alllabels[i].lower().split(",")
+        p = 0.0
+        r = 0.0
+        for j in range(len(preds_i)):
+            if preds_i[j] in labels_i:
+                p += 1
+        p /= len(preds_i)
+        for j in range(len(labels_i)):
+            if labels_i[j] in preds_i:
+                r += 1
+        r /= len(labels_i)
+        if p + r != 0.0:
+            f1 = 2 * p * r / (p + r)
+        else:
+            f1 = 0.0
+        ps.append(p)
+        rs.append(r)
+        f1s.append(f1)
+    print("Entity inference Precision: {:.4f}, Recall: {:.4f}, F-1: {:.4f}".format(
+        100 * np.mean(ps), 100 * np.mean(rs), 100 * np.mean(f1s)
     ))
     # abstractiveness
     new_pred_ents, new_target_ents = [], []
