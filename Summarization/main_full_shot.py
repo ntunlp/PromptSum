@@ -697,6 +697,8 @@ def main(args):
         export_path = "scores/{}/full/prompt_sum_scores_{}_pretrained_{}_oracle_{}.pkl".format(
             args.dataset, args.dataset, args.use_pretrain_ckpt, is_oracle
         )
+        if args.no_finetuned_sprompt:
+            export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
         with open(export_path, "wb") as f:
             pickle.dump(d, f)
             print("Saved scores to {}".format(export_path))
