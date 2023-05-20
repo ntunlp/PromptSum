@@ -278,6 +278,16 @@ def set_args():
     parser.add_argument("--seeds_to_keep", 
                         default="0,1,2", help = "to select which seeds to run the exps on")
 
+    ######### inference-time ablations
+    parser.add_argument("--no_finetuned_sprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training S-prompt")
+    parser.add_argument("--no_sprompt", action='store_true',
+                        default=False, help="whether to use the S-prompt at inference")
+    parser.add_argument("--no_finetuned_eprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training E-prompt")
+    parser.add_argument("--no_entity_chain", action='store_true',
+                        default=False, help="whether to use the entity chain at inference")
+
     args = parser.parse_args()
 
     args.few_shot = int(args.few_shot)
@@ -604,18 +614,23 @@ def main(args):
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
                         else:
-                            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                            if args.use_pretrain_ckpt:
-                                onepath += "_from_pretrained"
-                            if "016" in args.pretrain_ckpt:
-                                onepath += "_v2"
-                            if "019" in args.pretrain_ckpt:
-                                #onepath += "_v3"
-                                onepath += "_v4"
-                            oneckpt = torch.load(onepath)
-                            entmodel.promptnumber = oneckpt["promptnumber"]
-                            entmodel.promptembedding = oneckpt["promptembedding"]
-                        logger.info("Loaded the entity model from: {}".format(onepath))
+                            if not (args.no_finetuned_eprompt):
+                                onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                                if args.use_pretrain_ckpt:
+                                    onepath += "_from_pretrained"
+                                if "016" in args.pretrain_ckpt:
+                                    onepath += "_v2"
+                                if "019" in args.pretrain_ckpt:
+                                    #onepath += "_v3"
+                                    onepath += "_v4"
+                                oneckpt = torch.load(onepath)
+                                entmodel.promptnumber = oneckpt["promptnumber"]
+                                entmodel.promptembedding = oneckpt["promptembedding"]
+                                logger.info("Loaded the entity model from: {}".format(onepath))
+                            else:
+                                ckpt = torch.load(args.pretrain_prompt_ckpt)
+                                entmodel.promptnumber = ckpt["promptnumber"]
+                                entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
                     else:
                         logger.info("Zero-shot - loading the prompt from pre-training ckpt")
                         ckpt = torch.load(args.pretrain_prompt_ckpt)
