@@ -718,10 +718,27 @@ def main(args):
 
             result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
             logger.info("Finish training")
-            logger.info("The model has {} trainable parameters".format(n_params))
-            #print(keys)
-            #print(result_dict_total.keys())
-            #print(result_dict.keys())
+
+            keys_to_keep = ["mean_rs", "r1s", "r2s", "rls", "bs"]
+            d = {}
+            for k in keys_to_keep:
+                d[k] = result_dict[k]
+            is_oracle = bool(args.guidance_mode == "target")
+            export_path = "scores/{}/{}/prompt_sum_scores_{}_seed_{}_pretrained_{}_oracle_{}.pkl".format(
+                args.dataset, args.few_shot, args.dataset, seed, args.use_pretrain_ckpt, is_oracle
+            )
+            if args.no_finetuned_sprompt:
+                export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
+            if args.no_sprompt:
+                export_path = export_path[:-4] + "_no_sprompt.pkl"
+            if args.no_finetuned_eprompt:
+                export_path = export_path[:-4] + "_no_finetuned_eprompt.pkl"
+            if args.no_entity_chain:
+                export_path = export_path[:-4] + "_no_entity_chain.pkl"
+            with open(export_path, "wb") as f:
+                pickle.dump(d, f)
+                print("Saved scores to {}".format(export_path))
+
             for k in keys:
                 if k in result_dict.keys():
                     result_dict_total[k].append(result_dict[k])
