@@ -174,24 +174,25 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 model.load_state_dict(torch.load(path))
                 print("loaded the full model weights!", path)
             else:
-                path = args.model_save_path + 'bestckpt'
-                if args.use_pretrain_ckpt:
-                    path += "_from_pretrained"
-                if args.guidance_mode == "target":
-                    path += "_oracle"
-                if args.counterfactual_removal:
-                    path = f'{path}_counterfactual'
-                if args.label_smoothing > 0:
-                    path += "_ls"
-                if "016" in args.pretrain_ckpt:
-                    path += "_v2"
-                if "019" in args.pretrain_ckpt:
-                    #path += "_v3"
-                    path += "_v4"
-                best_val_ckpt = torch.load(path)
-                model.promptnumber = best_val_ckpt["promptnumber"]
-                model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-                print("loaded the model prompt!", path)
+                if not(args.no_finetuned_sprompt):
+                    path = args.model_save_path + 'bestckpt'
+                    if args.use_pretrain_ckpt:
+                        path += "_from_pretrained"
+                    if args.guidance_mode == "target":
+                        path += "_oracle"
+                    if args.counterfactual_removal:
+                        path = f'{path}_counterfactual'
+                    if args.label_smoothing > 0:
+                        path += "_ls"
+                    if "016" in args.pretrain_ckpt:
+                        path += "_v2"
+                    if "019" in args.pretrain_ckpt:
+                        #path += "_v3"
+                        path += "_v4"
+                    best_val_ckpt = torch.load(path)
+                    model.promptnumber = best_val_ckpt["promptnumber"]
+                    model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
+                    print("loaded the model prompt!", path)
         # no need to save again
         args.save_model = False
         args.log_step_finetune = 100

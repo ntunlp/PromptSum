@@ -276,6 +276,9 @@ def set_args():
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
+    ######### inference-time ablations
+    parser.add_argument("--no_finetuned_sprompt", action='store_true',
+                        default=False, help="whether use a t5 tagger")
 
     args = parser.parse_args()
 
