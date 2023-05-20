@@ -278,7 +278,13 @@ def set_args():
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
     ######### inference-time ablations
     parser.add_argument("--no_finetuned_sprompt", action='store_true',
-                        default=False, help="whether use a t5 tagger")
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training S-prompt")
+    parser.add_argument("--no_sprompt", action='store_true',
+                        default=False, help="whether to use the S-prompt at inference")
+    parser.add_argument("--no_finetuned_eprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training E-prompt")
+    parser.add_argument("--no_entity_chain", action='store_true',
+                        default=False, help="whether to use the entity chain at inference")
 
     args = parser.parse_args()
 
@@ -699,6 +705,12 @@ def main(args):
         )
         if args.no_finetuned_sprompt:
             export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
+        if args.no_sprompt:
+            export_path = export_path[:-4] + "_no_sprompt.pkl"
+        if args.no_finetuned_eprompt:
+            export_path = export_path[:-4] + "_no_finetuned_eprompt.pkl"
+        if args.no_entity_chain:
+            export_path = export_path[:-4] + "_no_entity_chain.pkl"
         with open(export_path, "wb") as f:
             pickle.dump(d, f)
             print("Saved scores to {}".format(export_path))

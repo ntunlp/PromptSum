@@ -265,18 +265,19 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 model.promptnumber = oneckpt["promptnumber"]
                 print("loaded all model weights")
             else:
-                onepath = os.path.join(output_dir, "bestckpt_prompt")
-                if args.use_pretrain_ckpt:
-                    onepath += "_from_pretrained"
-                if "016" in args.pretrain_ckpt:
-                    onepath += "_v2"
-                if "019" in args.pretrain_ckpt:
-                    #onepath += "_v3"
-                    onepath += "_v4"
-                oneckpt = torch.load(onepath)
-                model.promptnumber = oneckpt["promptnumber"]
-                model.promptembedding = oneckpt["promptembedding"]
-                print("loaded model prompt weights")
+                if not (args.no_finetuned_eprompt):
+                    onepath = os.path.join(output_dir, "bestckpt_prompt")
+                    if args.use_pretrain_ckpt:
+                        onepath += "_from_pretrained"
+                    if "016" in args.pretrain_ckpt:
+                        onepath += "_v2"
+                    if "019" in args.pretrain_ckpt:
+                        #onepath += "_v3"
+                        onepath += "_v4"
+                    oneckpt = torch.load(onepath)
+                    model.promptnumber = oneckpt["promptnumber"]
+                    model.promptembedding = oneckpt["promptembedding"]
+                    print("loaded model prompt weights")
         dooneeval(model, test_dataloader, test_result_dict, 0, output_dir, args, save_model=False)
 
     torch.cuda.empty_cache()
