@@ -1,7 +1,7 @@
 ### dataset
-dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="0"
-cache='/home/mathieu/hf_models/pegasus-large/'
+dataset="ccdv/cnn_dailymail" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+device="2"
+cache='/data/mathieu/hf_models/pegasus-large/'
 
 
 ### backbone model
@@ -9,8 +9,8 @@ cache='/home/mathieu/hf_models/pegasus-large/'
 #pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
 #pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone (015_n_400k / 016)
-pretrain_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
-pretrain_prompt_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
+pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
+pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
 
 
 ############################ MixPrompt (PromptSum) - no pre-training
@@ -36,8 +36,8 @@ pretrain_prompt_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ##### test
 #echo "start full-shot prompt-tune_entity - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache --prompt_number 100
-#echo "start full-shot prompt-tune_summary - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
+echo "start full-shot prompt-tune_summary - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
 
 ############################ MixPrompt - oracle
 
@@ -53,8 +53,8 @@ pretrain_prompt_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ##### train + val
 #echo "start full-shot prompt-tune_entity"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_entity --use_pretrain_ckpt --cache_path $cache --tune_weights
-echo "start full-shot prompt-tune_summary"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --cache_path $cache --tune_weights
+#echo "start full-shot prompt-tune_summary"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --finetune_summary --use_pretrain_ckpt --cache_path $cache --tune_weights
 ##### test
 #echo "start full-shot prompt-tune_entity - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --use_pretrain_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache --tune_weights 

@@ -42,7 +42,7 @@ from models_summarization.model_mixture import *
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
-    root = "/home/mathieu/"
+    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -620,6 +620,7 @@ def main(args):
                     onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
                     if args.use_pretrain_ckpt:
                         onepath += "_from_pretrained"
+                    onepath += "_v4"
                     oneckpt = torch.load(onepath)
                     d = {}
                     for k in entmodel.state_dict().keys():
@@ -631,6 +632,7 @@ def main(args):
                     onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
                     if args.use_pretrain_ckpt:
                         onepath += "_from_pretrained"
+                    onepath += "_v4"
                     oneckpt = torch.load(onepath)
                     entmodel.promptnumber = oneckpt["promptnumber"]
                     entmodel.promptembedding = oneckpt["promptembedding"]
@@ -683,6 +685,18 @@ def main(args):
         logger.info("The model has {} trainable parameters".format(n_params))
         for k in keys:
             result_dict_total[k].append(result_dict[k])
+
+        keys_to_keep = ["mean_rs", "r1s", "r2s", "rls", "bs"]
+        d = {}
+        for k in keys_to_keep:
+            d[k] = result_dict[k]
+        is_oracle = bool(args.guidance_mode == "target")
+        export_path = "scores/{}/full/prompt_sum_scores_{}_pretrained_{}_oracle_{}.pkl".format(
+            args.dataset, args.dataset, args.use_pretrain_ckpt, is_oracle
+        )
+        with open(export_path, "wb") as f:
+            pickle.dump(d, f)
+            print("Saved scores to {}".format(export_path))
 
         mean_rs_summary = result_dict["mean_rs"]
         if mean_rs_entity != None:

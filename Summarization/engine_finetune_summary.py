@@ -302,7 +302,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     logger.info(rouge_score)
     p, r, f1 = entity_eval(allytrue, allypred)
     bs_p, bs_r, bs_f1 = score(allypred, allytrue, lang='en', verbose=True)
-    bs_f1 = 100 * bs_f1.mean()
+    #bs_f1 = 100 * bs_f1.mean()
 
     # change accordingly
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
@@ -318,10 +318,14 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         result_dict['precision'] = p
         result_dict['recall'] = r
         result_dict['f1'] = f1
-        result_dict["BERTScore"] = bs_f1
+        result_dict["BERTScore"] = bs_f1.mean()
 
-        result_dict["mean_rs"] = mean_rs
-        
+        result_dict["mean_rs"] = np.array(mean_rs)
+        result_dict["r1s"] = np.array(r1s)
+        result_dict["r2s"] = np.array(r2s)
+        result_dict["rls"] = np.array(rls)
+        result_dict["bs"] = np.array(bs_f1)
+
         if args.save_model:
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
