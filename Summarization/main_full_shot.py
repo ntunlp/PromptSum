@@ -638,14 +638,19 @@ def main(args):
                     entmodel.promptnumber = oneckpt["promptnumber"]
                     entmodel.promptembedding = oneckpt["promptembedding"]
                 else:
-                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
-                    if args.use_pretrain_ckpt:
-                        onepath += "_from_pretrained"
-                    onepath += "_v4"
-                    oneckpt = torch.load(onepath)
-                    entmodel.promptnumber = oneckpt["promptnumber"]
-                    entmodel.promptembedding = oneckpt["promptembedding"]
-                logger.info("Loaded the entity model from: {}".format(onepath))
+                    if not (args.no_finetuned_eprompt):
+                        onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+                        if args.use_pretrain_ckpt:
+                            onepath += "_from_pretrained"
+                        onepath += "_v4"
+                        oneckpt = torch.load(onepath)
+                        entmodel.promptnumber = oneckpt["promptnumber"]
+                        entmodel.promptembedding = oneckpt["promptembedding"]
+                        logger.info("Loaded the entity model from: {}".format(onepath))
+                    else:
+                        ckpt = torch.load(args.pretrain_prompt_ckpt)
+                        entmodel.promptnumber = ckpt["promptnumber"]
+                        entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
 
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))
