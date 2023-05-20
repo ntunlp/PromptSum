@@ -1,6 +1,6 @@
-### dataset
+### dataiet
 dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="5"
+device="6"
 cache='/data/mathieu/hf_models/pegasus-large/'
 
 
@@ -48,8 +48,8 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ############################ MixPrompt (PromptSum) - no S-prompt
 
 ##### test
-#echo "PromptSum no S-prompt - Summary inference - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_sprompt
+echo "PromptSum no S-prompt - Summary inference - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_sprompt
 
 ############################ MixPrompt (PromptSum) - no fine-tuned E-prompt
 
@@ -60,8 +60,8 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ############################ MixPrompt (PromptSum) - no entity chain
 
 ##### test
-echo "PromptSum no entity chain - Summary inference - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_entity_chain
+#echo "PromptSum no entity chain - Summary inference - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_entity_chain
 
 ############################ MixPrompt - oracle
 
