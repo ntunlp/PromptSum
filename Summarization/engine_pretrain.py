@@ -116,32 +116,10 @@ def pretrain_model(dataset_args, args):
             print("saved the pre-training val data")
         raise Exception
     else:
-        if args.use_huggingface_dataset:
-            dataset = load_from_disk(args.pretrain_dataset_path)
-            train_data, val_data = dataset['train'], dataset['validation']
-            train_texts, train_target, train_ents = VirtualList(train_data, 'text_rest'), VirtualList(train_data, 'summary'), VirtualList(train_data, 'ent_chain')
-            val_texts, valid_target, val_ents = VirtualList(val_data, 'text_rest'), VirtualList(val_data, 'summary'), VirtualList(val_data, 'ent_chain')
-        else:
-            train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], args.pretraining_train_size)
-            with open(train_path, "rb") as f:
-                train_data = pickle.load(f)
-            print("load the pre-training train data")
-            train_texts, train_target, train_ents = train_data
-            print(len(train_texts))
-            val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], args.pretraining_val_size)
-            with open(val_path, "rb") as f:
-                val_data = pickle.load(f)
-            print("load the pre-training val data")
-            val_texts, valid_target, val_ents = val_data
-            print(len(val_texts))
-            if args.debug_pretrain:
-                train_texts = train_texts[:10]
-                train_target = train_target[:10]
-                train_ents = train_ents[:10]
-                val_texts = val_texts[:10]
-                valid_target = valid_target[:10]
-                val_ents = val_ents[:10]
-                print(len(train_texts), len(val_texts))
+        dataset = load_from_disk(args.pretrain_dataset_path)
+        train_data, val_data = dataset['train'], dataset['validation']
+        train_texts, train_target, train_ents = VirtualList(train_data, 'text_rest'), VirtualList(train_data, 'summary'), VirtualList(train_data, 'ent_chain')
+        val_texts, valid_target, val_ents = VirtualList(val_data, 'text_rest'), VirtualList(val_data, 'summary'), VirtualList(val_data, 'ent_chain')
 
     # datasets
     train_dataset = DatasetPretrain(train_texts, train_ents, train_target, max_seq_length, tokenizer, args)
