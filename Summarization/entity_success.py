@@ -3,12 +3,12 @@ import argparse
 import logging
 from utils import Nop
 import torch
-from dataset_finetune_entity import *
-from dataset_finetune_summary import *
+from dataset_entity import *
+from dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
-from models_summarization.model_mixture import *
+from engine_entity import *
+from engine_summary import *
+from models.model_summary_mix import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 from rouge_score import rouge_scorer
@@ -363,17 +363,17 @@ def main(args):
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle'
+            args.allnumber_path = '../support_files/allnumber_t5.pkl'
         elif 'Pegasus' in args.model:
             basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
             logger.info('loaded pegasus models')
-            args.allnumber_path = 'allnumber.pickle_newforpegasus'
+            args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
         else:
             basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+        model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
         promptnumber = args.prompt_number
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
         model.set_prompt_embedding(promptnumber, promptembedding)

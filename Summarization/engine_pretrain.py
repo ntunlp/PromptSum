@@ -1,23 +1,21 @@
 import gc
 
 import logging
-import os
 import numpy as np
 import torch.nn.functional as F
 import sys
-import datasets
-sys.path.append("./prompt_tuning_ckpt_conll/")
+
+sys.path.append("../suport_files/")
 import spacy
 import nltk
 import pickle
 
-from transformers import (AdamW, get_linear_schedule_with_warmup)
 from transformers.optimization import Adafactor
 #from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from torch.utils import data
-from torch.utils.data import (DataLoader, RandomSampler, SequentialSampler, TensorDataset)
+from torch.utils.data import (DataLoader, SequentialSampler, TensorDataset)
 from torch.utils.data.distributed import DistributedSampler
-from tqdm import tqdm, trange
+from tqdm import tqdm
 from rouge_score import rouge_scorer
 from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
@@ -26,7 +24,7 @@ from torch.cuda.amp import autocast as autocast
 from nltk.tokenize import sent_tokenize
 from datasets import load_from_disk
 from dataset_pretrain import *
-from model_pretrain import *
+from Summarization.models.model_pretrain import ModelPretrain
 from utils import VirtualList
 
 
@@ -59,14 +57,14 @@ def pretrain_model(dataset_args, args):
 
     t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
     tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-    model = T5forPretrain(args, t5model, tokenizer)
+    model = ModelPretrain(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logger.info("The model has {} trainable parameters".format(n_params))
 
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
     if ifuseconll:
-        allckpt = torch.load("./prompt_tuning_ckpt_conll/bestckpt")
+        allckpt = torch.load("../support_files/conll_bestckpt")
         model.promptnumber = allckpt["promptnumber"]
         model.promptembedding = allckpt["promptembedding"]
         model.promptnumberforsum = allckpt["promptnumber"]

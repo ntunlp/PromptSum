@@ -283,7 +283,7 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname):
             embeddingres = torch.mean(embeddingres, 0, keepdim=True)
         promptinitembedding[startindex] = embeddingres
         startindex += 1
-    fr = open('allnumber.pickle', 'rb')
+    fr = open('../support_files/allnumber_t5.pkl', 'rb')
     alltokens = pickle5.load(fr)
     sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
     top5000 = []

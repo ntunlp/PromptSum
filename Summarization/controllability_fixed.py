@@ -3,12 +3,12 @@ import argparse
 import logging
 from utils import Nop
 import torch
-from dataset_finetune_entity import *
-from dataset_finetune_summary import *
+from dataset_entity import *
+from dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
-from models_summarization.model_mixture import *
+from engine_entity import *
+from engine_summary import *
+from models.model_summary_mix import ModelSummaryMix
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 import random
@@ -163,7 +163,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
 
             # just prompt
             #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.ckpt_name}'
+            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.ckpt_name}'
             print(onepath)
             oneckpt = torch.load(onepath)
             entmodel.promptnumber = oneckpt["promptnumber"]
@@ -175,8 +175,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             logger.info("move to device!")
             model.eval()
 
-            idxpath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
-            respath_full = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'\
+            idxpath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
+            respath_full = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'\
             # logger.info(f'respath: {respath}')
             with open(respath_full, "rb") as f:
                 allresofvalid = pickle.load(f)
@@ -309,16 +309,16 @@ def main(args):
     if 'Bart' in args.model:
         basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        args.allnumber_path = 'allnumber.pickle'
+        args.allnumber_path = '../support_files/allnumber_t5.pkl'
     elif 'Pegasus' in args.model:
         basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
         logger.info('loaded pegasus models')
-        args.allnumber_path = 'allnumber.pickle_newforpegasus'
+        args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
     else:
         basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+    model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)

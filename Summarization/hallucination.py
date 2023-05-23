@@ -3,12 +3,12 @@ import argparse
 import logging
 from utils import Nop
 import torch
-from dataset_finetune_entity import *
-from dataset_finetune_summary import *
+from dataset_entity import *
+from dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
-from models_summarization.model_mixture import *
+from engine_entity import *
+from engine_summary import *
+from models.model_summary_mix import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 import random
@@ -202,7 +202,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             # entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
             entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
             enttokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+            entmodel = ModelEntity(entbasemodel, enttokenizer, args)
             logger.info("Loading the pre-trained NER model!")
 
             # model weights
@@ -215,7 +215,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
 
             # just prompt
             #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.tagger_ckpt_name}'
+            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.tagger_ckpt_name}'
             print(onepath)
             oneckpt = torch.load(onepath, map_location="cuda:0")
             entmodel.promptnumber = oneckpt["promptnumber"]
@@ -228,10 +228,10 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             model.eval()
 
             if args.big_testset:
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
-                # respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
+                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
+                # respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
             else:
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
             logger.info(f'respath: {respath}')
             if not os.path.isfile(respath):
                 logger.info('generating')
@@ -387,20 +387,15 @@ def main(args):
     # tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
     basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-    args.allnumber_path = 'allnumber.pickle_newforpegasus'
+    args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
     # basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+    model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
-<<<<<<< HEAD
     if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
         ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
-=======
-    if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
-        ckptsum = torch.load(args.pretrain_ckpt)
->>>>>>> main
         dicsum = {}
         for x in ckptsum.keys():
             if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):

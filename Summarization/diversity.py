@@ -4,12 +4,12 @@ import logging
 from utils import Nop
 import torch
 import random
-from dataset_finetune_entity import *
-from dataset_finetune_summary import *
+from dataset_entity import *
+from dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
-from models_summarization.model_mixture import *
+from engine_entity import *
+from engine_summary import *
+from models.model_summary_mix import *
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 from rouge_score import rouge_scorer
@@ -24,9 +24,9 @@ from collections import defaultdict
 from fairseq.models.bart import BARTModel
 from itertools import combinations
 
-from models_summarization.model_finetune import *
-from models_summarization.model_soft import *
-from models_summarization.model_mixture import *
+from models.model_summary_finetune import *
+from models.model_summary_soft import *
+from models.model_summary_mix import *
 
 
 def set_args():
@@ -197,11 +197,11 @@ def main(args):
         # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
         logger.info('loaded pegasus models')
-        args.allnumber_path = 'allnumber.pickle_newforpegasus'
+        args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
         if "Finetune" in args.model:
-            model = ModelFinetune(args, basemodel, tokenizer, args.model)
+            model = ModelSummaryFinetune(args, basemodel, tokenizer, args.model)
         elif "Mix" in args.model:
-            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+            model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
             promptnumber = args.prompt_number
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
@@ -249,7 +249,7 @@ def main(args):
     if "Mix" in args.model:
         entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+        entmodel = ModelEntity(entbasemodel, enttokenizer, args)
         if args.use_pretrain_ckpt:
             ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
             dic = {}
@@ -267,7 +267,7 @@ def main(args):
             entmodel.load_state_dict(dic)
             logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
-            onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
             if args.use_pretrain_ckpt:
                 onepath += "_from_pretrained"
             oneckpt = torch.load(onepath)

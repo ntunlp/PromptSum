@@ -28,15 +28,15 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
 from dataset import * 
-from dataset_finetune_entity import *
-from dataset_finetune_summary import *
+from dataset_entity import *
+from dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
+from engine_entity import *
+from engine_summary import *
 
-from models_summarization.model_finetune import *
-from models_summarization.model_soft import *
-from models_summarization.model_mixture import *
+from models.model_summary_finetune import ModelSummaryFinetune
+from models.model_summary_soft import ModelSummarySoft
+from models.model_summary_mix import ModelSummaryMix
 
 
 def set_args():
@@ -542,27 +542,27 @@ def main(args):
         # base model
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle'
+            args.allnumber_path = '../support_files/allnumber_t5.pkl'
         elif 'Pegasus' in args.model:
             basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle_newforpegasus'
+            args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
         else:
             basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle'
+            args.allnumber_path = '../support_files/allnumber_t5.pkl'
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
         if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
             logger.info('\nFinetuning')
-            model = ModelFinetune(args, basemodel, tokenizer, args.model)
+            model = ModelSummaryFinetune(args, basemodel, tokenizer, args.model)
         elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
             logger.info('\nSoft prompt tuning')
-            model = ModelSoftPrompt(args, basemodel, tokenizer, args.model)
+            model = ModelSummarySoft(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         elif args.model in ['T5MixPrompt', 'BartMixPrompt', 'PegasusMixPrompt']:
             logger.info('\nMix prompt tuning')
-            model = ModelMixPrompt(args, basemodel, tokenizer, args.model)
+            model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         else:
@@ -605,11 +605,11 @@ def main(args):
                 if args.model == "T5MixPrompt":
                     entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
                     enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                    entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+                    entmodel = ModelEntity(entbasemodel, enttokenizer, args)
                 elif args.model == "PegasusMixPrompt":
                     entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
                     enttokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-                    entmodel = ModelforFinetuneEntity(entbasemodel, enttokenizer, args)
+                    entmodel = ModelEntity(entbasemodel, enttokenizer, args)
                 logger.info("Loading the pre-trained NER model!")
 
                 # model weights
@@ -628,7 +628,7 @@ def main(args):
                     logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
                 if args.tune_weights:
-                    onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
+                    onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
                     if args.use_pretrain_ckpt:
                         onepath += "_from_pretrained"
                     onepath += "_v4"
@@ -641,7 +641,7 @@ def main(args):
                     entmodel.promptembedding = oneckpt["promptembedding"]
                 else:
                     if not (args.no_finetuned_eprompt):
-                        onepath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+                        onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
                         if args.use_pretrain_ckpt:
                             onepath += "_from_pretrained"
                         onepath += "_v4"
@@ -660,11 +660,11 @@ def main(args):
                 logger.info("move to device!")
                 model.eval()
 
-                respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
+                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
                 if args.big_testset:
-                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
+                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
                 elif args.full_testset:
-                    respath = f'tagger_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
+                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
                 if args.use_pretrain_ckpt:
                     respath = respath[:-4] + "_from_pretrained.pkl"
                 if args.tune_weights:

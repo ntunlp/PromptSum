@@ -15,11 +15,11 @@ ckpt_name="bestckpt_from_pretrained" # ['bestckpt_from_pretrained', 'bestckpt', 
 # mode="k_entity_test" #["oracle", "oracle_add_entity", "oracle_drop_entity", "single_entity_test", "k_entity_test", "interact
 # # k-shot
 # echo "start k-shot prompt-tune_entity"
-# python main.py --dataset $dataset --num_seeds 1 --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt
+# python main_few_shot.py --dataset $dataset --num_seeds 1 --few_shot $k_shot --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt
 # echo "end k-shot prompt-tune_entity"
 
 # echo "start k-shot prompt-tune_summary"
-# python main.py --dataset $dataset --num_seeds 1 --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60
+# python main_few_shot.py --dataset $dataset --num_seeds 1 --few_shot $k_shot --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60
 # echo "end k-shot prompt-tune_summary"
 
 # echo "start CONTROLLING experiments"

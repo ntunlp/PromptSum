@@ -1,7 +1,7 @@
 import torch
 import os
 import sys
-sys.path.append("./prompt_tuning_ckpt_conll/")
+sys.path.append("../support_files/")
 import numpy as np
 import random
 import csv
@@ -139,7 +139,7 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname, path):
 
 def getmixpromptembedding(model, tokenizer, task_prompt_length, path):
     def sample_top_k_tokens(topk, t5_embedding):
-        with open('allnumber.pickle', 'rb') as fr:
+        with open('../support_files/allnumber_t5.pkl', 'rb') as fr:
             alltokens = pickle5.load(fr)
         sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
         top5000 = []

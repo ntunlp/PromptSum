@@ -11,11 +11,11 @@ pretrain_prompt_ckpt="/data/hailin/PromptSum/t5_tagger_pretrained_ckpt/012_cc_en
 
 # 10-shot
 # echo "start 10-shot prompt-tune_entity"
-# CUDA_VISIBLE_DEVICES=0 python main.py --few_shot 100 --finetune_entity --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --num_seeds 1 --dataset_name xsum
+# CUDA_VISIBLE_DEVICES=0 python main_few_shot.py --few_shot 100 --finetune_entity --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --num_seeds 1 --dataset_name xsum
 # echo "end 10-shot prompt-tune_entity"
 
 # echo "start 10-shot prompt-tune_summary"
-# python main.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --num_seeds 1 --dataset_name xsum
+# python main_few_shot.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --num_seeds 1 --dataset_name xsum
 # echo "end 10-shot prompt-tune_summary"
 
 # echo "CONTROLLING EXPS"
@@ -36,7 +36,7 @@ pretrain_prompt_ckpt="/data/hailin/PromptSum/t5_tagger_pretrained_ckpt/012_cc_en
 
 
 # echo "start 100-shot prompt-tune_summary for cnndm with counterfactual training"
-# CUDA_VISIBLE_DEVICES=7 python main.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --num_seeds 1 --dataset_name ccdv/cnn_dailymail --counterfactual_removal True
+# CUDA_VISIBLE_DEVICES=7 python main_few_shot.py --few_shot 100 --finetune_summary --pretrain_ckpt $pretrain_ckpt  --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 60 --num_seeds 1 --dataset_name ccdv/cnn_dailymail --counterfactual_removal True
 # echo "end 100-shot prompt-tune_summary"
 
 # echo "CONTROLLING EXPS FOR CNNDM - WITH COUNTERFACTUAL TRAINING"
