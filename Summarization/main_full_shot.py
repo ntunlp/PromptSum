@@ -381,6 +381,8 @@ def main(args):
 
     seed_everything(args)
 
+    time.sleep(14400)
+
     # log train
     if args.local_rank in [0, -1]:
         if not os.path.exists("./log"):

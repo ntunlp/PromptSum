@@ -114,6 +114,7 @@ class ModelMixPrompt(nn.Module):
             prompt_embed = soft_prompt_embed
         else:
             prompt_embed = torch.cat([soft_prompt_embed, discrete_prompt_embed], 1)
+        #print("prompt", prompt_embed.shape)
         mask_prompt = torch.full((batch["attention_mask"].shape[0], prompt_embed.shape[1]), 1).to(self.args.device)
 
         allembedding = torch.cat([input_embed_part, prompt_embed], 1)

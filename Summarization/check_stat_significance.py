@@ -10,10 +10,10 @@ n_seeds = 3
 metrics = ["r1s", "r2s", "rls", "bs"]
 models = [
     "pretrained_False_oracle_False",
-    "pretrained_True_oracle_False_no_finetuned_sprompt",
-    "pretrained_True_oracle_False_no_sprompt",
     "pretrained_True_oracle_False_no_finetuned_eprompt",
-    "pretrained_True_oracle_False_no_entity_chain"
+    "pretrained_True_oracle_False_no_entity_chain",
+    "pretrained_True_oracle_False_no_finetuned_sprompt",
+    "pretrained_True_oracle_False_no_sprompt"
 ]
 
 for dataset in datasets:
@@ -34,6 +34,7 @@ for dataset in datasets:
             all_base_scores = []
             for j in range(n_seeds):
                 base_scores = pickle.load(open(f"scores/{dataset}/{volume}/prompt_sum_scores_{dataset}_seed_{j}_pretrained_True_oracle_False.pkl", "rb"))
+                #base_scores = {"r1s": np.ones(1000), "r2s": np.ones(1000), "rls": np.ones(1000), "bs": np.ones(1000)}
                 all_base_scores.append(base_scores)
             base_scores = {}
             for k in all_base_scores[0].keys():
