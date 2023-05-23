@@ -29,6 +29,6 @@ Summarization/*controlling_xsum*
 Summarization/*prompt_baseline*
 Summarization/frost_baseline/frost_pretrained_ckpt.pt
 Summarization/controlling
-
+Summarization/entity_ckpt/*
 
 
