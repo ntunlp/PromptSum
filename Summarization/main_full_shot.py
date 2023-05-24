@@ -11,29 +11,16 @@ gc.enable()
 from datasets import load_dataset, load_metric
 import spacy
 import scipy
-from rouge_score import rouge_scorer
-from nltk.tokenize import sent_tokenize
-from tqdm import tqdm
-from transformers.optimization import Adafactor
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
-from torch.cuda.amp import autocast as autocast
-from torch.utils import data
-from torch.utils.data import (
-    SequentialSampler, RandomSampler
-)
-from fairscale.optim.oss import OSS
-from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
-from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
-from dataset import * 
+from dataset import Dataset
 from dataset_entity import *
-from dataset_summary import *
+from dataset_summary import DatasetSummary
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
-
 from models.model_summary_finetune import ModelSummaryFinetune
 from models.model_summary_soft import ModelSummarySoft
 from models.model_summary_mix import ModelSummaryMix

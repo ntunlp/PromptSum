@@ -7,9 +7,9 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 
 
 
-class DatasetPretrainEntity(Dataset):
+class DatasetPretrain(Dataset):
     def __init__(self, filename, maxlen, tokenizer):
-        super(DatasetPretrainEntity, self).__init__()
+        super(DatasetPretrain, self).__init__()
         self.filename = filename
         self.maxlen = maxlen
         self.tokenizer = tokenizer
@@ -283,7 +283,7 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname):
             embeddingres = torch.mean(embeddingres, 0, keepdim=True)
         promptinitembedding[startindex] = embeddingres
         startindex += 1
-    fr = open('../support_files/allnumber_t5.pkl', 'rb')
+    fr = open('../../support_files/allnumber_t5.pkl', 'rb')
     alltokens = pickle5.load(fr)
     sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
     top5000 = []

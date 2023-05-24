@@ -1,7 +1,7 @@
 from ast import excepthandler
 import sys
 
-sys.path.append("../..")
+sys.path.append("../../..")
 
 import spacy
 import torch
@@ -22,9 +22,9 @@ from nltk.corpus import stopwords
 
 
 
-class SummarizationDataset(Dataset):
+class DatasetSummary(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None, human_eval=False):
-        super(SummarizationDataset, self).__init__()
+        super(DatasetSummary, self).__init__()
 
         self.filename = filename
         self.maxlen = maxlen

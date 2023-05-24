@@ -23,24 +23,24 @@ from torch.utils import data
 from torch.utils.data import (
     SequentialSampler, RandomSampler
 )
+from pathlib import Path
 from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
-from dataset import *
-from dataset_entity import *
-from dataset_summary import *
+from dataset.dataset import Dataset
+from dataset.dataset_entity import *
+from dataset.dataset_summary import DatasetSummary
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
-
 from models.model_entity import ModelEntity
 from models.model_summary_finetune import ModelSummaryFinetune
 from models.model_summary_soft import ModelSummarySoft
 from models.model_summary_mix import ModelSummaryMix
 
-from pathlib import Path
+
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
