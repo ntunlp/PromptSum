@@ -1,13 +1,8 @@
-import pickle
-import argparse
 import gc
 import spacy
 import time
 import logging
 import torch.optim as optim
-
-gc.enable()
-
 from datasets import load_metric
 from rouge_score import rouge_scorer
 from bert_score import score
@@ -23,13 +18,16 @@ from torch.utils.data import (
 from fairscale.optim.oss import OSS
 from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
+gc.enable()
 
 from utils import *
 from models.model_summary_soft import *
 from dataset_summary import *
 
-logger = logging.getLogger('root')
 
+
+
+logger = logging.getLogger('root')
 
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step

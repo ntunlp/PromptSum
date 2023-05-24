@@ -1,10 +1,7 @@
 import gc
-
 import logging
 import numpy as np
-import torch.nn.functional as F
 import sys
-
 sys.path.append("../suport_files/")
 import spacy
 import nltk
@@ -23,17 +20,17 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 from torch.cuda.amp import autocast as autocast
 from nltk.tokenize import sent_tokenize
 from datasets import load_from_disk
-from dataset_pretrain import *
+
+from dataset.dataset_pretrain import *
 from models.model_pretrain import ModelPretrain
 from utils import VirtualList
+
 
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
 logger = logging.getLogger(__name__)
-
-
 
 def pretrain_model(dataset_args, args):
     print("Pre-training entity tagger...")

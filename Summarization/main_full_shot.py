@@ -1,18 +1,15 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"] = '2'
 import pickle
 import argparse
 import gc
 import time
 import logging
-
-gc.enable()
-
-from datasets import load_dataset, load_metric
 import spacy
 import scipy
+from datasets import load_dataset, load_metric
 from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
+gc.enable()
 
 from utils import *
 from dataset.dataset import *
@@ -24,6 +21,7 @@ from engine_summary import *
 from models.model_summary_finetune import ModelSummaryFinetune
 from models.model_summary_soft import ModelSummarySoft
 from models.model_summary_mix import ModelSummaryMix
+
 
 
 def set_args():

@@ -1,27 +1,11 @@
-import pickle
-import argparse
-import gc
 import spacy
-import time
-import logging
-
-gc.enable()
-
 from datasets import load_metric
 from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
-#from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
-from torch.cuda.amp import autocast as autocast
-from torch.utils import data
-from torch.utils.data import (
-    SequentialSampler, RandomSampler
-)
-from fairscale.optim.oss import OSS
-from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
-from fairscale.optim.grad_scaler import ShardedGradScaler
+gc.enable()
 
 from utils import *
 from dataset_pretrain import *

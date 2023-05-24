@@ -1,19 +1,17 @@
 # This script performs qualitative tests to test a model for controllablity
 import argparse
-import logging
-from utils import Nop
-import torch
+import copy
+from nltk.tokenize import sent_tokenize
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
+
 from dataset_entity import *
 from dataset_summary import *
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
 from models.model_summary_mix import *
-from nltk.tokenize import sent_tokenize
-from pathlib import Path
-import random
-import copy
-from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
+
+
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
