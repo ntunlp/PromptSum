@@ -1,24 +1,29 @@
 # This script performs qualitative tests to test a model for controllablity
 import argparse
+import logging
+import torch
 import copy
+import random
 from nltk.tokenize import sent_tokenize
+from pathlib import Path
 from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
 
-from dataset_entity import *
-from dataset_summary import *
+from utils import Nop
+from dataset.dataset import subsample_2k_testset
+from dataset.dataset_entity import *
+from dataset.dataset_summary import *
 from engine_pretrain import *
-from engine_entity import *
-from engine_summary import *
+from engine_finetune_entity import *
+from engine_finetune_summary import *
 from models.model_summary_mix import *
 
 
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/export/home/"
-    data_root = "/export/home/"
+    root = "/data/mathieu/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "dataset/PromptSumm/")
+                        default= root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                             default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
@@ -26,9 +31,9 @@ def set_args():
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
-                        default="bestckpt_from_pretrained", help="model ckpt name") 
+                        default="bestckpt_from_pretrained_v4", help="model ckpt name") 
     parser.add_argument("--tagger_ckpt_name", dest="tagger_ckpt_name", type=str,
-                        default="bestckpt_prompt", help="tagger ckpt name")                     
+                        default="bestckpt_prompt_from_pretrained_v4", help="tagger ckpt name")                     
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
@@ -65,7 +70,7 @@ def set_args():
     parser.add_argument("--local_rank", dest="local_rank", type=int,
                         default=-1, help="local rank")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
-                        default=10, help="number of data points for training AND validation")
+                        default=100, help="number of data points for training AND validation")
     parser.add_argument("--use_t5_tagger",  action='store_false',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--infer_val_entities", action="store_false",
@@ -81,17 +86,21 @@ def set_args():
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
     parser.add_argument("--prompt_number", dest="prompt_number", type=int,
-                        default=300, help="The number of prompt")
+                        default=100, help="The number of prompt")
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default="../pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="../tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
+    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
+                        default=False)
+    parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
+                        default=128, help="maximum length of the generated entity chain")
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -104,8 +113,6 @@ def set_args():
     
     args = parser.parse_args()
     ## SET HERE FOR PRETRAIN
-    # args.pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
-    # args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
     max_summary_lengths = [128, 64, 64, 128, 256, 64]
     highlights = [True, False, False, False, False, False, False]
     
@@ -209,7 +216,6 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             entmodel.load_state_dict(dic)
 
             # just prompt
-            #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
             onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.tagger_ckpt_name}'
             print(onepath)
             oneckpt = torch.load(onepath, map_location="cuda:0")
@@ -222,9 +228,12 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             logger.info("move to device!")
             model.eval()
 
-            respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+            respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/valid_ent.pkl'
+            if args.use_pretrain_ckpt:
+                respath = respath[:-4] + "_from_pretrained.pkl"
             logger.info(f'respath: {respath}')
-            if not os.path.isfile(respath):
+            #if not os.path.isfile(respath):
+            if True:
                 logger.info('generating')
                 #XSUM INFER
                 alldata = valid_dataset.data
@@ -236,7 +245,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
                             logger.info(f"gen step: {step}")
                         onedata = alldata[step]
                         inputdata = onedata[0]
-                        tempdata = re.sub(' +', ' ', inputdata)
+                        tempdata = re.sub(' +', ' ', inputdata).strip()
                         inputres = enttokenizer.batch_encode_plus([tempdata], padding=True, max_length=args.max_length, truncation=True, return_tensors="pt")
                         input_ids = inputres["input_ids"].to(args.device)
                         attention_mask = inputres["attention_mask"].to(args.device)
@@ -252,7 +261,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
                 logger.info(len(allresofvalid))
                 with open(respath, "wb") as f:
                     pickle.dump(allresofvalid, f)
-                    logger.info("saved the T5 valid entities")
+                    logger.info("saved the valid entities")
                 torch.cuda.empty_cache()
                 del entmodel, enttokenizer
                 gc.collect()
@@ -268,12 +277,15 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
     for i, data in enumerate(valid_dataset.data):
         inputdata = data[0]
         tempdata = re.sub(' +', ' ', inputdata)
+        if tempdata not in valid_dataset.allent:
+            tempdata = tempdata.rstrip()
         try:
             entity_chain = valid_dataset.allent[tempdata]
         except:
             logger.info(f'DATA: {data}')
             logger.info(f'cannot find :{tempdata}')
             logger.info(f'dict :{valid_dataset.allent}')
+            import pdb;pdb.set_trace()
             raise Exception('end')
         non_halents, hal = hallucinated(entity_chain, inputdata, spacy_nlp)
         if hal:
@@ -292,6 +304,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
     logger.info(f'{valid_dataset_nh.num_entries} NON-hallucinated examples')
     names = ['NOT HALLUCINATED', 'HALLUCINATED AS-IS', 'HALLUCINATED WITH HALLUCINATION REMOVED']
     for idx, valid_dataset in enumerate([valid_dataset_nh, valid_dataset_h, valid_dataset_hr]):
+        #if idx != 1:
+        #    continue
         valid_sampler = SequentialSampler(valid_dataset)
         valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                         args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
@@ -301,7 +315,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         allent = []
         with torch.no_grad():
             for step, batch in enumerate(valid_dataloader):
-                # logger.info(step)
+                #logger.info(step)
                 inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
@@ -347,7 +361,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         # percentage of hallucinated entities
         percent_hals = count_hallucination_percentage(all_inputs, allypred, spacy_nlp)
 
-        for i in range(min(10, len(allypred))): # only print limited examples
+        for i in range(min(3, len(allypred))): # only print limited examples
             logger.info('-----')
             logger.info(f'INPUT: {all_inputs[i]}')
             # logger.info(f'LABEL: {labels0[i]}')
@@ -385,8 +399,8 @@ def main(args):
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
-    if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "PegasusFinetune"]):
-        ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
+    if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
+        ckptsum = torch.load(args.pretrain_ckpt, map_location='cuda:0')
         dicsum = {}
         for x in ckptsum.keys():
             if not (x in ["module.promptnumberforsum", "module.promptembeddingforsum"]):
@@ -397,7 +411,7 @@ def main(args):
     args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
     
     ## LOAD CKPT
-    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
+    args.model_save_folder = f'summary_ckpt/{args.dataset}/{args.few_shot}/'
     if args.model != 'T5MixPrompt':
         args.model_save_folder += f'{args.model}/'
     # args.model_save_path = args.model_save_folder + f'seed_{seed}/'
@@ -422,6 +436,7 @@ def main(args):
     tokenizer.add_tokens(list(special_tokens.values()))
     tokenizer.add_tokens(['[SEP]'])
     # if big dataset, change the validation set
+
     valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
     args.full_testset = True
 
@@ -434,6 +449,7 @@ def main(args):
     scaler = None
     spacy_nlp = spacy.load("en_core_web_sm")
     eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp)
+
 
 if __name__ == "__main__":
     args = set_args()
