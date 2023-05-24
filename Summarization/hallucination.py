@@ -90,13 +90,10 @@ def set_args():
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
                         default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
-    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")  
-    parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")    
+    parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
-    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
-                        default=False)
     
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
@@ -227,11 +224,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             logger.info("move to device!")
             model.eval()
 
-            if args.big_testset:
-                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestent.pkl'
-                # respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5testent.pkl'
-            else:
-                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
+            respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
             logger.info(f'respath: {respath}')
             if not os.path.isfile(respath):
                 logger.info('generating')
@@ -431,20 +424,15 @@ def main(args):
     tokenizer.add_tokens(list(special_tokens.values()))
     tokenizer.add_tokens(['[SEP]'])
     # if big dataset, change the validation set
-    print('args.big_testset: ', args.big_testset)
-    if args.big_testset:
-        valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
-        args.full_testset = True
+    valid_file_name = args.data_dir + args.dataset + '/full_test.txt'
+    args.full_testset = True
 
-        # check if we have already generated it
-        if not os.path.isfile(valid_file_name):
-            dataset_args = [args.dataset_name, args.dataset_version]
-            subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
-        valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-        
-    else:
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(0)
-        valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, 0)
+    # check if we have already generated it
+    if not os.path.isfile(valid_file_name):
+        dataset_args = [args.dataset_name, args.dataset_version]
+        subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
+    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+
     scaler = None
     spacy_nlp = spacy.load("en_core_web_sm")
     eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp)

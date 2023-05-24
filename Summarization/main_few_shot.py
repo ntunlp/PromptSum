@@ -97,8 +97,6 @@ def set_args():
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default=root + "cache",
                         help="The path of huggingface cache: /data/mathieu/hf_models/t5-v1-large/, /data/ruochen/hf_models/bart-base/, /data/ruochen/hf_models/pegasus-large/")
-    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
-                        default=False)
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -331,7 +329,7 @@ def set_args():
     if ("T5" in args.model):
         args.lr_entity = 5e-1
         args.lr_summary = 5e-1
-    if ("Finetune" in args.model) or args.tune_weights:
+    if ("Finetune" in args.model):
         args.lr_summary = 5e-5
     if args.few_shot == "1":
         args.batch_size_per_gpu_entity = 1
@@ -598,8 +596,8 @@ def main(args):
 
                     # from entity tuning round
                     if not(args.zero_shot):
-                        if args.tune_weights:
-                            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_full_weights'
+                        if not (args.no_finetuned_eprompt):
+                            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
                             if args.use_pretrain_ckpt:
                                 onepath += "_from_pretrained"
                             if "016" in args.pretrain_ckpt:
@@ -608,30 +606,13 @@ def main(args):
                                 #onepath += "_v3"
                                 onepath += "_v4"
                             oneckpt = torch.load(onepath)
-                            d = {}
-                            for k in entmodel.state_dict().keys():
-                                d[k] = oneckpt[k]
-                            entmodel.load_state_dict(d)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
+                            logger.info("Loaded the entity model from: {}".format(onepath))
                         else:
-                            if not (args.no_finetuned_eprompt):
-                                onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
-                                if args.use_pretrain_ckpt:
-                                    onepath += "_from_pretrained"
-                                if "016" in args.pretrain_ckpt:
-                                    onepath += "_v2"
-                                if "019" in args.pretrain_ckpt:
-                                    #onepath += "_v3"
-                                    onepath += "_v4"
-                                oneckpt = torch.load(onepath)
-                                entmodel.promptnumber = oneckpt["promptnumber"]
-                                entmodel.promptembedding = oneckpt["promptembedding"]
-                                logger.info("Loaded the entity model from: {}".format(onepath))
-                            else:
-                                ckpt = torch.load(args.pretrain_prompt_ckpt)
-                                entmodel.promptnumber = ckpt["promptnumber"]
-                                entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
+                            ckpt = torch.load(args.pretrain_prompt_ckpt)
+                            entmodel.promptnumber = ckpt["promptnumber"]
+                            entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
                     else:
                         logger.info("Zero-shot - loading the prompt from pre-training ckpt")
                         ckpt = torch.load(args.pretrain_prompt_ckpt)
@@ -652,8 +633,6 @@ def main(args):
                         respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
                     if args.use_pretrain_ckpt:
                         respath = respath[:-4] + "_from_pretrained.pkl"
-                    if args.tune_weights:
-                        respath = respath[:-4] + "_full_weights.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
                         if args.big_testset or args.full_testset:
                             alldata = args.test_dataset.data

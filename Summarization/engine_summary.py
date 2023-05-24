@@ -41,7 +41,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                                       args.max_guidance_length, train_dataset.tokenizer.pad_token_id, train_sampler, args)
     valid_dataloader = get_dataloader(tokenizer, args.num_workers_summary, valid_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, valid_dataset.tokenizer.pad_token_id, valid_sampler, args)
-    if args.big_testset or args.full_testset:
+    if args.full_testset:
         test_sampler = SequentialSampler(args.test_dataset)
         test_dataloader = get_dataloader(tokenizer, args.num_workers_summary, args.test_dataset, args.valid_size_per_gpu_summary, args.max_length,
                                       args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
@@ -90,10 +90,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     }
 
     global_step = 0
-
-    if args.big_testset:
-        # save the model on the best validation set
-        args.save_model = True
     
     if args.eval_epoch_0:
         print("Evaluating (Epoch 0)...")
@@ -153,15 +149,10 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
     # after everything, do it with test:
-    if args.big_testset or args.full_testset:
+    if args.full_testset:
         if not(args.zero_shot):
-            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']) or args.tune_weights:
-                if args.tune_weights:
-                    path = args.model_save_path + 'bestckpt_full_weights'
-                    if args.use_pretrain_ckpt:
-                        path += "_from_pretrained"
-                else:
-                    path = args.model_save_path + 'full_weights'
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+                path = args.model_save_path + 'full_weights'
                 if args.guidance_mode == "target":
                     path += "_oracle"
                 if args.label_smoothing > 0:
@@ -331,13 +322,8 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']) or args.tune_weights:
-                if args.tune_weights:
-                    path = args.model_save_path + 'bestckpt_full_weights'
-                    if args.use_pretrain_ckpt:
-                        path += "_from_pretrained"
-                else:
-                    path = args.model_save_path + 'full_weights'
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+                path = args.model_save_path + 'full_weights'
                 if args.guidance_mode == "target":
                     path += "_oracle"
                 if args.label_smoothing > 0:
@@ -497,13 +483,8 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
     model.eval()
 
     # load weights
-    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']) or args.tune_weights:
-        if args.tune_weights:
-            path = args.model_save_path + 'bestckpt_full_weights'
-            if args.use_pretrain_ckpt:
-                path += "_from_pretrained"
-        else:
-            path = args.model_save_path + 'full_weights'
+    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+        path = args.model_save_path + 'full_weights'
         if args.guidance_mode == "target":
             path += "_oracle"
         model.load_state_dict(torch.load(path))

@@ -22,13 +22,12 @@ class ModelSummaryMix(nn.Module):
                 print("use lm adapted model!")
                 t5ckpt = torch.load(args.lm_adapted_path)
                 self.model.load_state_dict(t5ckpt)
-        if not(args.tune_weights):
-            for name, param in self.model.named_parameters():
-                if args.model == 'BartMixPromptUnfreeze':
-                    if not("shared" in name):
-                        param.requires_grad = False
-                else:
+        for name, param in self.model.named_parameters():
+            if args.model == 'BartMixPromptUnfreeze':
+                if not("shared" in name):
                     param.requires_grad = False
+            else:
+                param.requires_grad = False
         self.tokenizer = tokenizer
         self.decoder_start_token_id_use = self.model.config.decoder_start_token_id
         self.promptnumber = 0

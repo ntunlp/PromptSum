@@ -83,8 +83,6 @@ def set_args():
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default=root + "hf_models/pegasus-large/",
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
-    parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
-                        default=False)
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -200,7 +198,6 @@ def set_args():
                         default=100, help="how many steps to log")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
-    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)
@@ -275,7 +272,7 @@ def set_args():
 
     args = parser.parse_args()
 
-    if args.big_testset or args.full_testset:
+    if args.full_testset:
         args.eval_epoch_0 = False
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
@@ -323,9 +320,6 @@ def set_args():
     if ("Prompt" in args.model):
         args.lr_entity = lrs_soft[idx]
         args.lr_summary = lrs_soft[idx]
-    if (args.tune_weights):
-        args.lr_entity = 1e-4
-        args.lr_summary = 1e-4
     if args.max_epoch_summary > 0: # meaning, if we are in training mode:
         args.max_epoch_entity = max_epoch_entity[idx]
         args.max_epoch_summary = max_epoch_summary[idx]
@@ -479,15 +473,6 @@ def main(args):
 
     ########## 2nd prompt tuning stage (for summarization)?
     if args.finetune_summary:
-        logger.info(f'args.big_testset: {args.big_testset}')
-        if args.big_testset:
-            args.test_file = args.data_dir + args.dataset + '/2k_test.txt'
-            # check if we have already generated it
-            if not os.path.isfile(args.test_file):
-                subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = DatasetSummary(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                                     save_path = args.save_dir)
-            logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
@@ -612,32 +597,19 @@ def main(args):
                     entmodel.load_state_dict(dic)
                     logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
-                if args.tune_weights:
-                    onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_full_weights'
+                if not (args.no_finetuned_eprompt):
+                    onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
                     if args.use_pretrain_ckpt:
                         onepath += "_from_pretrained"
                     onepath += "_v4"
                     oneckpt = torch.load(onepath)
-                    d = {}
-                    for k in entmodel.state_dict().keys():
-                        d[k] = oneckpt[k]
-                    entmodel.load_state_dict(d)
                     entmodel.promptnumber = oneckpt["promptnumber"]
                     entmodel.promptembedding = oneckpt["promptembedding"]
+                    logger.info("Loaded the entity model from: {}".format(onepath))
                 else:
-                    if not (args.no_finetuned_eprompt):
-                        onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
-                        if args.use_pretrain_ckpt:
-                            onepath += "_from_pretrained"
-                        onepath += "_v4"
-                        oneckpt = torch.load(onepath)
-                        entmodel.promptnumber = oneckpt["promptnumber"]
-                        entmodel.promptembedding = oneckpt["promptembedding"]
-                        logger.info("Loaded the entity model from: {}".format(onepath))
-                    else:
-                        ckpt = torch.load(args.pretrain_prompt_ckpt)
-                        entmodel.promptnumber = ckpt["promptnumber"]
-                        entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
+                    ckpt = torch.load(args.pretrain_prompt_ckpt)
+                    entmodel.promptnumber = ckpt["promptnumber"]
+                    entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
 
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
                 logger.info("The ent model has {} trainable parameters".format(n_params))
@@ -646,16 +618,12 @@ def main(args):
                 model.eval()
 
                 respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
-                if args.big_testset:
-                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_2k_testent.pkl'
-                elif args.full_testset:
+                if args.full_testset:
                     respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
                 if args.use_pretrain_ckpt:
                     respath = respath[:-4] + "_from_pretrained.pkl"
-                if args.tune_weights:
-                    respath = respath[:-4] + "_full_weights.pkl"
                 if not (os.path.isfile(respath) and args.reuse_entity_file):
-                    if args.big_testset or args.full_testset:
+                    if args.full_testset:
                         alldata = args.test_dataset.data
                         logger.info(f"test size: {len(alldata)}")
                     else:
@@ -670,7 +638,7 @@ def main(args):
                     del entmodel, enttokenizer
                     gc.collect()
 
-                if args.big_testset or args.full_testset:
+                if args.full_testset:
                     args.test_dataset.set_allent_for_valid(respath)
                 else:
                     valid_dataset.set_allent_for_valid(respath)
