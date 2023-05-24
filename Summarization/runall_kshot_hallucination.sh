@@ -11,7 +11,7 @@ seed_shot_map=(100 0 full 42)
 seed=$seed_shot_map[$k_shot]
 ### backbone model
 ### T5-large backbone
-cache='../../hf_models/pegasus_large'
+cache='../../hf_models/'
 pretrain_ckpt="../pretrained_ckpt/019/bestckpt_full_model"
 pretrain_prompt_ckpt="../pretrained_ckpt/019/bestckpt_prompt"
 # --big_testset
@@ -20,7 +20,7 @@ then
     length=768
     batch_size=16
 else
-    length=768
+    length=512
     batch_size=16
 fi
 

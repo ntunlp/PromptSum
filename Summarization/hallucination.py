@@ -13,8 +13,8 @@ from dataset.dataset import subsample_2k_testset
 from dataset.dataset_entity import *
 from dataset.dataset_summary import *
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
+from engine_entity import *
+from engine_summary import *
 from models.model_summary_mix import *
 
 
@@ -33,7 +33,7 @@ def set_args():
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
                         default="bestckpt_from_pretrained_v4", help="model ckpt name") 
     parser.add_argument("--tagger_ckpt_name", dest="tagger_ckpt_name", type=str,
-                        default="bestckpt_prompt_from_pretrained_v4", help="tagger ckpt name")                     
+                        default="bestckpt_prompt_100_from_pretrained", help="tagger ckpt name")                     
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
                         "facebook/bart-large", "google/pegasus-large"])
@@ -71,7 +71,7 @@ def set_args():
                         default=-1, help="local rank")
     parser.add_argument("--few_shot", dest="few_shot", type=int,
                         default=100, help="number of data points for training AND validation")
-    parser.add_argument("--use_t5_tagger",  action='store_false',
+    parser.add_argument("--use_tagger",  action='store_false',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--infer_val_entities", action="store_false",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
@@ -101,7 +101,16 @@ def set_args():
                         default=False)
     parser.add_argument("--max_length_entity", dest="max_length_entity", type=int,
                         default=128, help="maximum length of the generated entity chain")
-    
+    ######### inference-time ablations
+    parser.add_argument("--no_finetuned_sprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training S-prompt")
+    parser.add_argument("--no_sprompt", action='store_true',
+                        default=False, help="whether to use the S-prompt at inference")
+    parser.add_argument("--no_finetuned_eprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training E-prompt")
+    parser.add_argument("--no_entity_chain", action='store_true',
+                        default=False, help="whether to use the entity chain at inference")
+
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
     text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
@@ -196,7 +205,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
     model.eval()
     model = model.to(args.device)
     all_ents = []
-    if args.use_t5_tagger and args.model in ['T5MixPrompt', 'PegasusMixPrompt'] and args.guidance_mode != "target":
+    if args.use_tagger and args.model in ['T5MixPrompt', 'PegasusMixPrompt'] and args.guidance_mode != "target":
         if args.infer_val_entities:
             ########## predict the validation entity chains with the 1st prompt tuning stage model
             # entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
@@ -444,7 +453,7 @@ def main(args):
     if not os.path.isfile(valid_file_name):
         dataset_args = [args.dataset_name, args.dataset_version]
         subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
-    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = DatasetSummary(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
 
     scaler = None
     spacy_nlp = spacy.load("en_core_web_sm")
