@@ -18,9 +18,10 @@ from itertools import combinations
 from dataset.dataset_entity import *
 from dataset.dataset_summary import DatasetSummary
 from engine_pretrain import *
-from engine_finetune_entity import *
-from engine_finetune_summary import *
-from models.model_mixture import *
+from engine_entity import *
+from engine_summary import *
+from models.model_summary_mix import *
+
 
 
 def set_args():
@@ -89,7 +90,7 @@ def set_args():
                         default=-1, help="local rank")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default='10', help="number of data points for training AND validation")
-    parser.add_argument("--use_t5_tagger", action='store_false',
+    parser.add_argument("--use_tagger", action='store_false',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--infer_val_entities", action="store_false",
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
@@ -104,7 +105,7 @@ def set_args():
     parser.add_argument("--stemmer", dest="stemmer", type=bool,
                         default=True)
     parser.add_argument("--prompt_number", dest="prompt_number", type=int,
-                        default=300, help="The number of prompt")
+                        default=100, help="The number of prompt")
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
@@ -118,6 +119,17 @@ def set_args():
     # parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
+
+    ######### inference-time ablations
+    parser.add_argument("--no_finetuned_sprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training S-prompt")
+    parser.add_argument("--no_sprompt", action='store_true',
+                        default=False, help="whether to use the S-prompt at inference")
+    parser.add_argument("--no_finetuned_eprompt", action='store_true',
+                        default=False, help="whether to run inference with the fine-tuned or just pre-training E-prompt")
+    parser.add_argument("--no_entity_chain", action='store_true',
+                        default=False, help="whether to use the entity chain at inference")
+
 
     dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
     dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum", 'en']
@@ -370,16 +382,17 @@ def main(args):
         if 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = 'allnumber.pickle'
+            args.allnumber_path = '../support_files/allnumber_t5.pkl'
         elif 'Pegasus' in args.model:
             basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
             logger.info('loaded pegasus models')
-            args.allnumber_path = 'allnumber.pickle_newforpegasus'
+            args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
         else:
             basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            args.allnumber_path = '../support_files/allnumber_t5.pkl'
         model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
         promptnumber = args.prompt_number
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -398,7 +411,7 @@ def main(args):
         args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
 
         ## LOAD CKPT
-        args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
+        args.model_save_folder = f'summary_ckpt/{args.dataset}/{args.few_shot}/'
         # if 'MixPrompt' not in args.model:
         #     args.model_save_folder += f'{args.model}/'
         args.model_save_folder += f'{args.model}/'
