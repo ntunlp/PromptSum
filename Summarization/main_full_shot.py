@@ -346,7 +346,7 @@ def set_args():
     args.max_val_size = min(args.max_val_size, val_sizes[idx])
     args.max_test_size = min(args.max_test_size, test_sizes[idx])
 
-    args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/{args.model}/'
+    args.model_save_folder = f'summary_ckpt/{args.dataset}/{args.few_shot}/{args.model}/'
     os.makedirs(args.model_save_folder, exist_ok=True)
 
     return args
@@ -380,8 +380,6 @@ def main(args):
     args.n_gpu = len(args.cuda.split(","))
 
     seed_everything(args)
-
-    time.sleep(14400)
 
     # log train
     if args.local_rank in [0, -1]:

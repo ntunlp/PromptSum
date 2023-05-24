@@ -1,7 +1,7 @@
 .DS_Store
 .idea/*
 
-t5_tagger_pretrained_ckpt/
+pretrained_ckpt/*
 
 checkpoint/*
 checkpoints/*
@@ -30,5 +30,7 @@ Summarization/*prompt_baseline*
 Summarization/frost_baseline/frost_pretrained_ckpt.pt
 Summarization/controlling
 Summarization/entity_ckpt/*
+Summarization/summary_ckpt/*
+Summarization/permutations/*
 
 

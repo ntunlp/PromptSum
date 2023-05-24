@@ -26,8 +26,8 @@ from fairscale.optim.grad_scaler import ShardedGradScaler
 from utils import *
 from dataset_pretrain import *
 from dataset_entity import *
-from models.model_summary_soft import *
-from model_entity import *
+from models.model_summary_soft import ModelSummarySoft
+from models.model_entity import ModelEntity
 from engine_pretrain import *
 
 

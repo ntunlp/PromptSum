@@ -24,7 +24,7 @@ from torch.cuda.amp import autocast as autocast
 from nltk.tokenize import sent_tokenize
 from datasets import load_from_disk
 from dataset_pretrain import *
-from Summarization.models.model_pretrain import ModelPretrain
+from models.model_pretrain import ModelPretrain
 from utils import VirtualList
 
 

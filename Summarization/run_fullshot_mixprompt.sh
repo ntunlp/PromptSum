@@ -1,16 +1,13 @@
 ### dataiet
-dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-device="6"
+dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
+device="7"
 cache='/data/mathieu/hf_models/pegasus-large/'
 
 
 ### backbone model
-##### T5-large backbone
-#pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
-#pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone (015_n_400k / 016)
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/019/bestckpt_full_model"
+pretrain_prompt_ckpt="../pretrained_ckpt/019/bestckpt_prompt"
 
 
 ############################ MixPrompt (PromptSum)
@@ -23,8 +20,8 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ##### test
 #echo "PromptSum - Entity inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_entity --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_entity 0 --max_epoch_summary 0 --cache_path $cache --prompt_number 100
-#echo "PromptSum - Summary inference - TEST SET"
-#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
+echo "PromptSum - Summary inference - TEST SET"
+CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
 
 ############################ MixPrompt (PromptSum) - no pre-training
 
@@ -60,8 +57,8 @@ pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/best
 ############################ MixPrompt (PromptSum) - no entity chain
 
 ##### test
-echo "PromptSum no entity chain - Summary inference - TEST SET"
-CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_entity_chain
+#echo "PromptSum no entity chain - Summary inference - TEST SET"
+#CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --model PegasusMixPrompt --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_entity_chain
 
 ############################ MixPrompt - oracle
 

@@ -19,7 +19,7 @@ from utils import *
 #from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
 
 from dataset_pretrain import *
-from model_entity import ModelEntity
+from models.model_entity import ModelEntity
 
 
 
