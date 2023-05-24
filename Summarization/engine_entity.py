@@ -1,4 +1,5 @@
 import spacy
+import gc
 from datasets import load_metric
 from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize, sent_tokenize
