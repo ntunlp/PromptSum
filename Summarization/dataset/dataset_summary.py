@@ -55,7 +55,7 @@ class DatasetSummary(Dataset):
         self.allent = {}
         self.spacy_nlp = spacy.load("en_core_web_sm")
         self.rouge_scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
-        if args.use_t5_tagger:
+        if args.use_tagger:
             ####train valid test
             if self.split.startswith("train"):
                 ####load entity file for training data
@@ -146,7 +146,7 @@ class DatasetSummary(Dataset):
         
         stop_words = set(stopwords.words('english'))
 
-        if not self.args.use_t5_tagger:
+        if not self.args.use_tagger:
             if self.args.guidance_mode == "target":
                 ents = self.spacy_nlp(targetdata).ents
                 ents = [ent.text for ent in ents]
