@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../../..")
+sys.path.append("/data/mathieu/prompt_sum/Summarization/dataset/")
 
 import spacy
 import torch

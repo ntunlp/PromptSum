@@ -15,9 +15,9 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
 
 from utils import *
-from dataset import Dataset
-from dataset_entity import *
-from dataset_summary import DatasetSummary
+from dataset.dataset import *
+from dataset.dataset_entity import *
+from dataset.dataset_summary import DatasetSummary
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
@@ -485,7 +485,7 @@ def main(args):
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+            args.test_dataset = DatasetSummary(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
                                                      save_path = args.save_dir)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info(f'args.full_testset: {args.full_testset}')
@@ -497,18 +497,18 @@ def main(args):
                 logger.info('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                                     save_path = args.save_dir)
+            args.test_dataset = DatasetSummary(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                            save_path = args.save_dir)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
 
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
 
         # datasets
-        train_dataset = SummarizationDataset(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                             save_path = args.save_dir)
-        valid_dataset = SummarizationDataset(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
-                                             save_path = args.save_dir)
+        train_dataset = DatasetSummary(train_path, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                    save_path = args.save_dir)
+        valid_dataset = DatasetSummary(valid_path, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, args.seed,
+                                    save_path = args.save_dir)
         if args.test_on_val:
             args.test_dataset = valid_dataset
 

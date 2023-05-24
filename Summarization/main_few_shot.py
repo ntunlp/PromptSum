@@ -29,7 +29,7 @@ from fairscale.nn.data_parallel import ShardedDataParallel as ShardedDDP
 from fairscale.optim.grad_scaler import ShardedGradScaler
 
 from utils import *
-from dataset.dataset import Dataset
+from dataset.dataset import *
 from dataset.dataset_entity import *
 from dataset.dataset_summary import DatasetSummary
 from engine_pretrain import *
