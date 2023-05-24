@@ -2,12 +2,12 @@
 dataset="billsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 k_shot="100" # in ["1", "10", "100"]
 device=1
-cache='/data/mathieu/hf_models/pegasus-large/'
+cache='../../hf_models/pegasus-large/'
 
 ### backbone model
 ##### PEGASUS backbone (015_n_400k / 016 / 019)
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/019/bestckpt_full_model"
+pretrain_prompt_ckpt="../pretrained_ckpt/019/bestckpt_prompt"
 
 
 ############################ Baseline v1: Fine-tuning

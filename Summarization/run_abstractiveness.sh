@@ -3,12 +3,12 @@ dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 k_shot="100" # 100
 device=2
 bs=8
-cache='/data/mathieu/hf_models/pegasus-large/'
+cache='../../hf_models/pegasus-large/'
 
 ### backbone model
 ##### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="../015_n_400k/bestckpt_prompt"
 
 
 ######################################################## 100-shot

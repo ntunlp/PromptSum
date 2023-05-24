@@ -80,7 +80,7 @@ def set_args():
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
                         default=root + "hf_models/pegasus-large/",
-                        help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
+                        help="The path of huggingface cache")
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -239,9 +239,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/home/mathieu/PromptSumm/t5_tagger_pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -254,7 +254,7 @@ def set_args():
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain", action='store_false',
                         default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
-    parser.add_argument("--use_t5_tagger",  action='store_false',
+    parser.add_argument("--use_tagger",  action='store_false',
                         default=True, help="whether use a t5 tagger")
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
@@ -567,7 +567,7 @@ def main(args):
         mean_rs_entity = None
         model.eval()
         #### add t5 tagger
-        if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
+        if args.use_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
             if args.infer_val_entities:
                 ########## predict the validation entity chains with the 1st prompt tuning stage model
                 if args.model == "T5MixPrompt":
@@ -596,10 +596,9 @@ def main(args):
                     logger.info("Loaded the pre-trained ckpt for the entity prediction model!")
 
                 if not (args.no_finetuned_eprompt):
-                    onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt'
+                    onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/bestckpt_prompt_{args.prompt_number}'
                     if args.use_pretrain_ckpt:
                         onepath += "_from_pretrained"
-                    onepath += "_v4"
                     oneckpt = torch.load(onepath)
                     entmodel.promptnumber = oneckpt["promptnumber"]
                     entmodel.promptembedding = oneckpt["promptembedding"]
@@ -615,9 +614,9 @@ def main(args):
                 logger.info("move to device!")
                 model.eval()
 
-                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5valident.pkl'
+                respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/valid_ent.pkl'
                 if args.full_testset:
-                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/T5_full_testent.pkl'
+                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/test_ent.pkl'
                 if args.use_pretrain_ckpt:
                     respath = respath[:-4] + "_from_pretrained.pkl"
                 if not (os.path.isfile(respath) and args.reuse_entity_file):

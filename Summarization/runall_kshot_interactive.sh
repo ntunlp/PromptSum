@@ -1,6 +1,6 @@
 cache='/export/home/cache'
-pretrain_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 ### parameters to change
 dataset="xsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]

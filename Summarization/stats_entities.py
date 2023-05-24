@@ -40,7 +40,7 @@ def main(args):
     spacy_nlp = spacy.load("en_core_web_sm")
     sets = ["test"]
     for set in sets:
-        path = "/data/mathieu/DATASETS/PromptSumm/{}/full/seed_42/{}.txt".format(args.dataset, set)
+        path = "../../DATASETS/PromptSumm/{}/full/seed_42/{}.txt".format(args.dataset, set)
         print(path)
         count = 0
         source_ents, summary_ents = [], []

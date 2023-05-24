@@ -1,15 +1,12 @@
 ### dataset
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 device="2"
-cache='/home/mathieu/hf_models/pegasus-large/'
+cache='../../hf_models/pegasus-large/'
 
 ### backbone model
-##### T5-large backbone
-#pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_full_model"
-#pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_cc_ent_v2_120k/012_cc_ent_v2_120k/bestckpt_prompt"
 ##### PEGASUS backbone
-pretrain_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_full_model"
-pretrain_prompt_ckpt="/home/mathieu/PromptSum/t5_tagger_pretrained_ckpt/019/bestckpt_prompt"
+pretrain_ckpt="../../pretrained_ckpt/019/bestckpt_full_model"
+pretrain_prompt_ckpt="../../pretrained_ckpt/019/bestckpt_prompt"
 
 
 ########################### Baseline v1: Fine-tuning

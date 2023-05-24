@@ -10,8 +10,7 @@ from models.model_summary_mix import ModelSummaryMix
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/export/home/"
-    data_root = "/export/home/"
+    root = "/data/mathieu/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
                         default= data_root + "dataset/PromptSumm/")
     parser.add_argument("--cuda", dest="cuda", type=str,
@@ -47,8 +46,6 @@ def set_args():
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
                             default='./log', help="The path to log dir")
-    # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
-    #                         default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='controlling', help="The file name of log file")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -82,9 +79,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
+                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,

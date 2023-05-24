@@ -9,7 +9,7 @@ from transformers import PegasusForConditionalGeneration, PegasusTokenizer, Pega
 gc.enable()
 
 from utils import *
-from dataset_pretrain import *
+from dataset_pretrain import DatasetPretrain
 from dataset_entity import *
 from models.model_summary_soft import ModelSummarySoft
 from models.model_entity import ModelEntity
@@ -108,9 +108,9 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
-    train_dataset = DatasetPretrainEntity(trainfile, max_seq_length, tokenizer)
-    valid_dataset = DatasetPretrainEntity(validfile, max_seq_length, tokenizer)
-    test_dataset = DatasetPretrainEntity(testfile, max_seq_length, tokenizer)
+    train_dataset = DatasetPretrain(trainfile, max_seq_length, tokenizer)
+    valid_dataset = DatasetPretrain(validfile, max_seq_length, tokenizer)
+    test_dataset = DatasetPretrain(testfile, max_seq_length, tokenizer)
 
     if args.local_rank != -1:
         torch.distributed.barrier()
@@ -223,14 +223,9 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         }
         if not(args.zero_shot):
             if not (args.no_finetuned_eprompt):
-                onepath = os.path.join(output_dir, "bestckpt_prompt")
+                onepath = os.path.join(output_dir, f"bestckpt_prompt_{args.prompt_number}")
                 if args.use_pretrain_ckpt:
                     onepath += "_from_pretrained"
-                if "016" in args.pretrain_ckpt:
-                    onepath += "_v2"
-                if "019" in args.pretrain_ckpt:
-                    #onepath += "_v3"
-                    onepath += "_v4"
                 oneckpt = torch.load(onepath)
                 model.promptnumber = oneckpt["promptnumber"]
                 model.promptembedding = oneckpt["promptembedding"]
@@ -322,14 +317,9 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
                 "promptnumber": model_to_save.promptnumber,
                 "promptembedding": model_to_save.promptembedding
             }
-            path = os.path.join(path, "bestckpt_prompt")
+            path = os.path.join(path, f"bestckpt_prompt_{args.prompt_number}")
             if args.use_pretrain_ckpt:
                 path += "_from_pretrained"
-            if "016" in args.pretrain_ckpt:
-                path += "_v2"
-            if "019" in args.pretrain_ckpt:
-                #path += "_v3"
-                path += "_v4"
             torch.save(ckpt, path)
             print("saved new entity model ckpt!")
 

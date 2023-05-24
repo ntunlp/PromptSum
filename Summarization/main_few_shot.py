@@ -24,7 +24,6 @@ def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
 
     root = "/data/mathieu/"
-    data_root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -44,7 +43,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSumm/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -73,8 +72,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "cache",
-                        help="The path of huggingface cache: /data/mathieu/hf_models/t5-v1-large/, /data/ruochen/hf_models/bart-base/, /data/ruochen/hf_models/pegasus-large/")
+                        default=root + "cache")
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -232,9 +230,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/mathieu/PromptSum/Summarization/t5_tagger_pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -247,8 +245,8 @@ def set_args():
                         default=True, help="whether to run inference with the T5 entity chain prediction on val set")
     parser.add_argument("--use_entity_chain", action='store_false',
                         default=True, help="whether to use the chain of predicted entities or not at all") # KEEP IT TRUE
-    parser.add_argument("--use_t5_tagger",  action='store_false',
-                        default=True, help="whether use a t5 tagger")
+    parser.add_argument("--use_tagger",  action='store_false',
+                        default=True, help="whether use an entity tagger")
     parser.add_argument("--if_spacy", action='store_false',
                         default=True, help="whether use spacy to supervise the training of T5 tagger")
 
@@ -543,7 +541,7 @@ def main(args):
             model.eval()
             mean_rs_entity = None
             ####add t5 tagger
-            if args.use_t5_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
+            if args.use_tagger and args.model in ["T5MixPrompt", "PegasusMixPrompt"] and args.guidance_mode != "target":
                 if args.infer_val_entities:
                     ########## predict the validation entity chains with the 1st prompt tuning stage model
                     if args.model == "T5MixPrompt":
@@ -575,14 +573,9 @@ def main(args):
                     # from entity tuning round
                     if not(args.zero_shot):
                         if not (args.no_finetuned_eprompt):
-                            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt'
+                            onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/bestckpt_prompt_{args.prompt_number}'
                             if args.use_pretrain_ckpt:
                                 onepath += "_from_pretrained"
-                            if "016" in args.pretrain_ckpt:
-                                onepath += "_v2"
-                            if "019" in args.pretrain_ckpt:
-                                #onepath += "_v3"
-                                onepath += "_v4"
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
@@ -604,11 +597,9 @@ def main(args):
                     model.eval()
 
                     # inferring the entities on the val or test set
-                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5valident.pkl'
-                    if args.big_testset:
-                        respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_2k_testent.pkl'
-                    elif args.full_testset:
-                        respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
+                    respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/valid_ent.pkl'
+                    if args.full_testset:
+                        respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/test_ent.pkl'
                     if args.use_pretrain_ckpt:
                         respath = respath[:-4] + "_from_pretrained.pkl"
                     if not(os.path.isfile(respath) and args.reuse_entity_file): #to generate, path is there & reuse at the same time
@@ -697,9 +688,7 @@ def main(args):
             for k in keys_to_keep:
                 d[k] = result_dict[k]
             is_oracle = bool(args.guidance_mode == "target")
-            export_path = "scores/{}/{}/prompt_sum_scores_{}_seed_{}_pretrained_{}_oracle_{}.pkl".format(
-                args.dataset, args.few_shot, args.dataset, seed, args.use_pretrain_ckpt, is_oracle
-            )
+            export_path = f"scores/{args.dataset}/{args.few_shot}/prompt_sum_scores_{args.dataset}_seed_{seed}_pretrained_{args.use_pretrain_ckpt}_oracle_{is_oracle}.pkl"
             if args.no_finetuned_sprompt:
                 export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
             if args.no_sprompt:

@@ -4,12 +4,12 @@ k_shot="100" # in ["1", "10", "100"]
 device="2"
 bs=8
 size=50
-cache='/data/mathieu/hf_models/pegasus-large/'
+cache='../../hf_models/pegasus-large/'
 
 ### backbone model
 # #### PEGASUS backbone
-pretrain_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/data/mathieu/PromptSum/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_prompt"
 
 
 ############################ Baseline v1: Fine-tuning

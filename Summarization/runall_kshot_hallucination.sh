@@ -11,8 +11,8 @@ seed=$seed_shot_map[$k_shot]
 ### backbone model
 ### T5-large backbone
 cache='/export/home/cache'
-pretrain_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_full_model"
-pretrain_prompt_ckpt="/export/home/PromptSumm/Summarization/t5_tagger_pretrained_ckpt/015_n_400k/bestckpt_prompt"
+pretrain_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_full_model"
+pretrain_prompt_ckpt="../pretrained_ckpt/015_n_400k/bestckpt_prompt"
 # --big_testset
 if [ "$dataset" = "billsum" ];
 then
