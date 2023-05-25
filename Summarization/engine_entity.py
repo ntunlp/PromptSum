@@ -10,8 +10,7 @@ from transformers import PegasusForConditionalGeneration, PegasusTokenizer, Pega
 gc.enable()
 
 from utils import *
-from dataset.dataset_pretrain import DatasetPretrain
-from dataset.dataset_entity import *
+from dataset.dataset_entity import DatasetEntity
 from models.model_summary_soft import ModelSummarySoft
 from models.model_entity import ModelEntity
 from engine_pretrain import *
@@ -112,9 +111,9 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     print(trainfile)
     print(max_seq_length)
     print(tokenizer)
-    train_dataset = DatasetPretrain(trainfile, max_seq_length, tokenizer)
-    valid_dataset = DatasetPretrain(validfile, max_seq_length, tokenizer)
-    test_dataset = DatasetPretrain(testfile, max_seq_length, tokenizer)
+    train_dataset = DatasetEntity(trainfile, max_seq_length, tokenizer)
+    valid_dataset = DatasetEntity(validfile, max_seq_length, tokenizer)
+    test_dataset = DatasetEntity(testfile, max_seq_length, tokenizer)
 
     if args.local_rank != -1:
         torch.distributed.barrier()

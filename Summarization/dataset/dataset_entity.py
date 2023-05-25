@@ -23,6 +23,47 @@ from models.model_entity import ModelEntity
 
 
 
+class DatasetEntity(Dataset):
+    def __init__(self, filename, maxlen, tokenizer):
+        super(DatasetEntity, self).__init__()
+        self.filename = filename
+        self.maxlen = maxlen
+        self.tokenizer = tokenizer
+        self.data = []
+        self.data = self.getalldata(self.filename)
+        self.num_entries = len(self.data)
+
+    def getalldata(self,filename):
+        f = open(filename,'r')
+        alldata = []
+        errnum = 0
+        while True:
+            oneline = f.readline().strip()
+            if not oneline:
+                break
+            linelist = oneline.split("\t")
+            if len(linelist) != 2:
+                errnum += 1
+                continue
+            onedata = []
+            onedata.append(linelist[0])
+            onedata.append(linelist[1])
+            alldata.append(onedata)
+        f.close()
+        return alldata
+
+    def __getitem__(self, idx):
+        inputdata = self.data[idx][0]
+        targetdata = self.data[idx][1]
+        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
+
+        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
+
+    def __len__(self):
+        return self.num_entries
+
+
 def get_data(few_shot_seeds, save_path, args):
     usetrain, usevalid, usetest = True, True, True
     spacy_nlp = spacy.load("en_core_web_sm")

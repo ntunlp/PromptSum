@@ -8,54 +8,6 @@ from torch.utils.data import Sampler, Dataset, DataLoader
 
 
 class DatasetPretrain(Dataset):
-    def __init__(self, filename, maxlen, tokenizer):
-        super(DatasetPretrain, self).__init__()
-        self.filename = filename
-        self.maxlen = maxlen
-        self.tokenizer = tokenizer
-        self.data = []
-        self.data = self.getalldata(self.filename)
-        self.num_entries = len(self.data)
-
-    def getalldata(self,filename):
-        f = open(filename,'r')
-        alldata = []
-        errnum = 0
-        while True:
-            oneline = f.readline().strip()
-            if not oneline:
-                break
-            linelist = oneline.split("\t")
-            if len(linelist) != 2:
-                #print(oneline)
-                errnum += 1
-                continue
-            onedata = []
-            onedata.append(linelist[0])
-            onedata.append(linelist[1])
-            alldata.append(onedata)
-        f.close()
-        #print(errnum)
-        return alldata
-
-    def __getitem__(self, idx):
-        inputdata = self.data[idx][0]
-        targetdata = self.data[idx][1]
-        inputres = self.tokenizer.batch_encode_plus([inputdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        targetres = self.tokenizer.batch_encode_plus([targetdata], padding=False, max_length=self.maxlen, truncation=True, return_tensors="pt")
-        #if idx < 10:
-        #    print(inputres)
-        #    print(targetres)
-        #    sys.stdout.flush()
-
-        return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze()
-
-    def __len__(self):
-
-        return self.num_entries
-
-
-class DatasetPretrain(Dataset):
     def __init__(self, texts, ents, target, maxlen, tokenizer, args):
         super(DatasetPretrain, self).__init__()
         self.texts = texts
