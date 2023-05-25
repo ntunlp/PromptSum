@@ -1,5 +1,6 @@
 import spacy
 import gc
+import torch.nn as nn 
 from datasets import load_metric
 from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize, sent_tokenize
@@ -9,8 +10,8 @@ from transformers import PegasusForConditionalGeneration, PegasusTokenizer, Pega
 gc.enable()
 
 from utils import *
-from dataset_pretrain import DatasetPretrain
-from dataset_entity import *
+from dataset.dataset_pretrain import DatasetPretrain
+from dataset.dataset_entity import *
 from models.model_summary_soft import ModelSummarySoft
 from models.model_entity import ModelEntity
 from engine_pretrain import *
@@ -108,6 +109,9 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
+    print(trainfile)
+    print(max_seq_length)
+    print(tokenizer)
     train_dataset = DatasetPretrain(trainfile, max_seq_length, tokenizer)
     valid_dataset = DatasetPretrain(validfile, max_seq_length, tokenizer)
     test_dataset = DatasetPretrain(testfile, max_seq_length, tokenizer)
