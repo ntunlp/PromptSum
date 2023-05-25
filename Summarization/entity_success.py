@@ -16,7 +16,7 @@ from fairseq.models.bart import BARTModel
 from itertools import combinations
 
 from dataset.dataset_entity import *
-from dataset.dataset_summary import DatasetSummary
+from dataset.dataset_summary import DatasetSummary, DatasetSummaryForControlGen
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
@@ -449,7 +449,7 @@ def main(args):
     valid_dataset = DatasetSummary(
         valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args
     )
-    new_valid_dataset = T5SummarizationDatasetForControlGen(
+    new_valid_dataset = DatasetSummaryForControlGen(
         valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args
     )
 

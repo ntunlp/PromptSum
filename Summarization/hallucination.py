@@ -193,8 +193,6 @@ def count_hallucination_percentage(allytrue, allypred, spacy_nlp): #CAN CHANGE H
     return hallucination_rates
 
 def new_valid_dataset(valid_dataset, indices, ents):
-    # new_valid_dataset = T5SummarizationDatasetForControlGen('dummy', "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
-
     valid_dataset_new = copy.deepcopy(valid_dataset)
     valid_dataset_new.data =[valid_dataset_new.data[i] for i in indices]
     valid_dataset_new.num_entries = len(valid_dataset_new.data)
@@ -207,10 +205,6 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
     all_ents = []
     if args.use_tagger and args.model in ['T5MixPrompt', 'PegasusMixPrompt'] and args.guidance_mode != "target":
         if args.infer_val_entities:
-            ########## predict the validation entity chains with the 1st prompt tuning stage model
-            # entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            # enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            # entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
             entbasemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir = args.cache_path)
             enttokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir = args.cache_path)
             entmodel = ModelEntity(entbasemodel, enttokenizer, args)
