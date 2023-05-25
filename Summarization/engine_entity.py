@@ -108,9 +108,6 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     logger.info("The model has {} trainable parameters".format(n_params))
     model.to(args.device)
 
-    print(trainfile)
-    print(max_seq_length)
-    print(tokenizer)
     train_dataset = DatasetEntity(trainfile, max_seq_length, tokenizer)
     valid_dataset = DatasetEntity(validfile, max_seq_length, tokenizer)
     test_dataset = DatasetEntity(testfile, max_seq_length, tokenizer)

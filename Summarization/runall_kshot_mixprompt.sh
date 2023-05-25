@@ -1,6 +1,6 @@
 ### dataset
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
-k_shot="100" # in ["1", "10", "100"]
+k_shot="10" # in ["1", "10", "100"]
 device="7"
 cache='../../hf_models/pegasus-large/'
 

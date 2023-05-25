@@ -215,7 +215,6 @@ class DatasetSummary(Dataset):
         return inputres["input_ids"].squeeze(), targetres["input_ids"].squeeze(), inputentsres['input_ids'].squeeze(dim=0)
 
     def __len__(self):
-
         return self.num_entries
 
     def find_salient_sents(self, text, n):
