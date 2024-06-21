@@ -1,6 +1,7 @@
 import spacy
 import gc
 import re
+import logging
 import torch.nn as nn 
 from datasets import load_metric
 from rouge_score import rouge_scorer
@@ -18,6 +19,8 @@ from models.model_entity import ModelEntity
 from engine_pretrain import *
 
 
+logger = logging.getLogger('engine_entity')
+
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args):
     all_f1s, all_meanRs = [], []
     for i in range(len(alltrainfile)):
@@ -28,10 +31,10 @@ def train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args):
         all_meanRs.append(meanR)
     f1 = np.mean(all_f1s)
     clean_f1s = [f"{x:.4f}" for x in all_f1s]
-    print(f"Mean F1: {f1:.4f} (over all seeds: {clean_f1s})")
+    logger.info(f"Mean F1: {f1:.4f} (over all seeds: {clean_f1s})")
     meanR = np.mean(all_meanRs)
     clean_meanRs = [f"{x:.4f}" for x in all_meanRs]
-    print(f"Mean mean ROUGE: {meanR:.4f} (over all seeds: {clean_meanRs})")
+    logger.info(f"Mean mean ROUGE: {meanR:.4f} (over all seeds: {clean_meanRs})")
 
 def train_tagger_for_one_seed(trainfile, validfile, testfile, args):
     result_dict = finetune_model_tagger(trainfile, validfile, testfile, args)
@@ -39,8 +42,8 @@ def train_tagger_for_one_seed(trainfile, validfile, testfile, args):
     return result_dict
 
 def finetune_model_tagger(trainfile, validfile, testfile, args):
-    print("Fine-tuning entity tagger...")
-    print(trainfile, validfile, testfile)
+    logger.info("Fine-tuning entity tagger...")
+    logger.info(trainfile)
 
     ###train
     gradient_accumulation_steps = args.gradient_accumulation_steps_entity
@@ -65,11 +68,11 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         raise Exception('Model not implemented yet')
     model = ModelEntity(basemodel, tokenizer, args)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    logger.info(f"The model has {n_params} trainable parameters")
 
     ##### load from conll ckpt, from pre-training ckpt, or simply initializing?
     if args.use_pretrain_ckpt:
-        print("Loading the pre-trained NER model!")
+        logger.info("Loading the pre-trained NER model!")
 
         # model weights
         ckpt = torch.load(args.pretrain_ckpt, map_location="cuda:0")
@@ -91,12 +94,12 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     else:
         ifuseconll = True
         if ifuseconll:
-            print("Loading the the CONLL NER model!")
+            logger.info("Loading the the CONLL NER model!")
             allckpt = torch.load("support_files/conll_bestckpt")
             model.promptnumber = allckpt["promptnumber"]
             model.promptembedding = allckpt["promptembedding"]
         else:
-            print("Initializing from scratch!")
+            logger.info("Initializing from scratch!")
             promptnumber = args.prompt_number
             taskname = "name entity recognition"
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
@@ -126,8 +129,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                                           valid_dataset.tokenizer.pad_token_id, valid_sampler)
     test_dataloader = get_dataloader_tag(num_workers, test_dataset, eval_batch_size, max_seq_length,
                                           test_dataset.tokenizer.pad_token_id, test_sampler)
-
-    print(len(train_dataloader), len(valid_dataloader), len(test_dataloader))
+    logger.info(len(train_dataloader))
+    logger.info(len(valid_dataloader))
     
     #####the path of tuned model
     pos = trainfile.find("docwithlabel_train")
@@ -165,7 +168,7 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     global_step = 0
 
     if args.eval_epoch_0:
-        print("Evaluating (Epoch 0)...")
+        logger.info("Evaluating (Epoch 0)...")
         dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args, save_model=args.save_model)
 
     for i in range(startepoch, startepoch + num_train_epochs):
@@ -198,7 +201,7 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
 
     # test inference
     if args.full_testset:
-        print("Test evaluation...")
+        logger.info("Test evaluation...")
         test_result_dict = {
             'epoch': [],
             'val_F1': [],
@@ -305,7 +308,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
             if args.use_pretrain_ckpt:
                 path += "_from_pretrained"
             torch.save(ckpt, path)
-            print(f"Saved new entity model ckpt to: {path}")
+            logger.info(f"Saved new entity model ckpt to: {path}")
 
 def infer_entity_model(alldata, enttokenizer, entmodel, args):
     allresofvalid = {}
@@ -336,7 +339,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
             alllabels.append(target_ents)
             count += input_ids.shape[0]
             if count >= args.max_test_size:
-                print("Hit the max test size...")
+                logger.info("Hit the max test size...")
                 break
     # ROUGE
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
@@ -355,7 +358,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
     r1 = 100 * np.mean(r1s)
     r2 = 100 * np.mean(r2s)
     rl = 100 * np.mean(rls)
-    print(f"Entity inference mean R: {mean_r:.4f}, R-1: {r1:.4f}, R-2: {r2:.4f}, R-L: {rl:.4f}")
+    logger.info(f"Entity inference mean R: {mean_r:.4f}, R-1: {r1:.4f}, R-2: {r2:.4f}, R-L: {rl:.4f}")
     # Precision, Recall, F-1
     ps, rs, f1s = [], [], []
     for i in range(len(allpreds)):
@@ -381,7 +384,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
     p = 100 * np.mean(ps)
     r = 100 * np.mean(rs)
     f1 = 100 * np.mean(f1s)
-    print(f"Entity inference Precision: {p:.4f}, Recall: {r:.4f}, F-1: {f1:.4f}")
+    logger.info(f"Entity inference Precision: {p:.4f}, Recall: {r:.4f}, F-1: {f1:.4f}")
     # abstractiveness
     new_pred_ents, new_target_ents = [], []
     for i in range(len(allpreds)):
@@ -397,7 +400,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         new_target_ents.append(new_target)
     pred_abs = np.mean(new_pred_ents)
     target_abs = np.mean(new_target_ents)
-    print(f"Abstractive predicted entities: {pred_abs:.4f}% | target entities: {target_abs:.4f}%")
+    logger.info(f"Abstractive predicted entities: {pred_abs:.4f}% | target entities: {target_abs:.4f}%")
     # repetition
     rep_preds, rep_targets = [], []
     for i in range(len(allpreds)):
@@ -421,7 +424,7 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         rep_targets.append(rep)
     pred_reps = np.mean(rep_preds)
     target_reps = np.mean(rep_targets)
-    print(f"Repeated predicted entities: {pred_reps:.4f}% | target entities: {target_reps:.4f}%")
+    logger.info(f"Repeated predicted entities: {pred_reps:.4f}% | target entities: {target_reps:.4f}%")
 
     return allresofvalid, allpreds, alllabels, mean_rs
 

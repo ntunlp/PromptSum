@@ -21,12 +21,15 @@ args = parser.parse_args()
 
 
 def main(args):
+    args.prompt_number = args.size
+    args.use_pretrain_ckpt = False
+    args.model = ""
     settle_dataset_args(args)
     print(args)
 
     for seed in args.seeds:
-        train_path = args.data_dir + args.dataset + "/{}/{}_few_shot_train_seed_{}".format(args.size, args.size, seed)
-        valid_path = args.data_dir + args.dataset + "/{}/{}_few_shot_valid_seed_{}".format(args.size, args.size, seed)
+        train_path = args.data_dir + args.dataset + f"/{args.size}/{args.size}_few_shot_train_seed_{seed}"
+        valid_path = args.data_dir + args.dataset + f"/{args.size}/{args.size}_few_shot_valid_seed_{seed}"
         print(train_path, valid_path)
 
         train_data = pickle.load(open(train_path, "rb"))
@@ -38,10 +41,10 @@ def main(args):
             all_train_texts.append(text)
             all_train_summaries.append(summary)
         print(len(all_train_texts))
-        if not os.path.exists(args.data_dir + args.dataset + "/{}/seed_{}".format(args.size, seed)):
-            os.mkdir(args.data_dir + args.dataset + "/{}/seed_{}".format(args.size, seed))
-        new_train_path = args.data_dir + args.dataset + "/{}/seed_{}/train.txt".format(args.size, seed)
-        print("writing to: {}".format(new_train_path))
+        if not os.path.exists(args.data_dir + args.dataset + f"/{args.size}/seed_{seed}"):
+            os.mkdir(args.data_dir + args.dataset + f"/{args.size}/seed_{seed}")
+        new_train_path = args.data_dir + args.dataset + f"/{args.size}/seed_{seed}/train.txt"
+        print(f"Writing to: {new_train_path}")
         with open(new_train_path, "w") as f:
             for idx in range(len(all_train_texts)):
                 to_write = all_train_texts[idx] + "\t" + all_train_summaries[idx]
@@ -58,8 +61,8 @@ def main(args):
             all_valid_texts.append(text)
             all_valid_summaries.append(summary)
         print(len(all_valid_texts))
-        new_valid_path = args.data_dir + args.dataset + "/{}/seed_{}/valid.txt".format(args.size, seed)
-        print("writing to: {}".format(new_valid_path))
+        new_valid_path = args.data_dir + args.dataset + f"/{args.size}/seed_{seed}/valid.txt"
+        print("Writing to: {new_valid_path}")
         with open(new_valid_path, "w") as f:
             for idx in range(len(all_valid_texts)):
                 to_write = all_valid_texts[idx] + "\t" + all_valid_summaries[idx]

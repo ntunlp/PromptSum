@@ -81,7 +81,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     global_step = 0
     
     if args.eval_epoch_0:
-        print("Evaluating (Epoch 0)...")
+        logger.info("Evaluating (Epoch 0)...")
         dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
 
     for i in range(args.max_epoch_summary):
@@ -133,7 +133,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         logger.info("finish one epoch")
         if (args.few_shot != "full") and (args.local_rank in [0, -1]):
             # do after every epoch
-            print("Evaluating (after epoch)...")
+            logger.info("Evaluating (after epoch)...")
             dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
             model.train()
     # after everything, do it with test:
@@ -146,7 +146,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 if args.label_smoothing > 0:
                     path += "_ls"
                 model.load_state_dict(torch.load(path))
-                print("loaded the full model weights!", path)
+                logger.info("Loaded the full model weights: {path}")
             else:
                 if not(args.no_finetuned_sprompt):
                     path = args.model_save_path + f'bestckpt_{args.prompt_number}'
@@ -161,7 +161,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                     best_val_ckpt = torch.load(path)
                     model.promptnumber = best_val_ckpt["promptnumber"]
                     model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-                    print("loaded the model prompt!", path)
+                    logger.info("Loaded the model prompt: {path}")
         # no need to save again
         args.save_model = False
         args.log_step_finetune = 100
@@ -239,7 +239,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                 allypred.extend(predres)
             count += batch[0].shape[0]
             if count >= args.max_test_size:
-                print("Hit the max test size...")
+                logger.info("Hit the max test size...")
                 break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer = args.stemmer)
     mean_rs, r1s, r2s, rls = [], [], [], []
@@ -274,7 +274,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
     result_dict['val_mean_rouge'].append(mean_rouge)
     if result_dict['val_mean_rouge'][-1] > result_dict['best_val_mean_rouge']:
-        logger.info("{} epoch, best epoch was updated! val_mean_rouge: {: >4.5f}".format(i, result_dict['val_mean_rouge'][-1]))
+        logger.info(f"Epoch {i}, best epoch was updated! val_mean_rouge: {result_dict['val_mean_rouge'][-1]: >4.5f}")
         result_dict["best_val_mean_rouge"] = result_dict['val_mean_rouge'][-1]
         # also append other rouge scores
         result_dict['val_rouge1'] = rouge_score["rouge1"]
@@ -308,7 +308,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     #path += "_v3"
                     path += "_v4"
                 torch.save(model_to_save.state_dict(), path)
-                print("saved the full model weights!", path)
+                logger.info("Saved the full model weights: {path}")
             else:
                 path = args.model_save_path + f'bestckpt_{args.prompt_number}'
                 if args.use_pretrain_ckpt:
@@ -324,10 +324,10 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     "promptembedding": model_to_save.promptembedding
                 }
                 torch.save(ckpt, path)
-                print(f"Saved the model prompt :{path}")
+                logger.info(f"Saved the model prompt :{path}")
     # abstractivness
     if args.eval_abstractiveness:
-        print("Running new n-grams counts...")
+        logger.info("Running new n-grams counts...")
         new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
         new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target = [], [], [], []
         for i in tqdm(range(len(allysrc))):
@@ -389,7 +389,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         new_bigrams = 100 * np.mean(new_bigrams)
         new_trigrams = 100 * np.mean(new_trigrams)
         new_quadrigrams = 100 * np.mean(new_quadrigrams)
-        print(f"\nAbstractiveness - MODEL || New unigrams: {new_unigrams:.4f}%, bigrams: {new_bigrams:.4f}%, trigrams: {new_trigrams:.4f}, quadrigrams: {new_quadrigrams:.4f}%")
+        logger.info(f"Abstractiveness - MODEL || New unigrams: {new_unigrams:.4f}%, bigrams: {new_bigrams:.4f}%, trigrams: {new_trigrams:.4f}, quadrigrams: {new_quadrigrams:.4f}%")
         result_dict["new_unigrams"] = new_unigrams
         result_dict["new_bigrams"] = new_bigrams
         result_dict["new_trigrams"] = new_trigrams
@@ -399,7 +399,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         new_bigrams_target = 100 * np.mean(new_bigrams_target)
         new_trigrams_target = 100 * np.mean(new_trigrams_target)
         new_quadrigrams_target = 100 * np.mean(new_quadrigrams_target)
-        print(f"Abstractiveness - TARGET || New unigrams: {new_unigrams_target:.4f}%, bigrams: {new_bigrams_target:.4f}%, trigrams: {new_trigrams_target:.4f}, quadrigrams: {new_quadrigrams_target:.4f}%")
+        logger.info(f"Abstractiveness - TARGET || New unigrams: {new_unigrams_target:.4f}%, bigrams: {new_bigrams_target:.4f}%, trigrams: {new_trigrams_target:.4f}, quadrigrams: {new_quadrigrams_target:.4f}%")
         result_dict["new_unigrams_target"] = new_unigrams_target
         result_dict["new_bigrams_target"] = new_bigrams_target
         result_dict["new_trigrams_target"] = new_trigrams_target
@@ -434,7 +434,7 @@ def entity_eval(ytrue, ypred):
     p = np.mean(all_p)
     r = np.mean(all_r)
     f1 = np.mean(all_f1)
-    print(f"\nEntity-level eval, mean precision: {p:.4f}, recall: {r:.4f}, F-1: {f1:.4f}")
+    logger.info(f"Entity-level eval, mean precision: {p:.4f}, recall: {r:.4f}, F-1: {f1:.4f}")
     
     return p, r, f1
 
@@ -451,7 +451,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         if args.guidance_mode == "target":
             path += "_oracle"
         model.load_state_dict(torch.load(path))
-        print(f"Loaded the full model weights: {path}")
+        logger.info(f"Loaded the full model weights: {path}")
     else:
         path = args.model_save_path + f'bestckpt_{args.prompt_number}'
         if args.use_pretrain_ckpt:
@@ -463,7 +463,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         best_val_ckpt = torch.load(path)
         model.promptnumber = best_val_ckpt["promptnumber"]
         model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-        print(f"Loaded the model prompt: {path}")
+        logger.info(f"Loaded the model prompt: {path}")
 
     logger.info("Do inference!")
     allysrc, allytrue, allypred = [], [], []
@@ -491,7 +491,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
                 allypred.extend(predres)
             count += batch[0].shape[0]
             if count >= args.max_test_size:
-                print("Hit the max test size...")
+                logger.info("Hit the max test size...")
                 break
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
     r1s, r2s, rls = [], [], []
@@ -522,7 +522,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
 
     # abstractivness
     if args.eval_abstractiveness:
-        print("Running new n-grams counts...")
+        logger.info("Running new n-grams counts...")
         new_unigrams, new_bigrams, new_trigrams, new_quadrigrams = [], [], [], []
         for i in tqdm(range(len(allysrc))):
             text_words = allysrc[i].lower()

@@ -2,7 +2,7 @@
 dataset="samsum" # in ["ccdv/cnn_dailymail", "xsum", "billsum", "samsum"]
 k_shot="10" # in ["1", "10", "100"]
 device="0"
-n_epochs="60" # 60
+n_epochs="2" # 60
 
 
 ############################ PromptSum

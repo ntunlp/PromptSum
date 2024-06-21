@@ -124,7 +124,7 @@ class DatasetSummary(Dataset):
 
     def shuffle_and_subsample(self):
         p = np.random.permutation(len(self.data))
-        with open(f"human_eval_permutations/{args.dataset}.pkl", "wb") as f:
+        with open(f"human_eval_permutations/{self.args.dataset}.pkl", "wb") as f:
             pickle.dump(p, f)
         p = p[:self.args.max_test_size]
         self.data = [self.data[x] for x in p]
