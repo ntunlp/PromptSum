@@ -7,14 +7,20 @@ import torch
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
 from utils import Nop
-from dataset import *
+from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
 from spacy.lang.en import English
 from transformers import AutoModelForSeq2SeqLM, PreTrainedTokenizerFast
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartTokenizer, BartForConditionalGeneration
+from transformers import PegasusTokenizer, PegasusTokenizerFast, PegasusForConditionalGeneration
 from collections import defaultdict
 from fairseq.models.bart import BARTModel
 from itertools import combinations
 
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
+from utils import settle_dataset_args
+from dataset.dataset import subsample_2k_testset
 from dataset.dataset_entity import *
 from dataset.dataset_summary import DatasetSummary, DatasetSummaryForControlGen
 from engine_pretrain import *
@@ -23,12 +29,11 @@ from engine_summary import *
 from models.model_summary_mix import *
 
 
-
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/data/mathieu/"
+
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default=root + "DATASETS/PromptSumm/")
+                        default=root + "DATASETS/PromptSum/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
                         default='/export/home/ctrl-sum/cnndm_ctrlsum_100')
     parser.add_argument("--mode", dest="mode", type=str,
@@ -48,13 +53,14 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusMixPrompt", choices=["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
-                                                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
-                                                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt',
-                                                             'CTRLsum', "CTRLsum_origin"])
+                        default="PegasusMixPrompt",
+                        choices=["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                        "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
+                        "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt',
+                        'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--model_name", dest="model_name", type=str,
-                        default="google/pegasus-large", choices=["t5-base", "google/t5-v1_1-base", "facebook/bart-base",
-                                                                 "facebook/bart-large", "google/pegasus-large"])
+                        default="google/pegasus-large",
+                        choices=["google/t5-v1_1-base", "facebook/bart-base", "facebook/bart-large", "google/pegasus-large"])
     parser.add_argument("--use_lm_adapted", dest="use_lm_adapted", type=int,
                         default=0,
                         help="whether to use lm_adapted model")  # if we use bart, then automatically don't use lm_adapted
@@ -62,7 +68,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
+                        default=cache_path,
                         help="The path of huggingface cache")  # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
@@ -109,10 +115,10 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_full_model",
+                        default=pretrain_ckpt,
                         help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/014_c_1070k/bestckpt_prompt",
+                        default=pretrain_prompt_ckpt,
                         help="path to pretrained model prompt")
     # parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
@@ -130,37 +136,10 @@ def set_args():
     parser.add_argument("--no_entity_chain", action='store_true',
                         default=False, help="whether to use the entity chain at inference")
 
-
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum", 'en']
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-
     args = parser.parse_args()
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    highlights = [True, False, False, False, False, False, False]
+    settle_dataset_args(args)
 
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
     return args
-
 
 def set_logger(args):
     global logger
@@ -172,7 +151,6 @@ def set_logger(args):
                         level=logging.DEBUG)
     fh = logging.FileHandler(args.log_name)
     logger.addHandler(fh)
-
 
 def eval_ctrlsum(model, data, ents, idx_to_example, logger, test_ents=None):
     '''
@@ -233,7 +211,6 @@ def eval_ctrlsum(model, data, ents, idx_to_example, logger, test_ents=None):
             example_success[example_id].append(0)
 
     return example_success, successes, all_inputs, allypred, all_ents, success_list
-
 
 def eval(model, valid_dataset, scaler, logger, args, tokenizer, nlp, idx_to_example, seed=0, test_ents=None):
     def lmap(f, x):

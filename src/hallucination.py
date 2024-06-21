@@ -4,11 +4,13 @@ import logging
 import torch
 import copy
 import random
+import spacy
 from nltk.tokenize import sent_tokenize
 from pathlib import Path
-from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
+from transformers import PegasusConfig, PegasusTokenizer, PegasusTokenizerFast, PegasusForConditionalGeneration
 
-from utils import Nop
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
+from utils import settle_dataset_args
 from dataset.dataset import subsample_2k_testset
 from dataset.dataset_entity import *
 from dataset.dataset_summary import *
@@ -18,16 +20,16 @@ from engine_summary import *
 from models.model_summary_mix import *
 
 
-
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
     root = "/data/mathieu/"
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSum/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                            default="ccdv/cnn_dailymail")
+                        default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
-                        default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
+                        default="PegasusMixPrompt",
+                        choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt', 'CTRLsum', "CTRLsum_origin"])
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
@@ -43,7 +45,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
+                        default=cache_path,
                         help="The path of huggingface cache") # /data/ruochen/hf_models/bart-base for bart
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
@@ -54,9 +56,7 @@ def set_args():
     parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
-                            default='./log', help="The path to log dir")
-    # parser.add_argument("--save_model_path", dest="save_model_path", type=str,
-    #                         default='/data/ruochen/DATASETS/PromptSumm/xsum/10/seed_0/best_ckpt', help="The path to log dir")
+                        default='./log', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='controlling', help="The file name of log file")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -90,9 +90,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="../pretrained_ckpt/012_c_510k/bestckpt_full_model", help="path to pretrained model")
+                        default=pretrain_ckpt, help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="../tagger_pretrained_ckpt/012_c_510k/bestckpt_prompt", help="path to pretrained model prompt")
+                        default=pretrain_prompt_ckpt, help="path to pretrained model prompt")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--counterfactual_trained", action='store_true', help="whether or not to use the trained prompt with counterfactuals")  
     parser.add_argument("--seed", dest="seed", type=int,
@@ -110,37 +110,10 @@ def set_args():
                         default=False, help="whether to run inference with the fine-tuned or just pre-training E-prompt")
     parser.add_argument("--no_entity_chain", action='store_true',
                         default=False, help="whether to use the entity chain at inference")
-
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
     
     args = parser.parse_args()
-    ## SET HERE FOR PRETRAIN
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    highlights = [True, False, False, False, False, False, False]
-    
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.max_position_embeddings = 1024
+    settle_dataset_args(args)
+
     return args
 
 def set_logger(args):

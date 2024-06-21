@@ -7,7 +7,8 @@ from rouge_score import rouge_scorer
 from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
-from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig, PegasusTokenizerFast
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import PegasusConfig, PegasusTokenizer, PegasusTokenizerFast, PegasusForConditionalGeneration
 gc.enable()
 
 from utils import *
@@ -153,8 +154,7 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         "scale_parameter": False,
         "relative_step": False
     }
-    if args.optimizer_entity == "adafactor":
-        optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
+    optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
 
     model.train()
 

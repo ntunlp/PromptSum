@@ -7,10 +7,12 @@ import logging
 import spacy
 import scipy
 from datasets import load_dataset, load_metric
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
-from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
+from transformers import T5Config, T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartConfig, BartTokenizer, BartForConditionalGeneration
+from transformers import PegasusConfig, PegasusTokenizer, PegasusForConditionalGeneration
 gc.enable()
 
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
 from utils import *
 from dataset.dataset import *
 from dataset.dataset_entity import *
@@ -26,8 +28,6 @@ from models.model_summary_mix import ModelSummaryMix
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-
-    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -47,7 +47,7 @@ def set_args():
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSum/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -79,7 +79,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/",
+                        default=cache_path,
                         help="The path of huggingface cache")
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
@@ -239,9 +239,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default=pretrain_ckpt, help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default=pretrain_prompt_ckpt, help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a T5 tagger using the fewshot summarization data")
@@ -273,43 +273,14 @@ def set_args():
     if args.full_testset:
         args.eval_epoch_0 = False
 
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum"]
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False]
-    max_lengths = [512, 512, 512, 512, 1024, 512]
-    max_position_embeddings = [1024, 1024, 1024, 1024, 1536 if not("Finetune" in args.model) else 1024, 1024]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
+    idx = settle_dataset_args(args)
+
     lrs_finetune = [5e-5, 1e-4, 1e-4, 1e-4, 2e-4, 1e-4]
     lrs_soft = [5, 5e-3, 5e-3, 5e-3, 5e-1, 5e-3]
     max_epoch_entity = [5, 5, 5, 5, 5, 5]
     max_epoch_summary = [5 if not("Finetune" in args.model) else 10, 5 if not("Finetune" in args.model) else 10, 10, 10, 20, 30]
     eval_step_summary = [500, 500, 100, 100, 50, 50]
-    val_sizes = [13368, 11332, 4213, 5600, int(0.1 * 18949), 818]
-    test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
 
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_length = max_lengths[idx]
-    args.max_position_embeddings = max_position_embeddings[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.optimizer_entity = optimizers[idx]
-    args.optimizer_summary = optimizers[idx]
     if ("T5" in args.model):
         args.lr_entity = 5e-1
         args.lr_summary = 5e-1

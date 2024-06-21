@@ -25,7 +25,7 @@ else
 fi
 
 dataset_name=$dataset_name_map[$dataset]
-log_file=log_acl_controlling/${dataset_name}/hallucination\_$k_shot\_promptsumm_1.log
+log_file=log_acl_controlling/${dataset_name}/hallucination\_$k_shot\_promptsum_1.log
 
 echo $log_file
 CUDA_VISIBLE_DEVICES=$device python hallucination.py --max_length $length --valid_size_per_gpu_summary $batch_size --seed $seed --ckpt_name $ckpt_name --dataset_name $dataset --few_shot $k_shot --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --cache_path $cache \

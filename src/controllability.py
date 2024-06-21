@@ -1,18 +1,27 @@
 # This script performs qualitative tests to test a model for controllablity
 import copy
+import argparse
 from nltk.tokenize import sent_tokenize
-from dataset_entity import *
-from dataset_summary import *
-from engine_summary import *
-from models.model_summary_mix import ModelSummaryMix
+from rouge_score import rouge_scorer
+from transformers import T5Config, T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartConfig, BartTokenizer, BartForConditionalGeneration
+from transformers import PegasusConfig, PegasusTokenizer, PegasusForConditionalGeneration
 
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
+from utils import settle_dataset_args
+from dataset.dataset import subsample_2k_testset
+from dataset.dataset_entity import *
+from dataset.dataset_summary import *
+from engine_summary import *
+from models.model_entity import ModelEntity
+from models.model_summary_mix import ModelSummaryMix
 
 
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/data/mathieu/"
+
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= data_root + "dataset/PromptSumm/")
+                        default= root + "DATASETS/PromptSum/")
     parser.add_argument("--cuda", dest="cuda", type=str,
                         default="2", help="gpu id") 
     parser.add_argument("--tune_weights", dest="tune_weights", action='store_true',
@@ -20,7 +29,7 @@ def set_args():
     parser.add_argument("--ckpt_name", dest="ckpt_name", type=str,
                         default="bestckpt_from_pretrained", help="model ckpt name") 
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
-                            default="ccdv/cnn_dailymail")
+                        default="ccdv/cnn_dailymail")
     parser.add_argument("--model", dest="model", type=str,
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
@@ -45,7 +54,7 @@ def set_args():
     parser.add_argument("--guidance_mode", dest="guidance_mode", type=str,
                         default="input", choices=["input", "input_most_frequent", "input_salient_sentences", "input_and_target", "target", "target_unique", 'target_unique_filtered'])
     parser.add_argument("--log_dir", dest="log_dir", type=str,
-                            default='./log', help="The path to log dir")
+                        default='./log', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='controlling', help="The file name of log file")
     parser.add_argument("--num_workers_summary", dest="num_workers_summary", type=int,
@@ -87,37 +96,9 @@ def set_args():
     parser.add_argument("--seed", dest="seed", type=int,
                         default=42, help="seed for network")
     
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    
     args = parser.parse_args()
-    ## SET HERE FOR PRETRAIN
-    # args.pretrain_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_full_model"
-    # args.pretrain_prompt_ckpt="/data/hailin/PromptSumm/t5_tagger_pretrained_ckpt/012_c_330k/bestckpt_prompt"
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    highlights = [True, False, False, False, False, False, False]
-    
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
+    settle_dataset_args(args)
+
     return args
 
 def set_logger(args):
@@ -140,7 +121,7 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             ########## predict the validation entity chains with the 1st prompt tuning stage model
             entbasemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir = args.cache_path)
             enttokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir = args.cache_path)
-            entmodel = T5forFinetuneEntity(entbasemodel, enttokenizer, args)
+            entmodel = ModelEntity(entbasemodel, enttokenizer, args)
             logger.info("Loading the pre-trained NER model!")
 
             # model weights
@@ -310,7 +291,7 @@ def main(args):
         tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
-    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname args.allnumber_path)
+    promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
     model.set_prompt_embedding(promptnumber, promptembedding)
     # model weights
     if args.use_pretrain_ckpt and args.model != "T5Finetune":
@@ -355,7 +336,7 @@ def main(args):
     if not os.path.isfile(valid_file_name):
         dataset_args = [args.dataset_name, args.dataset_version]
         subsample_2k_testset(dataset_args, valid_file_name, args.seed, args)
-    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+    valid_dataset = DatasetSummary(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
         
     scaler = None
     # For each sentence

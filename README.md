@@ -29,17 +29,15 @@ bash src/scripts/run_pretraining.sh
 
 To run **0-shot** summarization (3 seeds in validation, 1 seed in test):
 ```
-bash src/scripts/runall_zeroshot_promptsum.sh
+bash src/scripts/run_zeroshot.sh
 ```
 
 To run **few-shot** summarization (3 seeds):
 ```
-bash src/scripts/runall_kshot_baselines.sh
-bash src/scripts/runall_kshot_oracle.sh
-bash src/scripts/runall_kshot_promptsum.sh
-bash src/scripts/runall_kshot_controllability.sh
-bash src/scripts/runall_kshot_counterfactual.sh
-bash src/scripts/runall_kshot_hallucination.sh
+bash src/scripts/run_kshot_promptsum.sh
+bash src/scripts/run_kshot_controllability.sh
+bash src/scripts/run_kshot_counterfactual.sh
+bash src/scripts/run_kshot_hallucination.sh
 ```
 
 To run **full-shot** summarization (1 seed):

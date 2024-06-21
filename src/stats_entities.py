@@ -2,6 +2,7 @@ import argparse
 import spacy
 from tqdm import tqdm
 
+from hyperparameters import root
 from utils import *
 from dataset.dataset import *
 
@@ -40,7 +41,7 @@ def main(args):
     spacy_nlp = spacy.load("en_core_web_sm")
     sets = ["test"]
     for set in sets:
-        path = "../../DATASETS/PromptSumm/{}/full/seed_42/{}.txt".format(args.dataset, set)
+        path = f"{root}DATASETS/PromptSum/{args.dataset}/full/seed_42/{set}.txt"
         print(path)
         count = 0
         source_ents, summary_ents = [], []

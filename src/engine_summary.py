@@ -9,7 +9,7 @@ from bert_score import score
 from nltk.tokenize import word_tokenize, sent_tokenize
 from tqdm import tqdm
 from transformers.optimization import Adafactor
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
+from transformers import T5Config, T5Tokenizer, T5ForConditionalGeneration
 from torch.cuda.amp import autocast as autocast
 from torch.utils import data
 from torch.utils.data import (
@@ -22,7 +22,7 @@ gc.enable()
 
 from utils import *
 from models.model_summary_soft import *
-from dataset_summary import *
+from dataset.dataset_summary import *
 
 
 
@@ -44,22 +44,15 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                                       args.max_guidance_length, args.test_dataset.tokenizer.pad_token_id, test_sampler, args)
     
     optimizer, scheduler, scaler = None, None, None
-    if args.optimizer_summary == "adafactor":
-        base_optimizer_arguments = {
-            "lr": args.lr_summary,
-            "clip_threshold": args.max_grad_norm_summary,
-            "decay_rate": -0.8,
-            "weight_decay": args.weight_decay_summary,
-            "scale_parameter": False,
-            "relative_step": False
-        }
-        optimizer = Adafactor
-    elif args.optimizer_summary == "adam":
-        base_optimizer_arguments = {
-            "lr": args.lr_summary,
-            "weight_decay": args.weight_decay_summary
-        }
-        optimizer = optim.Adam
+    base_optimizer_arguments = {
+        "lr": args.lr_summary,
+        "clip_threshold": args.max_grad_norm_summary,
+        "decay_rate": -0.8,
+        "weight_decay": args.weight_decay_summary,
+        "scale_parameter": False,
+        "relative_step": False
+    }
+    optimizer = Adafactor
     if args.n_gpu > 1: # distributed training
         optimizer = OSS(params=filter(lambda p: p.requires_grad, model.parameters()), optim=optimizer,
                         **base_optimizer_arguments)
@@ -148,7 +141,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # after everything, do it with test:
     if args.full_testset:
         if not(args.zero_shot):
-            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
                 path = args.model_save_path + 'full_weights'
                 if args.guidance_mode == "target":
                     path += "_oracle"
@@ -309,7 +302,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
             if not os.path.exists(args.model_save_path):
                 os.mkdir(args.model_save_path)
             model_to_save = model.module if hasattr(model, 'module') else model
-            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+            if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
                 path = args.model_save_path + 'full_weights'
                 if args.guidance_mode == "target":
                     path += "_oracle"
@@ -465,7 +458,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
     model.eval()
 
     # load weights
-    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+    if (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
         path = args.model_save_path + 'full_weights'
         if args.guidance_mode == "target":
             path += "_oracle"

@@ -10,7 +10,7 @@ pretrain_ckpt="../pretrained_ckpt/019/bestckpt_full_model"
 pretrain_prompt_ckpt="../pretrained_ckpt/019/bestckpt_prompt"
 
 
-############################ MixPrompt (PromptSum)
+############################ PromptSum
 
 ##### train + val
 #echo "PromptSum - Training E-prompt"
@@ -23,7 +23,7 @@ pretrain_prompt_ckpt="../pretrained_ckpt/019/bestckpt_prompt"
 echo "PromptSum - Summary inference - TEST SET"
 CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
 
-############################ MixPrompt (PromptSum) - no pre-training
+############################ PromptSum - no pre-training
 
 ##### train + val
 #echo "PromptSum no pre-training - Training E-prompt"
@@ -36,31 +36,31 @@ CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --
 #echo "PromptSum no pre-training - Summary inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --use_pretrain_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100
 
-############################ MixPrompt (PromptSum) - no fine-tuned S-prompt
+############################ PromptSum - no fine-tuned S-prompt
 
 ##### test
 #echo "PromptSum no fine-tuned S-prompt - Summary inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_finetuned_sprompt
 
-############################ MixPrompt (PromptSum) - no S-prompt
+############################ PromptSum - no S-prompt
 
 ##### test
 #echo "PromptSum no S-prompt - Summary inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_sprompt
 
-############################ MixPrompt (PromptSum) - no fine-tuned E-prompt
+############################ PromptSum - no fine-tuned E-prompt
 
 ##### test
 #echo "PromptSum no E-prompt - Summary inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_finetuned_eprompt
 
-############################ MixPrompt (PromptSum) - no entity chain
+############################ PromptSum - no entity chain
 
 ##### test
 #echo "PromptSum no entity chain - Summary inference - TEST SET"
 #CUDA_VISIBLE_DEVICES=$device python main_full_shot.py --dataset_name $dataset --full_testset --finetune_summary --pretrain_ckpt $pretrain_ckpt --pretrain_prompt_ckpt $pretrain_prompt_ckpt --max_epoch_summary 0 --cache_path $cache --prompt_number 100 --no_entity_chain
 
-############################ MixPrompt - oracle
+############################ PromptSum - oracle
 
 ##### train & val
 #echo "PromptSum oracle entities - Training S-prompt"

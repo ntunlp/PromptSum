@@ -1,15 +1,17 @@
 import argparse
 import gc
 import scipy
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
-from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
-from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusConfig
+from transformers import T5Config, T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartConfig, BartTokenizer, BartForConditionalGeneration
+from transformers import PegasusConfig, PegasusTokenizer, PegasusForConditionalGeneration
 from pathlib import Path
 gc.enable()
 
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
+from utils import settle_dataset_args
 from dataset.dataset import *
 from dataset.dataset_entity import *
-from dataset.dataset_summary import DatasetSummary
+from dataset.dataset_summary import DatasetSummary, read_subsampled
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
@@ -19,11 +21,8 @@ from models.model_summary_soft import ModelSummarySoft
 from models.model_summary_mix import ModelSummaryMix
 
 
-
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-
-    root = "/data/mathieu/"
 
     # general stuff
     parser.add_argument("--seed", dest="seed", type=int,
@@ -37,13 +36,13 @@ def set_args():
     parser.add_argument("--debug", action='store_true',
                         default=False, help="whether debug with breakpoint")
     parser.add_argument("--log_dir", dest="log_dir", type=str,
-                            default='./log', help="The path to log dir")
+                        default='./log', help="The path to log dir")
     parser.add_argument("--log_name", dest="log_name", type=str,
                         default='dummy', help="The file name of log file")
 
     # data
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSum/")
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
@@ -62,7 +61,6 @@ def set_args():
                         default="PegasusMixPrompt", choices = ["T5Finetune", "T5SoftPrompt", "T5MixPrompt",
                             "BartFinetune", 'BartSoftPrompt', 'BartMixPrompt',
                             "PegasusFinetune", 'PegasusSoftPrompt', 'PegasusMixPrompt',
-                            'FROSTFinetune'
                         ])
     parser.add_argument("--model_name", dest="model_name", type=str,
                         default="google/pegasus-large", choices=["google/t5-v1_1-large", "facebook/bart-large", "google/pegasus-large"])
@@ -72,7 +70,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "cache")
+                        default=cache_path)
     # prompt
     parser.add_argument("--concat_mode", dest="concat_mode", type=str,
                         default="concat_right", choices = ["concat_right", "concat_left"])
@@ -230,9 +228,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default=pretrain_ckpt, help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default=pretrain_prompt_ckpt, help="path to pretrained model prompt")
     ######### entity prompt-tuning
     parser.add_argument("--finetune_entity", action='store_true',
                         default=False, help="whether finetune a tagger using the fewshot summarization data")
@@ -267,41 +265,8 @@ def set_args():
 
     args.few_shot = int(args.few_shot)
 
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum", "c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum", 'en']
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
-    highlights = [True, False, False, False, False, False, False]
-    max_lengths = [512, 512, 512, 512, 1024, 512, 512]
-    max_position_embeddings = [1024, 1024, 1024, 1024, 1536 if not("Finetune" in args.model) else 1024, 1024, 1024]
-    max_summary_lengths = [128, 64, 64, 128, 256, 64, 128]
-    optimizers = ["adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor", "adafactor"]
-    test_sizes = [11490, 11334, 4222, 5600, 3269, 819]
+    idx = settle_dataset_args(args)
 
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_length = max_lengths[idx]
-    if args.prompt_number == 100 and args.dataset in ['cnndm', 'xsum']:
-        args.max_length = 768
-        if not(args.use_pretrain_ckpt) and "Mix" in args.model:
-            args.max_length = 704
-    args.max_position_embeddings = max_position_embeddings[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.optimizer_entity = optimizers[idx]
-    args.optimizer_summary = optimizers[idx]
     if ("T5" in args.model):
         args.lr_entity = 5e-1
         args.lr_summary = 5e-1
@@ -326,7 +291,6 @@ def set_args():
     args.seeds_to_keep = args.seeds_to_keep.split(",")
 
     return args
-
 
 def set_logger(args):
     global logger
@@ -378,13 +342,13 @@ def main(args):
         thistaskfold = args.dataset
         args.taskfold = thistaskfold
 
-    # load tokenizer 
-    if 'Bart' in args.model:
+    # load tokenizer
+    if 'T5' in args.model:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    elif 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     elif 'Pegasus' in args.model:
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    else:
-        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
@@ -411,14 +375,14 @@ def main(args):
         logger.info('subsampling..')
         subsample(dataset_args, few_shot_seeds, args)
 
-    ########## pre-training?
+    ########## pre-training
     if args.pretrain:
         logger.info("\n"+ "*"*50)
         logger.info("1/ Pre-training...")
         pretrain_model(dataset_args, args)
         return
 
-    ########## 1st prompt tuning stage (for entity chain)?
+    ########## 1st prompt tuning stage (for entity chain)
     if args.finetune_entity:
         logger.info("\n"+ "*"*50)
         logger.info("2/ Prompt tuning the tagger for entity chain prediction...")
@@ -430,7 +394,7 @@ def main(args):
         train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args)
         return
 
-    ########## 2nd prompt tuning stage (for summarization)?
+    ########## 2nd prompt tuning stage (for summarization)
     if args.finetune_summary:
         logger.info(f'args.big_testset: {args.big_testset}')
         if args.big_testset:
@@ -438,7 +402,7 @@ def main(args):
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
-            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = DatasetSummary(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
@@ -449,7 +413,7 @@ def main(args):
                 logger.info('creating')
                 subsample_2k_testset(dataset_args, args.test_file, args.seed, args)
             # load
-            args.test_dataset = SummarizationDataset(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
+            args.test_dataset = DatasetSummary(args.test_file, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args)
             logger.info(f'args.test_dataset.num_entries: {args.test_dataset.num_entries}')
         logger.info("\n"+ "*"*50)
         logger.info("3/ Prompt tuning the summarization model...")
@@ -481,21 +445,19 @@ def main(args):
                     args.test_dataset = valid_dataset
 
             # base model
-            if 'Bart' in args.model:
-                basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-                args.allnumber_path = '../support_files/allnumber_t5.pkl'
-            elif 'Pegasus' in args.model or 'FROST' in args.model:
-                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-                args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-                if 'FROST' in args.model:
-                    basemodel = load_frost(basemodel, args)
-            else:
+            if 'T5' in args.model:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
                 args.allnumber_path = '../support_files/allnumber_t5.pkl'
+            elif 'Bart' in args.model:
+                basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+                args.allnumber_path = '../support_files/allnumber_bart.pkl'
+            elif 'Pegasus' in args.model:
+                basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
+                args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
-            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']:
+            if args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']:
                 logger.info('\nFinetuning')
                 model = ModelSummaryFinetune(args, basemodel, tokenizer, args.model)
             elif args.model in ['T5SoftPrompt', 'BartSoftPrompt', 'PegasusSoftPrompt']:
@@ -515,7 +477,7 @@ def main(args):
             logger.info("The model has {} trainable parameters".format(n_params))
 
             #####load pre-trained model
-            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune", "FROSTFinetune"]):
+            if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
                 logger.info("load pre-trained model for summarization")
 
                 # model weights
@@ -732,7 +694,6 @@ def main(args):
 
         if args.local_rank != -1:
             torch.distributed.destroy_process_group()
-
 
 
 if __name__ == "__main__":

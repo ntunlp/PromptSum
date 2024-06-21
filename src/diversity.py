@@ -1,11 +1,16 @@
 # This script performs qualitative tests to test a model for controllablity: success rates
+import argparse
+
 from rouge_score import rouge_scorer
 from nltk.tokenize import sent_tokenize
 from transformers import AutoModelForSeq2SeqLM, PreTrainedTokenizerFast
+from transformers import PegasusForConditionalGeneration, PegasusTokenizer, PegasusTokenizerFast
 from fairseq.models.bart import BARTModel
 
-from dataset_entity import *
-from dataset_summary import *
+from hyperparameters import root, cache_path, pretrain_ckpt, pretrain_prompt_ckpt
+from utils import settle_dataset_args
+from dataset.dataset_entity import DatasetEntity
+from dataset.dataset_summary import DatasetSummary
 from engine_pretrain import *
 from engine_entity import *
 from engine_summary import *
@@ -14,12 +19,11 @@ from models.model_summary_soft import *
 from models.model_summary_mix import *
 
 
-
 def set_args():
     parser = argparse.ArgumentParser(description="latentRE")
-    root = "/data/mathieu/"
+
     parser.add_argument("--data_dir", dest="data_dir", type=str,
-                        default= root + "DATASETS/PromptSumm/")
+                        default= root + "DATASETS/PromptSum/")
     parser.add_argument("--CTRLsum_ckpt_dir", dest="CTRLsum_ckpt_dir", type=str,
                         default='/data/mathieu/prompt_sum/src/saved_models/xsum/100/CTRLsum_origin/')
     parser.add_argument("--cuda", dest="cuda", type=str,
@@ -41,7 +45,7 @@ def set_args():
                         default=root + "lm_adapted_t5model/torch_ckpt/large/pytorch_model.bin",
                         help="The path of lm_adapted model")
     parser.add_argument("--cache_path", dest="cache_path", type=str,
-                        default=root + "hf_models/pegasus-large/", help="The path of huggingface cache")
+                        default=cache_path, help="The path of huggingface cache")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
                         default="../../hf_datasets/", help="dataset cache folder")
     parser.add_argument("--guidance_type", dest="guidance_type", type=str,
@@ -85,9 +89,9 @@ def set_args():
     parser.add_argument("--use_pretrain_ckpt", action='store_false',
                         default=True, help="whether to load the pre-training ckpt before fine-tuning")
     parser.add_argument("--pretrain_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_full_model", help="path to pretrained model")
+                        default=pretrain_ckpt, help="path to pretrained model")
     parser.add_argument("--pretrain_prompt_ckpt", type=str,
-                        default="../pretrained_ckpt/019/bestckpt_prompt", help="path to pretrained model prompt")
+                        default=pretrain_prompt_ckpt, help="path to pretrained model prompt")
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--seed", dest="seed", type=int,
                         default=0, help="seed for network")
@@ -102,35 +106,10 @@ def set_args():
     parser.add_argument('--diversity_penalty', type=float, default=1.0)  # default: 1.0
     parser.add_argument('--num_diverse_beams', type=int, default=10)
     parser.add_argument('--num_return_sequences', type=int, default=10)
-
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum","c4"]
-    dataset_versions = ["3.0.0", "default", "long", "all", "default", "samsum",'en']
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-    validation_keys = ["validation", "validation", "", "validation", "test", "validation"]
-    test_keys = ["test", "test", "", "test", "test", "test"]
     
     args = parser.parse_args()
+    settle_dataset_args(args)
 
-    max_summary_lengths = [128, 64, 64, 128, 256, 64]
-    highlights = [True, False, False, False, False, False, False]
-    
-    args.max_position_embeddings = 1024
-    idx = dataset_names.index(args.dataset_name)
-    if args.dataset_name == 'cnn_dailymail' or args.dataset_name == "ccdv/cnn_dailymail":
-        idx = 0
-        args.dataset = 'cnndm'
-    else:
-        args.dataset = args.dataset_name
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
-    args.dataset_version = dataset_versions[idx]
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-    args.validation_key = validation_keys[idx]
-    args.test_key = test_keys[idx]
-    args.highlights = highlights[idx]
-    args.max_summary_length = max_summary_lengths[idx]
     return args
 
 def set_logger(args):
@@ -183,7 +162,7 @@ def main(args):
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
             model.set_prompt_embedding(promptnumber, promptembedding)
         # model weights
-        if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+        if args.use_pretrain_ckpt and not(args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
             print(f"device: {args.device}")
             ckptsum = torch.load(args.pretrain_ckpt, map_location=args.device)
             dicsum = {}
@@ -202,7 +181,7 @@ def main(args):
         path = args.model_save_path + args.ckpt_name
         ckptsum = torch.load(path)
         print("loading from : {}".format(path))
-        if 'full_weights' in args.ckpt_name or (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune', 'FROSTFinetune']):
+        if 'full_weights' in args.ckpt_name or (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
             model.load_state_dict(ckptsum)
             print("HERE")
         else:
@@ -257,7 +236,7 @@ def main(args):
     print(valid_file_name)
     args.logger = logger
     logger.info('generated dataset')
-    valid_dataset = SummarizationDataset(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, human_eval = True)
+    valid_dataset = DatasetSummary(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, human_eval = True)
     print("\n1st data point:")
     print(valid_dataset.data[0][0][:500])
 

@@ -5,31 +5,23 @@ import gc
 import time
 gc.enable()
 
+from hyperparameters import root
+from utils import settle_dataset_args
 
 
 parser = argparse.ArgumentParser(description="latentRE")
 
-parser.add_argument("--data_dir", type = str, default = "../../DATASETS/PromptSumm/")
+parser.add_argument("--data_dir", type = str, default = root + "DATASETS/PromptSum/")
 parser.add_argument("--dataset_name", type=str, default="ccdv/cnn_dailymail", 
-                    choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]) 
-parser.add_argument("--dataset", type = str, default = "cnndm",
-                    choices = ["cnndm", "xsum", "billsum", "samsum"])
+                    choices = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"])
 parser.add_argument("--size", type = int, default = 100)
 parser.add_argument("--seeds", type = list, default = [0, 1, 2])
 
 args = parser.parse_args()
 
 
-
 def main(args):
-    dataset_names = ["ccdv/cnn_dailymail", "xsum", "reddit_tifu", "wikihow", "billsum", "samsum"]
-    text_keys = ["article", "document", "documents", "text", "text", "dialogue"]
-    summary_keys = ["highlights", "summary", "tldr", "headline", "summary", "summary"]
-
-    idx = dataset_names.index(args.dataset_name)
-    args.text_key = text_keys[idx]
-    args.summary_key = summary_keys[idx]
-
+    settle_dataset_args(args)
     print(args)
 
     for seed in args.seeds:

@@ -10,4 +10,4 @@
     --gradient_accumulation_steps_pretrain 8 \
     --use_huggingface_dataset \
     --dataset_name c4 \
-    --pretrain_dataset_path /data/hailin/PromptSumm/c4_realnewslike \
+    --pretrain_dataset_path /data/hailin/PromptSum/c4_realnewslike \
