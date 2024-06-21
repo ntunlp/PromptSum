@@ -25,8 +25,7 @@ from models.model_summary_soft import *
 from dataset.dataset_summary import *
 
 
-
-logger = logging.getLogger('root')
+logger = logging.getLogger('engine_summary')
 
 def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     # total step
@@ -63,7 +62,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     model.train()
 
     logger.info("Begin train...")
-    logger.info("We will train model in %d steps" % step_tot)
+    logger.info(f"We will train model in {step_tot} steps")
 
     result_dict = {
         'epoch': [],
@@ -86,7 +85,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
         dooneeval(model, valid_dataloader, scaler, result_dict, logger, 0, args)
 
     for i in range(args.max_epoch_summary):
-        logger.info("Epoch {} / {}".format(i+1, args.max_epoch_summary))
+        logger.info(f"Epoch {i+1} / {args.max_epoch_summary}")
         model.train()
         result_dict['epoch'] = i
         allloss, ents = [], []
@@ -103,7 +102,7 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 with autocast():
                     loss = model(inputs)
             else:
-                loss  = model(inputs)
+                loss = model(inputs)
             if scaler is not None:
                 scaler.scale(loss).backward()
             else:
@@ -123,12 +122,11 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
                 global_step += 1
 
                 if (args.local_rank in [0, -1]) and (global_step % args.log_step_finetune == 0):
-                    logger.info("step: %d, schedule: %.3f, loss: %.6f, " % (
-                        global_step, global_step / max(1,step_tot), np.average(allloss)))
+                    logger.info(f"Step: {global_step}, loss: {np.average(allloss):.6f}")
 
                 if args.few_shot == "full":
                     if (args.local_rank in [0, -1]) and (global_step % args.eval_step_summary == 0):
-                        print("Evaluating (within epoch), step {}...".format(global_step))
+                        print(f"Evaluating (within epoch), step {global_step}...")
                         dooneeval(model, valid_dataloader, scaler, result_dict, logger, i, args)
                         model.train()
 
@@ -189,7 +187,6 @@ def train(tokenizer, model, train_dataset, valid_dataset, logger, args):
     
     return result_dict
 
-
 def get_dataloader(tokenizer, num_workers, dataset, batch_size, max_len, max_guidance_len, pad_id, sampler, args):
     collate_fn = SmartBatchingCollate(
         args = args,
@@ -210,7 +207,6 @@ def get_dataloader(tokenizer, num_workers, dataset, batch_size, max_len, max_gui
     
     return dataloader
 
-
 def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, args):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
         model = modeltoeval.module
@@ -224,7 +220,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
             if step % args.log_step_finetune == 0:
-                logger.info("step: %d, schedule: %.3f" % (step, step / len(valid_dataloader)))
+                logger.info(f"Step: {step}, schedule: {(step / len(valid_dataloader)):.3f}")
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
@@ -236,8 +232,6 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
-                #for k in inputs.keys():
-                #    print(k, inputs[k].shape)
                 sen, target, preds = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allysrc.extend(sen)
@@ -330,7 +324,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
                     "promptembedding": model_to_save.promptembedding
                 }
                 torch.save(ckpt, path)
-                print("saved the model prompt!", path)
+                print(f"Saved the model prompt :{path}")
     # abstractivness
     if args.eval_abstractiveness:
         print("Running new n-grams counts...")
@@ -395,9 +389,7 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         new_bigrams = 100 * np.mean(new_bigrams)
         new_trigrams = 100 * np.mean(new_trigrams)
         new_quadrigrams = 100 * np.mean(new_quadrigrams)
-        print("\nAbstractiveness - MODEL || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
-            new_unigrams, new_bigrams, new_trigrams, new_quadrigrams
-        ))
+        print(f"\nAbstractiveness - MODEL || New unigrams: {new_unigrams:.4f}%, bigrams: {new_bigrams:.4f}%, trigrams: {new_trigrams:.4f}, quadrigrams: {new_quadrigrams:.4f}%")
         result_dict["new_unigrams"] = new_unigrams
         result_dict["new_bigrams"] = new_bigrams
         result_dict["new_trigrams"] = new_trigrams
@@ -407,16 +399,13 @@ def dooneeval(modeltoeval, valid_dataloader, scaler, result_dict, logger, i, arg
         new_bigrams_target = 100 * np.mean(new_bigrams_target)
         new_trigrams_target = 100 * np.mean(new_trigrams_target)
         new_quadrigrams_target = 100 * np.mean(new_quadrigrams_target)
-        print("Abstractiveness - TARGET || New unigrams: {:.4f}%, bigrams: {:.4f}%, trigrams: {:.4f}, quadrigrams: {:.4f}%".format(
-            new_unigrams_target, new_bigrams_target, new_trigrams_target, new_quadrigrams_target
-        ))
+        print(f"Abstractiveness - TARGET || New unigrams: {new_unigrams_target:.4f}%, bigrams: {new_bigrams_target:.4f}%, trigrams: {new_trigrams_target:.4f}, quadrigrams: {new_quadrigrams_target:.4f}%")
         result_dict["new_unigrams_target"] = new_unigrams_target
         result_dict["new_bigrams_target"] = new_bigrams_target
         result_dict["new_trigrams_target"] = new_trigrams_target
         result_dict["new_quadrigrams_target"] = new_quadrigrams_target
 
     return result_dict
-
 
 def entity_eval(ytrue, ypred):
     spacy_nlp = spacy.load("en_core_web_sm")
@@ -445,10 +434,9 @@ def entity_eval(ytrue, ypred):
     p = np.mean(all_p)
     r = np.mean(all_r)
     f1 = np.mean(all_f1)
-    print("\nEntity-level eval, mean precision: {:.4f}, recall: {:.4f}, F-1: {:.4f}".format(p, r, f1))
+    print(f"\nEntity-level eval, mean precision: {p:.4f}, recall: {r:.4f}, F-1: {f1:.4f}")
     
     return p, r, f1
-
 
 def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
     if isinstance(modeltoeval, torch.nn.parallel.DistributedDataParallel):
@@ -463,7 +451,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         if args.guidance_mode == "target":
             path += "_oracle"
         model.load_state_dict(torch.load(path))
-        print("loaded the full model weights!", path)
+        print(f"Loaded the full model weights: {path}")
     else:
         path = args.model_save_path + f'bestckpt_{args.prompt_number}'
         if args.use_pretrain_ckpt:
@@ -475,7 +463,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         best_val_ckpt = torch.load(path)
         model.promptnumber = best_val_ckpt["promptnumber"]
         model.promptembedding = nn.parameter.Parameter(best_val_ckpt["promptembedding"])
-        print("loaded the model prompt!", path)
+        print(f"Loaded the model prompt: {path}")
 
     logger.info("Do inference!")
     allysrc, allytrue, allypred = [], [], []
@@ -496,8 +484,6 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
                     allytrue.extend(tarres)
                     allypred.extend(predres)
             else:
-                # for k in inputs.keys():
-                #    print(k, inputs[k].shape)
                 sen, target, preds = model._generative_step(inputs)
                 tarres, predres = target, preds
                 allysrc.extend(sen)
@@ -527,12 +513,12 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
 
     logger.info('----Validation Results Summary----')
     logger.info("Size of the dataset: {}".format(len(allypred)))
-    logger.info("R-1: {:.4f}".format(r1))
-    logger.info("R-2: {:.4f}".format(r2))
-    logger.info("R-L: {:.4f}".format(rl))
-    logger.info("Precision: {:.4f}".format(p))
-    logger.info("Recall: {:.4f}".format(r))
-    logger.info("F-1: {:.4f}".format(f1))
+    logger.info(f"R-1: {r1:.4f}")
+    logger.info(f"R-2: {r2:.4f}")
+    logger.info(f"R-L: {rl:.4f}")
+    logger.info(f"Precision: {p:.4f}")
+    logger.info(f"Recall: {r:.4f}")
+    logger.info(f"F-1: {f1:.4f}")
 
     # abstractivness
     if args.eval_abstractiveness:
@@ -574,9 +560,9 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
         new_bigrams = 100 * np.mean(new_bigrams)
         new_trigrams = 100 * np.mean(new_trigrams)
         new_quadrigrams = 100 * np.mean(new_quadrigrams)
-        logger.info("New unigrams: {:.4f}".format(new_unigrams))
-        logger.info("New bigrams: {:.4f}".format(new_bigrams))
-        logger.info("New trigrams: {:.4f}".format(new_trigrams))
-        logger.info("New quadrigrams: {:.4f}".format(new_quadrigrams))
+        logger.info(f"New unigrams: {new_unigrams:.4f}")
+        logger.info(f"New bigrams: {new_bigrams:.4f}")
+        logger.info(f"New trigrams: {new_trigrams:.4f}")
+        logger.info(f"New quadrigrams: {new_quadrigrams:.4f}")
 
     return allysrc, allytrue, allypred

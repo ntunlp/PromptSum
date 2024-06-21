@@ -362,7 +362,7 @@ def main(args):
     promptnumber = args.prompt_number
 
     # load datasets
-    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
     logger.info(f"Few shot save dir: {args.few_shot_save_dir}")
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
@@ -428,13 +428,13 @@ def main(args):
 
         count = 0
         for (train_dataset, valid_dataset, seed) in datasets:
-            logger.info('SEED {}'.format(seed))
+            logger.info(f'SEED {seed}')
             if not(str(seed) in args.seeds_to_keep):
                 print("SKIPPING THIS SEED")
                 continue
             args.model_save_path = args.model_save_folder + f'seed_{seed}/'
-            logger.info('args.model_save_path {}'.format(args.model_save_path))
-            logger.info('args.save_model {}'.format(args.save_model))
+            logger.info(f'args.model_save_path {args.model_save_path}')
+            logger.info(f'args.save_model {args.save_model}')
             count += 1
             if count <=0:
                 continue
@@ -473,7 +473,7 @@ def main(args):
                 raise Exception('Model not implemented yet')
 
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            logger.info("The model has {} trainable parameters".format(n_params))
+            logger.info(f"The model has {n_params} trainable parameters")
 
             #####load pre-trained model
             if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
@@ -552,7 +552,7 @@ def main(args):
                         entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
 
                     n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-                    logger.info("The ent model has {} trainable parameters".format(n_params))
+                    logger.info(f"The ent model has {n_params} trainable parameters")
                     entmodel.to(args.device)
                     logger.info("move to device!")
                     model.eval()
@@ -571,7 +571,7 @@ def main(args):
                             alldata = valid_dataset.data
                             logger.info(f"valid size: {len(alldata)}")
                         allresofvalid, allpreds, alllabels, mean_rs_entity = infer_entity_model(alldata, enttokenizer, entmodel, args)
-                        for xx in range(5):
+                        for xx in range(2):
                             print("*"*50)
                             print("Entity chain - pred:")
                             print(allpreds[xx])
@@ -580,7 +580,7 @@ def main(args):
                         logger.info(len(allresofvalid))
                         with open(respath, "wb") as f:
                             pickle.dump(allresofvalid, f)
-                            logger.info("saved the T5 valid entities to: {}".format(respath))
+                            logger.info(f"Saved the T5 valid entities to: {respath}")
                         torch.cuda.empty_cache()
                         gc.collect()
 
@@ -636,7 +636,7 @@ def main(args):
 
             model.to(args.device)
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            logger.info("The model has {} trainable parameters".format(n_params))
+            logger.info(f"The model has {n_params} trainable parameters")
 
             logger.info(f'train_dataset.num_entries: {train_dataset.num_entries}')
             logger.info(f'valid_dataset.num_entries: {valid_dataset.num_entries}')
@@ -662,7 +662,7 @@ def main(args):
                 export_path = export_path[:-4] + "_no_entity_chain.pkl"
             with open(export_path, "wb") as f:
                 pickle.dump(d, f)
-                print("Saved scores to {}".format(export_path))
+                print(f"Saved scores to {export_path}")
 
             for k in keys:
                 if k in result_dict.keys():
@@ -682,16 +682,14 @@ def main(args):
                     high = (k+1) * bin_size
                     mean_rs_entity_bin = np.mean(mean_rs_entity[low:high])
                     mean_rs_summary_bin = np.mean(mean_rs_summary[low:high])
-                    print("Bin {}, Mean R entity {:.4f} , Mean R summary: {:.4f}".format(
-                        k, mean_rs_entity_bin, mean_rs_summary_bin
-                    ))
+                    print(f"Bin {k}, Mean R entity {mean_rs_entity_bin:.4f} , Mean R summary: {mean_rs_summary_bin:.4f}")
                 p, _ = scipy.stats.pearsonr(mean_rs_entity, mean_rs_summary)
-                print("Pearson correlation: {:.4f}".format(p))
+                print(f"Pearson correlation: {p:.4f}")
 
-        logger.info('final results:')
+        logger.info('Final results:')
         for k in keys:
-            easy_results = ["{:.2f}".format(x) for x in result_dict_total[k]]
-            logger.info('{}: {:.4f} (all: {})'.format(k, np.mean(result_dict_total[k]), easy_results))
+            easy_results = [f"{x:.2f}" for x in result_dict_total[k]]
+            logger.info(f'{k}: {np.mean(result_dict_total[k]):.4f} (all: {easy_results})')
 
         if args.local_rank != -1:
             torch.distributed.destroy_process_group()

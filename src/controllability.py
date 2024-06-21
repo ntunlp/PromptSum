@@ -133,7 +133,6 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             entmodel.load_state_dict(dic)
 
             # just prompt
-            #onepath = f'{args.few_shot_save_dir}seed_{seed}/data_for_bert_{seed}/tagger/bestckpt_prompt' ####bestckpt_prompt?
             onepath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/{args.ckpt_name}'
             print(onepath)
             oneckpt = torch.load(onepath)
@@ -141,14 +140,12 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
             entmodel.promptembedding = oneckpt["promptembedding"]
         
             n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-            logger.info("The ent model has {} trainable parameters".format(n_params))
+            logger.info(f"The ent model has {n_params} trainable parameters")
             entmodel.to(args.device)
-            logger.info("move to device!")
             model.eval()
 
             idxpath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5fulltestidx_control.pkl'
-            respath_full = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'\
-            # logger.info(f'respath: {respath}')
+            respath_full = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/T5_full_testent.pkl'
             with open(respath_full, "rb") as f:
                 allresofvalid = pickle.load(f)
             all_ents = list(allresofvalid.values())
@@ -261,8 +258,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, seed = 0):
     mean_rouge = (rouge_score["rouge1"] + rouge_score["rouge2"] + rouge_score["rougeLsum"]) / 3
     logger.info(f'mean-rouge: {mean_rouge}')
     logger.info(f'----EVAL FINISHED----')
-    return all_inputs, all_ents, labels, summaries
 
+    return all_inputs, all_ents, labels, summaries
 
 def main(args):
     args.filtered = False
@@ -277,18 +274,18 @@ def main(args):
     thistaskfold = args.dataset
     args.taskfold = thistaskfold
     # First load the trained ckpt
-    if 'Bart' in args.model:
+    if 'T5' in args.model:
+        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        args.allnumber_path = 'support_files/allnumber_t5.pkl'
+    elif 'Bart' in args.model:
         basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        args.allnumber_path = '../support_files/allnumber_t5.pkl'
+        args.allnumber_path = 'support_files/allnumber_bart.pkl'
     elif 'Pegasus' in args.model:
         basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        logger.info('loaded pegasus models')
-        args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-    else:
-        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
     model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
@@ -303,7 +300,7 @@ def main(args):
         model.load_state_dict(dicsum)
 
     seed = 0
-    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
     
     ## LOAD CKPT
     args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'
@@ -321,9 +318,7 @@ def main(args):
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
-        logger.info('gen token = {} , gen token id = {}'.format(
-            gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
-        ))
+        logger.info(f'gen token = {gentasktoken} , gen token id = {tokenizer.convert_tokens_to_ids(gentasktoken)}')
     answertoken = "__ans__"
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
@@ -356,6 +351,8 @@ def main(args):
         logger.info(f'ENTS: {all_ents0[i]}; SUMMARY: {summaries0[i]}')
         logger.info(f'ENTS: {all_ents1[i]}; SUMMARY: {summaries1[i]}')
         logger.info(f'ENTS: {all_ents2[i]}; SUMMARY: {summaries2[i]}')
+
+
 if __name__ == "__main__":
     args = set_args()
     set_logger(args)

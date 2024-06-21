@@ -18,7 +18,6 @@ from models.model_entity import ModelEntity
 from engine_pretrain import *
 
 
-
 def train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args):
     all_f1s, all_meanRs = [], []
     for i in range(len(alltrainfile)):
@@ -28,18 +27,16 @@ def train_tagger_for_all_seeds(alltrainfile, allvalidfile, alltestfile, args):
         all_f1s.append(f1)
         all_meanRs.append(meanR)
     f1 = np.mean(all_f1s)
-    clean_f1s = ["{:.4f}".format(x) for x in all_f1s]
-    print("Mean F1: {:.4f} (over all seeds: {})".format(f1, clean_f1s))
+    clean_f1s = [f"{x:.4f}" for x in all_f1s]
+    print(f"Mean F1: {f1:.4f} (over all seeds: {clean_f1s})")
     meanR = np.mean(all_meanRs)
-    clean_meanRs = ["{:.4f}".format(x) for x in all_meanRs]
-    print("Mean mean ROUGE: {:.4f} (over all seeds: {})".format(meanR, clean_meanRs))
-
+    clean_meanRs = [f"{x:.4f}" for x in all_meanRs]
+    print(f"Mean mean ROUGE: {meanR:.4f} (over all seeds: {clean_meanRs})")
 
 def train_tagger_for_one_seed(trainfile, validfile, testfile, args):
     result_dict = finetune_model_tagger(trainfile, validfile, testfile, args)
 
     return result_dict
-
 
 def finetune_model_tagger(trainfile, validfile, testfile, args):
     print("Fine-tuning entity tagger...")
@@ -103,11 +100,10 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
             promptnumber = args.prompt_number
             taskname = "name entity recognition"
             promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
-            print("prompt", promptembedding.shape)
             model.set_prompt_embedding(promptnumber, promptembedding)
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    logger.info(f"The model has {n_params} trainable parameters")
     model.to(args.device)
 
     train_dataset = DatasetEntity(trainfile, max_seq_length, tokenizer)
@@ -136,15 +132,12 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
     #####the path of tuned model
     pos = trainfile.find("docwithlabel_train")
     foldername = trainfile[0:pos]
-    print(foldername)
     seedname = foldername.split("/")[-3]
-    print(seedname)
 
     taggerfolder = "entity_ckpt/"
     os.makedirs(taggerfolder, exist_ok=True)
     output_dir = taggerfolder + args.dataset + "/" + str(args.few_shot) + "/" + seedname
     os.makedirs(output_dir, exist_ok=True)
-    print(output_dir)
 
     base_optimizer_arguments = {
         "lr": learning_rate,
@@ -155,14 +148,11 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         "relative_step": False
     }
     optimizer = Adafactor(params=filter(lambda p: p.requires_grad, model.parameters()), **base_optimizer_arguments)
-
     model.train()
 
     startepoch = 0
     Best_F1, Best_val_meanR = -1.0, -1.0
-
     logger.info("Begin train...")
-
     result_dict = {
         'epoch': [],
         'val_F1': [],
@@ -172,9 +162,8 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         'val_rl': [],
         'best_val_meanR': Best_val_meanR
     }
-
     global_step = 0
-    
+
     if args.eval_epoch_0:
         print("Evaluating (Epoch 0)...")
         dooneeval(model, valid_dataloader, result_dict, 0, output_dir, args, save_model=args.save_model)
@@ -200,13 +189,10 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % log_step == 0:
-                    logger.info("step: %d,  loss: %.6f" % (global_step, np.average(allloss)))
+                    logger.info(f"Step: {global_step}, loss: {np.average(allloss):.6f}")
 
                 if args.local_rank in [0, -1] and global_step % args.eval_step_entity == 0:
-                    print("only eval after every epoch")
                     model.train()
-
-        logger.info("finish one epoch")
         if args.local_rank in [0, -1]:
             dooneeval(model, valid_dataloader, result_dict, i, output_dir, args, save_model=args.save_model)
 
@@ -230,7 +216,6 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
                 oneckpt = torch.load(onepath)
                 model.promptnumber = oneckpt["promptnumber"]
                 model.promptembedding = oneckpt["promptembedding"]
-                print("loaded model prompt weights")
         dooneeval(model, test_dataloader, test_result_dict, 0, output_dir, args, save_model=False)
 
     torch.cuda.empty_cache()
@@ -241,7 +226,6 @@ def finetune_model_tagger(trainfile, validfile, testfile, args):
         torch.distributed.destroy_process_group()
 
     return result_dict
-
 
 def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_model=True):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
@@ -255,7 +239,6 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
     with torch.no_grad():
         logger.info(len(valid_dataloader))
         for step, batch in tqdm(enumerate(valid_dataloader)):
-            #logger.info(step)
             inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device)}
             sen, target, preds = model._generative_step(inputs)
@@ -305,7 +288,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
     result_dict['val_r2'].append(r2)
     result_dict['val_rl'].append(rl)
     if result_dict['val_F1'][-1] > result_dict['best_val_F1']:
-        logger.info("{} epoch, best epoch was updated! valid_F1: {: >4.5f}".format(i, result_dict['val_F1'][-1]))
+        logger.info(f"Epoch {i}, best epoch was updated! valid_F1: {result_dict['val_F1'][-1]: >4.5f}")
         result_dict["best_val_F1"] = result_dict['val_F1'][-1]
         meanR = (r1 + r2 + rl) / 3
         result_dict["best_val_meanR"] = meanR
@@ -322,8 +305,7 @@ def dooneeval(modeltoeval, valid_dataloader, result_dict, i, path, args, save_mo
             if args.use_pretrain_ckpt:
                 path += "_from_pretrained"
             torch.save(ckpt, path)
-            print("saved new entity model ckpt!")
-
+            print(f"Saved new entity model ckpt to: {path}")
 
 def infer_entity_model(alldata, enttokenizer, entmodel, args):
     allresofvalid = {}
@@ -369,9 +351,11 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         r1s.append(r1)
         r2s.append(r2)
         rls.append(rl)
-    print("Entity inference mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
-        100 * np.mean(mean_rs), 100 * np.mean(r1s), 100 * np.mean(r2s), 100 * np.mean(rls)
-    ))
+    mean_r = 100 * np.mean(mean_rs)
+    r1 = 100 * np.mean(r1s)
+    r2 = 100 * np.mean(r2s)
+    rl = 100 * np.mean(rls)
+    print(f"Entity inference mean R: {mean_r:.4f}, R-1: {r1:.4f}, R-2: {r2:.4f}, R-L: {rl:.4f}")
     # Precision, Recall, F-1
     ps, rs, f1s = [], [], []
     for i in range(len(allpreds)):
@@ -394,9 +378,10 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         ps.append(p)
         rs.append(r)
         f1s.append(f1)
-    print("Entity inference Precision: {:.4f}, Recall: {:.4f}, F-1: {:.4f}".format(
-        100 * np.mean(ps), 100 * np.mean(rs), 100 * np.mean(f1s)
-    ))
+    p = 100 * np.mean(ps)
+    r = 100 * np.mean(rs)
+    f1 = 100 * np.mean(f1s)
+    print(f"Entity inference Precision: {p:.4f}, Recall: {r:.4f}, F-1: {f1:.4f}")
     # abstractiveness
     new_pred_ents, new_target_ents = [], []
     for i in range(len(allpreds)):
@@ -410,9 +395,9 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         target_entities = target_entities.split(",")
         new_target = 100 * len([x for x in target_entities if not(x in text_words)]) / max(1, len(target_entities))
         new_target_ents.append(new_target)
-    print("Abstractive predicted entities: {:.4f}% | target entities: {:.4f}%".format(
-        np.mean(new_pred_ents), np.mean(new_target_ents)
-    ))
+    pred_abs = np.mean(new_pred_ents)
+    target_abs = np.mean(new_target_ents)
+    print(f"Abstractive predicted entities: {pred_abs:.4f}% | target entities: {target_abs:.4f}%")
     # repetition
     rep_preds, rep_targets = [], []
     for i in range(len(allpreds)):
@@ -434,9 +419,9 @@ def infer_entity_model(alldata, enttokenizer, entmodel, args):
         rep /= max(1, len(target_entities)-1)
         rep *= 100
         rep_targets.append(rep)
-    print("Repeated predicted entities: {:.4f}% | target entities: {:.4f}%".format(
-        np.mean(rep_preds), np.mean(rep_targets)
-    ))
+    pred_reps = np.mean(rep_preds)
+    target_reps = np.mean(rep_targets)
+    print(f"Repeated predicted entities: {pred_reps:.4f}% | target entities: {target_reps:.4f}%")
 
     return allresofvalid, allpreds, alllabels, mean_rs
 

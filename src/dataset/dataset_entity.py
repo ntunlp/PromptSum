@@ -16,11 +16,12 @@ from tqdm import tqdm
 from torch.utils.data import Sampler, Dataset, DataLoader, SequentialSampler
 from rouge_score import rouge_scorer
 from utils import *
-#from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import BartTokenizer, BartForConditionalGeneration
+from transformers import PegasusTokenizer, PegasusForConditionalGeneration
 
 from dataset.dataset_pretrain import *
 from models.model_entity import ModelEntity
-
 
 
 class DatasetEntity(Dataset):
@@ -63,7 +64,6 @@ class DatasetEntity(Dataset):
     def __len__(self):
         return self.num_entries
 
-
 def get_data(few_shot_seeds, save_path, args):
     usetrain, usevalid, usetest = True, True, True
     spacy_nlp = spacy.load("en_core_web_sm")
@@ -74,10 +74,10 @@ def get_data(few_shot_seeds, save_path, args):
         # if i > 0:
         #     break # should generate for all seeds
         i += 1
-        train_file_name = save_path + 'seed_{}/train.txt'.format(seed)
-        valid_file_name = save_path + 'seed_{}/valid.txt'.format(seed)
+        train_file_name = save_path + f'seed_{seed}/train.txt'
+        valid_file_name = save_path + f'seed_{seed}/valid.txt'
         if args.full_testset or args.big_testset:
-            test_file_name = save_path + 'seed_{}/test.txt'.format(seed)
+            test_file_name = save_path + f'seed_{seed}/test.txt'
         else:
             if args.few_shot == "full":
                 args.max_test_size = args.max_val_size
@@ -114,7 +114,7 @@ def get_data(few_shot_seeds, save_path, args):
                     break
                 onedata = oneline.split("\t")
                 if len(onedata) != 2:
-                    print("valid doc sum split error")
+                    print("Valid doc sum split error")
                     continue
                 onedoc = re.sub(' +', ' ', onedata[0].replace("\n", " "))
                 alldoc.append(onedoc)
@@ -122,7 +122,7 @@ def get_data(few_shot_seeds, save_path, args):
                 allsum.append(onesum)
                 count += 1
                 if count % 1000 == 0:
-                    print("VALID - did {}".format(count))
+                    print(f"VALID - did {count}")
         if usetest:
             count = 0
             while True:
@@ -139,7 +139,7 @@ def get_data(few_shot_seeds, save_path, args):
                 allsum.append(onesum)
                 count += 1
                 if count % 1000 == 0:
-                    print("TEST - did {}".format(count))
+                    print(f"TEST - did {count}")
 
         handler_train.close()
         handler_valid.close()
@@ -168,7 +168,6 @@ def get_data(few_shot_seeds, save_path, args):
 
     return alltrainfile, allvalidfile, alltestfile
 
-
 def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
     #### get predict label of summarization
     sum_y_pred = get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args)
@@ -182,7 +181,6 @@ def get_train_valid_data(sumpath, docpath, doc_sum_path, spacy_nlp, args):
 
     return docwithlabeltrain, docwithlabelvalid, docwithlabeltest
 
-
 def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
     #####handle sumfile to fake conll format and use NER model to label it
     allpreds = []
@@ -193,12 +191,12 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
         model_name = args.model_name
         t5model = T5ForConditionalGeneration.from_pretrained(model_name, cache_dir = args.cache_path)
         tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
-        model = T5forFinetuneEntity(t5model, tokenizer, args)
-        test_dataset = DatasetPretrainEntity(sumwithfakelabel, 512, tokenizer)
+        model = ModelEntity(t5model, tokenizer, args)
+        test_dataset = DatasetEntity(sumwithfakelabel, 512, tokenizer)
         test_sampler = SequentialSampler(test_dataset)
         test_dataloader = get_dataloader_tag(4, test_dataset, 8, 512, test_dataset.tokenizer.pad_token_id, test_sampler)
 
-        allckpt = torch.load("../support_files/conll_bestckpt")
+        allckpt = torch.load("support_files/conll_bestckpt")
         model.promptnumber = allckpt["promptnumber"]
         model.promptembedding = allckpt["promptembedding"]
 
@@ -241,7 +239,6 @@ def get_predict_label_for_sum(doc_sum_path, sumpath, spacy_nlp, args):
 
     return allpreds
 
-
 def getfilewithlabel(file, filewithfakelabel):
     fin = open(file,'r')
     alldata = []
@@ -259,7 +256,6 @@ def getfilewithlabel(file, filewithfakelabel):
     fo.close()
 
     return alldata
-
 
 def get_doc_label(sum_y_pred, docfile, args):
     alldocres, resfortrain, resforvalid, resfortest = getdocandent(docfile, sum_y_pred, args)
@@ -294,7 +290,6 @@ def get_doc_label(sum_y_pred, docfile, args):
 
     return alldocandlabel, allentityfortrain, allentityforvalid, allentityfortest
 
-
 def getdocandent(docfile, sum_y_pred, args):
     f = open(docfile,'r')
     alldoc = []
@@ -311,8 +306,8 @@ def getdocandent(docfile, sum_y_pred, args):
     else:
         trainsize = (len(alldoc) - args.max_test_size) // 2
         valsize = trainsize
-    print("alldoc", len(alldoc))
-    print("train size: {}, valsize: {}".format(trainsize, valsize))
+    print(f"alldoc: {len(alldoc)}")
+    print(f"train size: {trainsize}, valsize: {valsize}")
     #trainsize = 100
     allres = []
     for i in tqdm(range(len(alldoc))):
@@ -386,7 +381,6 @@ def get_train_valid(alldocandlabel, doc_sum_path, allentityfortrain, allentityfo
 
     return docwithlabel_train, docwithlabel_valid, docwithlabel_test
 
-
 def get_dataloader_tag(num_workers, dataset, batch_size, max_len, pad_id, sampler):
     collate_fn = SmartBatchingCollateTag(
         max_length=max_len,
@@ -405,24 +399,19 @@ def get_dataloader_tag(num_workers, dataset, batch_size, max_len, pad_id, sample
 
     return dataloader
 
-
 class SmartBatchingCollateTag:
     def __init__(self, max_length, pad_token_id):
         self._max_length = max_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-
         sequences, targets = list(zip(*batch))
-
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
-
         target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length, pad_token_id=self._pad_token_id)
-
         output = input_ids, attention_mask, target_ids, target_mask
 
         return output

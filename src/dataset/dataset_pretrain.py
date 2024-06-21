@@ -2,9 +2,7 @@ import sys
 import torch
 import random
 import pickle5
-
 from torch.utils.data import Sampler, Dataset, DataLoader
-
 
 
 class DatasetPretrain(Dataset):
@@ -50,17 +48,13 @@ class SmartBatchingCollateTag:
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-
         sequences, targets = list(zip(*batch))
-
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
-
         target_ids, target_mask = self.pad_target(targets,max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
-
         output = input_ids, attention_mask, target_ids, target_mask
 
         return output
@@ -111,27 +105,22 @@ class SmartBatchingCollateTag:
 
         return padded_sequences, attention_masks
 
-
 class SmartBatchingCollateTagPretrain:
     def __init__(self, max_length, pad_token_id):
         self._max_length = max_length
         self._pad_token_id = pad_token_id
 
     def __call__(self, batch):
-
         sequences, targets, entities = list(zip(*batch))
-
         input_ids, attention_mask = self.pad_sequence(
             sequences,
             max_sequence_length=self._max_length,
             pad_token_id=self._pad_token_id
         )
-
         #target_ids, target_mask = self.pad_target(targets, max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
         #entity_ids, entity_mask = self.pad_target(entities,max_sequence_length=self._max_length,pad_token_id=self._pad_token_id)
         target_ids, target_mask = self.pad_target(targets, max_sequence_length=64,pad_token_id=self._pad_token_id)
         entity_ids, entity_mask = self.pad_target(entities,max_sequence_length=64,pad_token_id=self._pad_token_id)
-
         output = input_ids, attention_mask, target_ids, target_mask, entity_ids, entity_mask
 
         return output
@@ -182,7 +171,6 @@ class SmartBatchingCollateTagPretrain:
 
         return padded_sequences, attention_masks
 
-
 def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     collate_fn = SmartBatchingCollateTag(
         max_length=max_len,
@@ -200,7 +188,6 @@ def get_dataloader_tag(num_workers,dataset, batch_size, max_len, pad_id, sampler
     )
 
     return dataloader
-
 
 def get_dataloader_tag_pretrain(num_workers,dataset, batch_size, max_len, pad_id, sampler):
     collate_fn = SmartBatchingCollateTagPretrain(
@@ -220,7 +207,6 @@ def get_dataloader_tag_pretrain(num_workers,dataset, batch_size, max_len, pad_id
 
     return dataloader
 
-
 def getpromptembedding(model, tokenizer, promptnumber, taskname):
     t5_embedding = model.model.get_input_embeddings()
     promptinitembedding = torch.FloatTensor(promptnumber, t5_embedding.weight.size(1))
@@ -235,7 +221,7 @@ def getpromptembedding(model, tokenizer, promptnumber, taskname):
             embeddingres = torch.mean(embeddingres, 0, keepdim=True)
         promptinitembedding[startindex] = embeddingres
         startindex += 1
-    fr = open('../../support_files/allnumber_t5.pkl', 'rb')
+    fr = open('support_files/allnumber_t5.pkl', 'rb')
     alltokens = pickle5.load(fr)
     sortedalltoken = sorted(alltokens.items(), key=lambda item: item[1], reverse=True)
     top5000 = []

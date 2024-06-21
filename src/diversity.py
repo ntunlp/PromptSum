@@ -123,8 +123,6 @@ def set_logger(args):
     fh = logging.FileHandler(args.log_name)
     logger.addHandler(fh)
 
-
-
 def main(args):
     args.filtered = False
     if torch.cuda.is_available():
@@ -147,13 +145,11 @@ def main(args):
             ) # no need for tokenizer
         tokenizer = PreTrainedTokenizerFast.from_pretrained("hyunwoongko/ctrlsum-cnndm",cache_dir=args.cache_path) # no use, just placeholder
         allgentasktokens, answertoken = None, None
-        args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+        args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
     else:
         basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
         tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        logger.info('loaded pegasus models')
-        args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
+        args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
         if "Finetune" in args.model:
             model = ModelSummaryFinetune(args, basemodel, tokenizer, args.model)
         elif "Mix" in args.model:
@@ -180,7 +176,7 @@ def main(args):
         args.model_save_path = args.model_save_folder + f'seed_{args.seed}/'
         path = args.model_save_path + args.ckpt_name
         ckptsum = torch.load(path)
-        print("loading from : {}".format(path))
+        print(f"Loading from : {path}")
         if 'full_weights' in args.ckpt_name or (args.model in ['T5Finetune', 'BartFinetune', 'PegasusFinetune']):
             model.load_state_dict(ckptsum)
             print("HERE")
@@ -193,9 +189,7 @@ def main(args):
         for gg in range(len(allgentasktokens)):
             gentasktoken = allgentasktokens[gg]
             tokenizer.add_tokens(gentasktoken)
-            logger.info('gen token = {} , gen token id = {}'.format(
-                gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
-            ))
+            logger.info(f'gen token = {gentasktoken} , gen token id = {tokenizer.convert_tokens_to_ids(gentasktoken)}')
         answertoken = "__ans__"
         special_tokens = {"ans_token": answertoken}
         tokenizer.add_tokens(list(special_tokens.values()))
@@ -254,7 +248,7 @@ def main(args):
     for i, (inp, tar) in tqdm(enumerate(valid_dataset.data[:100])):
         inp = ' '.join(inp.split()[:400])  # mimic truncation
         sents = sent_tokenize(inp)
-        if len(sents)>3:
+        if len(sents) > 3:
             full = ''.join(sents)
         else:
             full = ''.join(sents)
@@ -417,7 +411,7 @@ def main(args):
                 summaries += preds
             all_summaries.append(summaries)
 
-    print("\nExtracted {} summaries / data point".format(len(all_summaries[0])))
+    print(f"\nExtracted {len(all_summaries[0])} summaries / data point")
 
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
     # random and oracle R-1
@@ -439,9 +433,9 @@ def main(args):
         oracle = np.max(r1s)
         all_oracles.append(oracle)
     all_random = np.array(all_random)
-    print("Random score: {:.4f}, std: {:.4f}".format(np.mean(all_random), np.std(all_random)))
+    print(f"Random score: {np.mean(all_random):.4f}, std: {np.std(all_random):.4f}")
     all_oracles = np.array(all_oracles)
-    print("Oracle score: {:.4f}, std: {:.4f}".format(np.mean(all_oracles), np.std(all_oracles)))
+    print(f"Oracle score: {np.mean(all_oracles):.4f}, std: {np.std(all_oracles):.4f}")
 
     # inter-ROUGE
     all_inter = []
@@ -464,8 +458,7 @@ def main(args):
         r1 = np.mean(r1s)
         all_inter.append(r1)
     all_inter = np.array(all_inter)
-    print("Inter-candidates score: {:.4f}, std: {:.4f}".format(np.mean(all_inter), np.std(all_inter)))
-
+    print(f"Inter-candidates score: {np.mean(all_inter):.4f}, std: {np.std(all_inter):.4f}")
 
 def eval_ctrlsum(model, tokenizer, data, logger, dbs=False):
     '''
@@ -487,17 +480,7 @@ def eval_ctrlsum(model, tokenizer, data, logger, dbs=False):
             batch_inputs = [v[0] for v in batch_inputs]
 
             if dbs:
-                #print(batch_inputs)
-                #tok = tokenizer(batch_inputs)
-                #print(type(tok))
-                #enc = model.encode(batch_inputs[0])
-                #print(enc.shape)
-                #enc = enc.unsqueeze(0)
-                #print(enc.shape)
-                #res = model.generate([enc], beam=4, sampling=True, nbest=4)
-                
                 res = model.sample(batch_inputs, nbest=4)
-
                 print(res)
                 raise Exception
             else:

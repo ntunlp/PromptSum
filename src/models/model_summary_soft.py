@@ -9,7 +9,6 @@ from torch.nn.functional import kl_div
 from torch.nn import Softmax
 
 
-
 class ModelSummarySoft(nn.Module):
     def __init__(self, args, model, tokenizer, model_name):
         super(ModelSummarySoft, self).__init__()

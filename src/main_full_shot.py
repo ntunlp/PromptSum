@@ -301,7 +301,6 @@ def set_args():
 
     return args
 
-
 def set_logger(args):
     global logger
     if args.local_rank not in [0, -1]:
@@ -360,9 +359,7 @@ def main(args):
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
-        logger.info('gen token = {} , gen token id = {}'.format(
-            gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
-        ))
+        logger.info(f'gen token = {gentasktoken} , gen token id = {tokenizer.convert_tokens_to_ids(gentasktoken)}')
     answertoken = "__ans__"
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
@@ -372,7 +369,7 @@ def main(args):
 
     # load datasets
     args.save_dir = args.data_dir + args.dataset + "/full/"
-    os.makedirs(args.save_dir , exist_ok=True)
+    os.makedirs(args.save_dir, exist_ok=True)
 
     dataset_args = [args.dataset_name, args.dataset_version]
     if args.dataset_name == "billsum":
@@ -386,21 +383,19 @@ def main(args):
         train_data = data['train']
         valid_data = data['validation']
         test_data = data['test']
-    logger.info("\nTotal size: {}".format(len(data)))
+    logger.info(f"\nTotal size: {len(data)}")
 
-    logger.info("\nData size: train: {}, val: {}, test: {}".format(
-        len(train_data), len(valid_data), len(test_data)))
+    logger.info(f"\nData size: train: {len(train_data)}, val: {len(valid_data)}, test: {len(test_data)}")
     train_data = train_data[:args.max_train_size]
     valid_data = valid_data.shuffle()
     valid_data = valid_data[:args.max_val_size]
     test_data = test_data[:args.max_test_size]
-    logger.info("\nFinal data size: train: {}, val: {}, test: {}".format(
-        len(train_data), len(valid_data), len(test_data)))
+    logger.info(f"\nFinal data size: train: {len(train_data)}, val: {len(valid_data)}, test: {len(test_data)}")
 
-    train_path = args.save_dir + 'seed_{}/train.txt'.format(args.seed)
-    valid_path = args.save_dir + 'seed_{}/valid.txt'.format(args.seed)
-    test_path = args.save_dir + 'seed_{}/test.txt'.format(args.seed)
-    os.makedirs(args.save_dir + 'seed_{}'.format(args.seed), exist_ok=True)
+    train_path = args.save_dir + f'seed_{args.seed}/train.txt'
+    valid_path = args.save_dir + f'seed_{args.seed}/valid.txt'
+    test_path = args.save_dir + f'seed_{args.seed}/test.txt'
+    os.makedirs(args.save_dir + f'seed_{args.seed}', exist_ok=True)
     train_data_new = []
     for i in tqdm(range(len(train_data[list(train_data.keys())[0]]))):
         t = {}
@@ -422,7 +417,7 @@ def main(args):
             t[k] = test_data[k][i]
         test_data_new.append(t)
     test_data = test_data_new
-    logger.info("train/val/test size: {} {} {}".format(len(train_data), len(valid_data), len(test_data)))
+    logger.info(f"train/val/test size: {len(train_data)}/{len(valid_data)}/{len(test_data)}")
 
     convert_data_to_txt(train_data, train_path, args)
     convert_data_to_txt(valid_data, valid_path, args)
@@ -445,7 +440,7 @@ def main(args):
         logger.info(f'args.full_testset: {args.full_testset}')
         if args.full_testset:
             args.test_file = args.data_dir + args.dataset + '/full_test.txt'
-            logger.info('full test set file: {args.test_file}')
+            logger.info(f'full test set file: {args.test_file}')
             # check if we have already generated it
             if not os.path.isfile(args.test_file):
                 logger.info('creating')
@@ -479,15 +474,15 @@ def main(args):
         logger.info('args.save_model {}'.format(args.save_model))
 
         # base model
-        if 'Bart' in args.model:
+        if 'T5' in args.model:
+            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            args.allnumber_path = 'support_files/allnumber_t5.pkl'
+        elif 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = '../support_files/allnumber_t5.pkl'
+            args.allnumber_path = 'support_files/allnumber_bart.pkl'
         elif 'Pegasus' in args.model:
             basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-            args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-        else:
-            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = '../support_files/allnumber_t5.pkl'
+            args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
         logger.info("Finish prepare model and dataset")
         logger.info("Start training")
 
@@ -508,11 +503,11 @@ def main(args):
             raise Exception('Model not implemented yet')
 
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info("The model has {} trainable parameters".format(n_params))
+        logger.info(f"The model has {n_params} trainable parameters")
 
         ##### load pre-trained model
         if args.use_pretrain_ckpt and not(args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
-            logger.info("load pre-trained model for summarization")
+            logger.info("Load pre-trained model for summarization")
 
             # model weights
             ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
@@ -533,7 +528,7 @@ def main(args):
             model.promptnumber = ckptsum["promptnumberforsum"]
             model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
             n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            logger.info("The model has {} trainable parameters".format(n_params))
+            logger.info(f"The model has {n_params} trainable parameters")
 
         mean_rs_entity = None
         model.eval()
@@ -580,9 +575,8 @@ def main(args):
                     entmodel.promptembedding = nn.parameter.Parameter(ckpt["promptembedding"])
 
                 n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-                logger.info("The ent model has {} trainable parameters".format(n_params))
+                logger.info(f"The ent model has {n_params} trainable parameters")
                 entmodel.to(args.device)
-                logger.info("move to device!")
                 model.eval()
 
                 respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{args.seed}/valid_ent.pkl'
@@ -615,11 +609,11 @@ def main(args):
         ########## 2nd prompt tuning stage: summarization
         model.to(args.device)
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info("The model has {} trainable parameters".format(n_params))
+        logger.info(f"The model has {n_params} trainable parameters")
 
         result_dict = train(tokenizer, model, train_dataset, valid_dataset, logger, args)
         logger.info("Finish training")
-        logger.info("The model has {} trainable parameters".format(n_params))
+        logger.info(f"The model has {n_params} trainable parameters")
         for k in keys:
             result_dict_total[k].append(result_dict[k])
 
@@ -628,9 +622,7 @@ def main(args):
         for k in keys_to_keep:
             d[k] = result_dict[k]
         is_oracle = bool(args.guidance_mode == "target")
-        export_path = "scores/{}/full/prompt_sum_scores_{}_pretrained_{}_oracle_{}.pkl".format(
-            args.dataset, args.dataset, args.use_pretrain_ckpt, is_oracle
-        )
+        export_path = f"scores/{args.dataset}/full/prompt_sum_scores_{args.dataset}_pretrained_{args.use_pretrain_ckpt}_oracle_{is_oracle}.pkl"
         if args.no_finetuned_sprompt:
             export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
         if args.no_sprompt:
@@ -641,7 +633,7 @@ def main(args):
             export_path = export_path[:-4] + "_no_entity_chain.pkl"
         with open(export_path, "wb") as f:
             pickle.dump(d, f)
-            print("Saved scores to {}".format(export_path))
+            print(f"Saved scores to {export_path}")
 
         mean_rs_summary = result_dict["mean_rs"]
         if mean_rs_entity != None:
@@ -657,20 +649,17 @@ def main(args):
                 high = (k + 1) * bin_size
                 mean_rs_entity_bin = np.mean(mean_rs_entity[low:high])
                 mean_rs_summary_bin = np.mean(mean_rs_summary[low:high])
-                print("Bin {}, Mean R entity {:.4f} , Mean R summary: {:.4f}".format(
-                    k, mean_rs_entity_bin, mean_rs_summary_bin
-                ))
+                print(f"Bin {k}, Mean R entity {mean_rs_entity_bin:.4f} , Mean R summary: {mean_rs_summary_bin:.4f}")
             p, _ = scipy.stats.pearsonr(mean_rs_entity, mean_rs_summary)
-            print("Pearson correlation: {:.4f}".format(p))
+            print(f"Pearson correlation: {p:.4f}")
 
         logger.info('final results:')
         for k in keys:
-            easy_results = ["{:.2f}".format(x) for x in result_dict_total[k]]
-            logger.info('{}: {:.4f} (all: {})'.format(k, np.mean(result_dict_total[k]), easy_results))
+            easy_results = [f"{x:.2f}" for x in result_dict_total[k]]
+            logger.info(f'{k}: {np.mean(result_dict_total[k]):.4f} (all: {easy_results})')
 
         if args.local_rank != -1:
             torch.distributed.destroy_process_group()
-
 
 
 if __name__ == "__main__":

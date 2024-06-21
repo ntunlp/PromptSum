@@ -27,7 +27,6 @@ from models.model_pretrain import ModelPretrain
 from utils import VirtualList
 
 
-
 logging.basicConfig(format = '%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt = '%m/%d/%Y %H:%M:%S',
                     level = logging.INFO)
@@ -57,12 +56,12 @@ def pretrain_model(dataset_args, args):
     tokenizer = T5Tokenizer.from_pretrained(model_name, cache_dir = args.cache_path)
     model = ModelPretrain(args, t5model, tokenizer)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    logger.info(f"The model has {n_params} trainable parameters")
 
     ##### load from conll ckpt or simply initializing?
     ifuseconll = False
     if ifuseconll:
-        allckpt = torch.load("../support_files/conll_bestckpt")
+        allckpt = torch.load("support_files/conll_bestckpt")
         model.promptnumber = allckpt["promptnumber"]
         model.promptembedding = allckpt["promptembedding"]
         model.promptnumberforsum = allckpt["promptnumber"]
@@ -71,7 +70,6 @@ def pretrain_model(dataset_args, args):
         promptnumber = args.prompt_number # 300
         taskname = "name entity recognition"
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, taskname)
-        print("prompt", promptembedding.shape)
         model.set_prompt_embedding(promptnumber, promptembedding)
 
         tasknamesum = "summarization"
@@ -84,34 +82,34 @@ def pretrain_model(dataset_args, args):
     spacy_nlp = spacy.load("en_core_web_sm")
 
     # data
-    # full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
-    # train_data = full_data['train']
-    # valid_data = full_data['validation']
-    # train_texts = [x[args.text_key] for x in train_data]
-    # val_texts = [x[args.text_key] for x in valid_data]
-    # p = np.random.permutation(len(val_texts))
-    # val_texts = [val_texts[x] for x in p]
-    # val_texts = val_texts[:1000]
-    # print(len(train_texts), len(val_texts))
-    # if args.debug_pretrain:
-    #     train_texts = train_texts[:10]
-    #     val_texts = val_texts[:10]
-    #     print(len(train_texts), len(val_texts))
+    full_data = datasets.load_dataset(*dataset_args, cache_dir=args.dataset_cache_dir)
+    train_data = full_data['train']
+    valid_data = full_data['validation']
+    train_texts = [x[args.text_key] for x in train_data]
+    val_texts = [x[args.text_key] for x in valid_data]
+    p = np.random.permutation(len(val_texts))
+    val_texts = [val_texts[x] for x in p]
+    val_texts = val_texts[:1000]
+    print(len(train_texts), len(val_texts))
+    if args.debug_pretrain:
+        train_texts = train_texts[:10]
+        val_texts = val_texts[:10]
+        print(len(train_texts), len(val_texts))
 
     # build data
     if args.build_salient_entities:
         train_texts, train_target, train_ents = find_salient_sentences_and_entities(train_texts, scorer, spacy_nlp, args)
         train_data = train_texts, train_target, train_ents
-        train_path = "t5_tagger_pretraining_data/{}_train_{}.pkl".format(dataset_args[0], len(train_texts))
+        train_path = f"t5_tagger_pretraining_data/{dataset_args[0]}_train_{len(train_texts)}.pkl"
         with open(train_path, "wb") as f:
             pickle.dump(train_data, f)
             print("saved the pre-training train data")
         val_texts, valid_target, val_ents = find_salient_sentences_and_entities(val_texts, scorer, spacy_nlp, args)
         val_data = val_texts, valid_target, val_ents
-        val_path = "t5_tagger_pretraining_data/{}_val_{}.pkl".format(dataset_args[0], len(val_texts))
+        val_path = f"t5_tagger_pretraining_data/{dataset_args[0]}_val_{len(val_texts)}.pkl"
         with open(val_path, "wb") as f:
             pickle.dump(val_data, f)
-            print("saved the pre-training val data")
+            print(f"Saved the pre-training val data: {val_path}")
         raise Exception
     else:
         dataset = load_from_disk(args.pretrain_dataset_path)
@@ -214,14 +212,14 @@ def pretrain_model(dataset_args, args):
                 global_step += 1
 
                 if args.local_rank in [0, -1] and global_step % log_step == 0:
-                    logger.info("step: %d,  lossent: %.6f, losssum: %.6f" % (global_step,  np.average(alllossent), np.average(alllosssum)))
+                    logger.info(f"Step: {global_step}, loss-ent: {np.average(alllossent):.6f}, losssum: {np.average(alllosssum):.6f}")
                     allloss = []
 
                 if args.local_rank in [0, -1] and global_step % eval_step == 0:
                     dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
                     model.train()
 
-        logger.info("finish one epoch")
+        logger.info("Finished one epoch")
         if args.local_rank in [0, -1]:
             dooneevalforpretrain(model, valid_dataloader, scaler, result_dict, i, output_dir, args)
             model.train()
@@ -232,7 +230,6 @@ def pretrain_model(dataset_args, args):
 
     if args.local_rank != -1:
         torch.distributed.destroy_process_group()
-
 
 def find_salient_sentences_and_entities_per_example(example, scorer, spacy_nlp):
     '''map function for huggingface dataset
@@ -271,17 +268,12 @@ def find_salient_sentences_and_entities_per_example(example, scorer, spacy_nlp):
     example['summary'] = top_sents
     example['ent_chain'] = allents
     return example
-    
 
 def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
-    print("finding the salient entities...")
+    print("Finding the salient entities...")
     n = 3
-    # index = 0
     all_texts, all_top_sen, all_ents = [], [], []
     for i in tqdm(range(len(texts))):
-        # if index > 100:
-        #     break
-        # index += 1
         text = texts[i]
         sents = nltk.sent_tokenize(text)
         sents = sents[:40]
@@ -313,7 +305,6 @@ def find_salient_sentences_and_entities(texts, scorer, spacy_nlp, args):
         all_texts.append(rest)
 
     return all_texts, all_top_sen, all_ents
-
 
 def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, path, args):
     scorer = rouge_scorer.RougeScorer(["rouge1", "rouge2", "rougeLsum"], use_stemmer=args.stemmer)
@@ -447,13 +438,10 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     meanrentex = (r1ex + r2ex + rlex) / 3
     meanrentabs = (r1abs + r2abs + rlabs) / 3
     meanrsum = (r1forsum + r2forsum + rlforsum) / 3
-    message = "\nENTITY eval: F1: {:.4f}, mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
-              "\n|| Extractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
-              "|| Abstractive entities: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f} " \
-              "\nSUMMARY eval: mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(
-        f1score, meanrent, r1, r2, rl, meanrentex, r1ex, r2ex, rlex, meanrentabs, r1abs, r2abs, rlabs,
-        meanrsum, r1forsum, r2forsum, rlforsum
-    )
+    message = f"\nENTITY eval: F1: {f1score:.4f}, mean R: {meanrent:.4f}, R-1: {r1:.4f}, R-2: {r2:.4f}, R-L: {rl:.4f} " \
+              f"\n|| Extractive entities: mean R: {meanrentex:.4f}, R-1: {r1ex:.4f}, R-2: {r2ex:.4f}, R-L: {rlex:.4f} " \
+              f"|| Abstractive entities: mean R: {meanrentabs:.4f}, R-1: {r1abs:.4f}, R-2: {r2abs:.4f}, R-L: {rlabs:.4f} " \
+              f"\nSUMMARY eval: mean R: {meanrsum:.4f}, R-1: {r1forsum:.4f}, R-2: {r2forsum:.4f}, R-L: {rlforsum:.4f}"
     logger.info(message)
 
     result_dict['val_F1'].append(f1score)
@@ -467,9 +455,8 @@ def dooneevalforpretrain(modeltoeval, valid_dataloader, scaler, result_dict, i, 
     result_dict['val_meanR'].append(cur_val_meanR)
 
     if result_dict['val_meanR'][-1] > result_dict['best_val_meanR']:
-        logger.info("{} epoch, best epoch was updated! valid_meanR of sum and ent: {: >4.5f}".format(i,result_dict['val_meanR'][-1]))
+        logger.info(f"Epoch {i}, best epoch was updated! valid_meanR of sum and ent: {result_dict['val_meanR'][-1]: >4.5f}")
         result_dict["best_val_meanR"] = result_dict['val_meanR'][-1]
-        #result_dict["best_val_F1"] = result_dict['val_F1'][-1]
         if not os.path.exists(path):
             os.mkdir(path)
         model_to_save = model.module if hasattr(model, 'module') else model

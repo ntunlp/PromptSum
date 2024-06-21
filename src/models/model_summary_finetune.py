@@ -10,7 +10,6 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 from transformers import BartForConditionalGeneration, BartTokenizer, BartConfig
 
 
-
 class ModelSummaryFinetune(nn.Module):
     def __init__(self, args, model, tokenizer, model_name):
         super(ModelSummaryFinetune, self).__init__()

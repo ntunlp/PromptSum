@@ -6,7 +6,6 @@ import torch.nn as nn
 import gc
 
 
-
 class ModelEntity(nn.Module):
     def __init__(self, model, tokenizer, args):
         super(ModelEntity, self).__init__()

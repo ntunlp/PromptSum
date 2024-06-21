@@ -292,7 +292,6 @@ def set_args():
 
     return args
 
-
 def set_logger(args):
     global logger
     if args.local_rank not in [0, -1]:
@@ -309,7 +308,6 @@ def set_logger(args):
             logging.StreamHandler()
         ]
     )
-
 
 def main(args):
     device = torch.device("cpu")
@@ -337,18 +335,16 @@ def main(args):
         args.taskfold = thistaskfold
 
     # load tokenizer
-    if 'Bart' in args.model:
+    if 'T5' in args.model:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    elif 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     elif 'Pegasus' in args.model:
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    else:
-        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
-        logger.info('gen token = {} , gen token id = {}'.format(
-            gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
-        ))
+        logger.info(f'gen token = {gentasktoken} , gen token id = {tokenizer.convert_tokens_to_ids(gentasktoken)}')
     answertoken = "__ans__"
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
@@ -357,7 +353,7 @@ def main(args):
     promptnumber = args.prompt_number
 
     # load datasets
-    args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+    args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
     logger.info(f"Few shot save dir: {args.few_shot_save_dir}")
     dataset_args = [args.dataset_name, args.dataset_version]
     if not os.path.isdir(args.few_shot_save_dir):
@@ -396,15 +392,15 @@ def main(args):
     logger.info('args.save_model {}'.format(args.save_model))
 
     # base model
-    if 'Bart' in args.model:
+    if 'T5' in args.model:
+        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+        args.allnumber_path = 'support_files/allnumber_t5.pkl'
+    elif 'Bart' in args.model:
         basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        args.allnumber_path = '../support_files/allnumber_t5.pkl'
+        args.allnumber_path = 'support_files/allnumber_bart.pkl'
     elif 'Pegasus' in args.model:
         basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings=args.max_position_embeddings, cache_dir=args.cache_path)
-        args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-    else:
-        basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-        args.allnumber_path = '../support_files/allnumber_t5.pkl'
+        args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
     logger.info("Finish prepare model and dataset")
     logger.info("Start training")
 
@@ -425,11 +421,11 @@ def main(args):
         raise Exception('Model not implemented yet')
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    logger.info(f"The model has {n_params} trainable parameters")
 
     #####load pre-trained model
     if args.use_pretrain_ckpt and not (args.model in ["T5Finetune", "BartFinetune", "PegasusFinetune"]):
-        logger.info("load pre-trained model for summarization")
+        logger.info("Load pre-trained model for summarization")
 
         # model weights
         ckptsum = torch.load(args.pretrain_ckpt, map_location="cuda:0")
@@ -506,9 +502,8 @@ def main(args):
             logger.info("Loaded the entity model from: {}".format(onepath))
 
             n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-            logger.info("The ent model has {} trainable parameters".format(n_params))
+            logger.info(f"The ent model has {n_params} trainable parameters")
             entmodel.to(args.device)
-            logger.info("move to device!")
             model.eval()
 
             # inferring the entities on the val or test set
@@ -523,13 +518,13 @@ def main(args):
                 respath = respath[:-4] + "_full_weights.pkl"
             if not (os.path.isfile(respath) and args.reuse_entity_file):  # to generate, path is there & reuse at the same time
                 alldata = args.test_dataset.data
-                logger.info(f"test size: {len(alldata)}")
+                logger.info(f"Test size: {len(alldata)}")
                 allresofvalid, allpreds, alllabels, _ = infer_entity_model(alldata, enttokenizer, entmodel, args)
                 print(allpreds[:5])
                 logger.info(len(allresofvalid))
                 with open(respath, "wb") as f:
                     pickle.dump(allresofvalid, f)
-                    logger.info("saved the T5 valid entities to: {}".format(respath))
+                    logger.info(f"Saved the T5 valid entities to: {respath}")
                 torch.cuda.empty_cache()
                 gc.collect()
 
@@ -538,12 +533,9 @@ def main(args):
 
     ########## 2nd prompt tuning stage: summarization
     args.test_dataset.check_entity_keys()
-
-    print(args.test_dataset.data[0])
-    raise Exception
     model.to(args.device)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    logger.info("The model has {} trainable parameters".format(n_params))
+    logger.info(f"The model has {n_params} trainable parameters")
 
     scaler = None
     test_sampler = SequentialSampler(args.test_dataset)
@@ -569,7 +561,7 @@ def main(args):
     r2 = 100 * np.mean(r2s)
     rl = 100 * np.mean(rls)
     mean_r = (r1 + r2 + rl) / 3
-    print("Mean R: {:.4f}, R-1: {:.4f}, R-2: {:.4f}, R-L: {:.4f}".format(mean_r, r1, r2, rl))
+    print(f"Mean R: {mean_r:.4f}, R-1: {r1:.4f}, R-2: {r2:.4f}, R-L: {rl:.4f}")
 
     d = {}
     d['src'] = []
@@ -582,11 +574,10 @@ def main(args):
         pred = allypred[i]
         d['src'].append(src)
         d['model'].append(pred)
-    filename = "../human_evaluation/data/{}_{}_{}.pkl".format(args.dataset, model_name, args.max_test_size)
+    filename = f"../human_evaluation/data/{args.dataset}_{model_name}_{args.max_test_size}.pkl"
     with open(filename, 'wb') as f:
         pickle.dump(d, f)
-        print("exported predictions!")
-
+        print(f"Exported predictions to: {filename}")
 
 
 if __name__ == "__main__":

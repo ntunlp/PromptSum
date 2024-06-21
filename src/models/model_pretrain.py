@@ -7,7 +7,6 @@ import gc
 #from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config
 
 
-
 class ModelPretrain(nn.Module):
     def __init__(self, args, model, tokenizer):
         super(ModelPretrain, self).__init__()
@@ -160,7 +159,7 @@ class ModelPretrain(nn.Module):
                 all_attention_mask = torch.cat([mask_prompt, batch["attention_mask"]], 1)
 
         decoder_input_ids = (
-                torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
+            torch.ones((batch["input_ids"].shape[0], 1), dtype=torch.long, device=batch["input_ids"].device) * self.decoder_start_token_id_use
         )
         generated_ids = self.model.generate(
             inputs_embeds=allembedding,

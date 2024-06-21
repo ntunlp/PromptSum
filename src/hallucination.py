@@ -199,9 +199,8 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
             entmodel.promptembedding = oneckpt["promptembedding"]
         
             n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
-            logger.info("The ent model has {} trainable parameters".format(n_params))
+            logger.info(f"The ent model has {n_params} trainable parameters")
             entmodel.to(args.device)
-            logger.info("move to device!")
             model.eval()
 
             respath = f'entity_ckpt/{args.dataset}/{args.few_shot}/seed_{seed}/valid_ent.pkl'
@@ -291,14 +290,12 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         allent = []
         with torch.no_grad():
             for step, batch in enumerate(valid_dataloader):
-                #logger.info(step)
                 inputs = {"input_ids": batch[0].to(args.device), "attention_mask": batch[1].to(args.device),
                       "target_ids": batch[2].to(args.device), "target_mask": batch[3].to(args.device),
                       "ents_ids": batch[4].to(args.device), "ents_mask": batch[5].to(args.device)}
                 
                 allinp = []
                 for k in range(inputs["ents_ids"].shape[0]):
-                    # print(inputs['input_ids'][k])
                     allinp.append(tokenizer.decode(inputs['input_ids'][k], skip_special_tokens=True))
                     allent.append(tokenizer.decode(inputs['ents_ids'][k], skip_special_tokens=True))
 
@@ -351,7 +348,6 @@ def eval(model, valid_dataset, scaler, logger, args, tokenizer, spacy_nlp, seed 
         logger.info(f'Percentage of hallucination in predictions: {np.mean(percent_hals)*100}%, min: {np.min(percent_hals)*100}%, max: {np.max(percent_hals)*100}%, std: {np.std(percent_hals)*100}')
         logger.info(f'--------EVAL FINISHED--------')
 
-
 def main(args):
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -365,11 +361,9 @@ def main(args):
     args.taskfold = thistaskfold
 
     # First load the trained ckpt
-    # tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
     basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-    args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-    # basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
     model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
     promptnumber = args.prompt_number
     promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)

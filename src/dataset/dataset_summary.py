@@ -14,12 +14,10 @@ import random
 import re
 import pickle
 import random
-
 from tqdm import tqdm
 from torch.utils.data import Sampler, Dataset, DataLoader
 from rouge_score import rouge_scorer
 from nltk.corpus import stopwords
-
 
 
 class DatasetSummary(Dataset):
@@ -42,7 +40,7 @@ class DatasetSummary(Dataset):
         self.data = self.getalldata(self.filename)
         #self.data = self.data[:20]
         p = np.random.permutation(len(self.data))
-        with open("permutations/init_{}.pkl".format(args.dataset), "wb") as f:
+        with open(f"permutations/init_{args.dataset}.pkl", "wb") as f:
             pickle.dump(p, f)
         self.data = [self.data[x] for x in p]
         self.num_entries = len(self.data)
@@ -85,7 +83,7 @@ class DatasetSummary(Dataset):
 
     def set_allent_for_valid(self, entpath):
         # entpath = f'entity_ckpt/{self.args.dataset}/{self.args.few_shot}/seed_{self.seed}/T5valident.pkl'
-        print("entpath: ",entpath)
+        print(f"entpath: {entpath}")
         with open(entpath, "rb") as f:
             self.allent = pickle.load(f)
 
@@ -96,7 +94,7 @@ class DatasetSummary(Dataset):
             tempdata = re.sub(' +', ' ', inputdata).strip()
             if not(tempdata in self.allent.keys()):
                 not_in += 1
-        print("{} Text entries not in the entity dictionary: {} (SHOULD BE 0!!!)".format(self.split, not_in))
+        print(f"{self.split} Text entries not in the entity dictionary: {not_in} (SHOULD BE 0!!!)")
 
     def getalldata(self, filename):
         f = open(filename, 'r')
@@ -126,10 +124,8 @@ class DatasetSummary(Dataset):
 
     def shuffle_and_subsample(self):
         p = np.random.permutation(len(self.data))
-        print(p[:50])
-        with open("human_eval_permutations/{}.pkl".format(self.args.dataset), "wb") as f:
+        with open(f"human_eval_permutations/{args.dataset}.pkl", "wb") as f:
             pickle.dump(p, f)
-            print("saved the permutation")
         p = p[:self.args.max_test_size]
         self.data = [self.data[x] for x in p]
         self.num_entries = len(self.data)
@@ -234,7 +230,6 @@ class DatasetSummary(Dataset):
 
         return top_sents
 
-
 class DatasetSummaryForControlGen(Dataset):
     def __init__(self, filename, split, maxlen, tokenizer, newtgentasktokens, answertoken, args, seed=0, save_path=None):
         super(DatasetSummaryForControlGen, self).__init__()
@@ -290,7 +285,6 @@ class DatasetSummaryForControlGen(Dataset):
     def __len__(self):
         return self.num_entries
 
-
 class SmartBatchingCollate:
     def __init__(self, args, tokenizer, max_length, max_guidance_length, pad_token_id):
         self.args = args
@@ -319,7 +313,6 @@ class SmartBatchingCollate:
         ents_mask = target_mask
         if self.args.model in ["T5MixPrompt", "PegasusMixPrompt", "CTRLsum"]:
             try:
-                # import pdb;pdb.set_trace()
                 ents_ids, ents_mask = self.pad_sequence(
                     ents,
                     max_sequence_length=self._max_guidance_length,
@@ -355,10 +348,7 @@ class SmartBatchingCollate:
         return padded_sequences, attention_masks
 
     def pad_sequence(self, sequence_batch, max_sequence_length, pad_token_id, right=True):
-        # try:
         max_batch_len = max(len(sequence) for sequence in sequence_batch)
-        # except TypeError:
-        #     max_batch_len = 1
         max_len = min(max_batch_len, max_sequence_length)
         padded_sequences = []
         attention_masks = []
@@ -390,7 +380,6 @@ class SmartBatchingCollate:
 
         return padded_sequences, attention_masks
 
-
 def read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, args):
     '''
     This function reads in the few-shot datasets saved at save_path
@@ -398,12 +387,10 @@ def read_subsampled(tokenizer, allgentasktokens, answertoken, few_shot_seeds, ar
         list of tuples (train_dataset, valid_dataset)
     '''
     datasets = []
-      
     for seed in few_shot_seeds:
-        train_file_name = args.few_shot_save_dir + 'seed_{}/train.txt'.format(seed)
-        print(args.few_shot_save_dir)
+        train_file_name = args.few_shot_save_dir + f'seed_{seed}/train.txt'
         train_dataset = DatasetSummary(train_file_name, "train", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
-        valid_file_name = args.few_shot_save_dir + 'seed_{}/valid.txt'.format(seed)
+        valid_file_name = args.few_shot_save_dir + f'seed_{seed}/valid.txt'
         valid_dataset = DatasetSummary(valid_file_name, "valid", args.max_length, tokenizer, allgentasktokens, answertoken, args, seed)
         datasets.append((train_dataset, valid_dataset, seed))
 
