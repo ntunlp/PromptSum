@@ -3,7 +3,7 @@ import json
 import numpy as np
 
 
-dataset = "generic_xsum"
+dataset = "generic_cnndm"
 users = ["chengwei", "hailin", "ravox", "ruochen"]
 n_summaries = 50
 
