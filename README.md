@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 ## Experiments
 
-!!! Don't forget to change the "root" variable at the top of args in main.py!!!
+First change the global variables in src/hyperparameters.py according to your respective local paths. 
 
 To run **pre-training**:
 ```
