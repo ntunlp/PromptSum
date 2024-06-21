@@ -1,49 +1,51 @@
 # PromptSum
-Cool prompting for parameter-efficient few-shot controllable summarization!
 
-# Bash scripts
+## Environment
+
+Once you clone the repo, create a dedicated conda environment with Python 3.7: 
+```bash
+cd PromptSum/
+conda create --name promptsum python=3.7
+```
+
+Next activate the environment:
+```bash
+conda activate promptsum
+```
+
+Then install all the dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Experiments
 
 !!! Don't forget to change the "root" variable at the top of args in main.py!!!
 
-Run the corresponding bash script for each use case:
-
-### Pre-training 
+To run **pre-training**:
+```
 bash run_pretraining.sh
+```
 
-### 0-shot summarization (3 seeds in validation, 1 seed in test)
-For <ins>PromptSum</ins>:
-
+To run **0-shot** summarization (3 seeds in validation, 1 seed in test):
+```
 bash runall_zeroshot_promptsum.sh
+```
 
-### Few-shot summarization (3 seeds)
-For the <ins>baselines</ins>:
-
+To run **few-shot** summarization (3 seeds):
+```
 bash runall_kshot_baselines.sh
-
-For the <ins>oracle</ins>:
-
 bash runall_kshot_oracle.sh
-
-For <ins>PromptSum</ins>:
-
 bash runall_kshot_promptsum.sh
-
-For <ins>controllability</ins> experiments:
-
 bash runall_kshot_controllability.sh
-
-For <ins>counterfactual</ins> training experiments:
-
 bash runall_kshot_counterfactual.sh
-
-For <ins>hallucinations</ins> experiments:
-
 bash runall_kshot_hallucination.sh
+```
 
-### Full-shot summarization (1 seed)
-For <ins>PromptSum</ins>:
-
+To run **full-shot** summarization (1 seed):
+```
 bash run_fullshot_promptsum.sh
+```
 
 ## Citation
 
