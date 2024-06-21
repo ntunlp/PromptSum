@@ -168,7 +168,7 @@ def main(args):
             model.load_state_dict(dicsum)
         logger.info('loaded model')
 
-        args.few_shot_save_dir = args.data_dir + args.dataset + "/{}/".format(args.few_shot)
+        args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
         
         ## LOAD CKPT
         args.model_save_folder = f'saved_models/{args.dataset}/{args.few_shot}/'

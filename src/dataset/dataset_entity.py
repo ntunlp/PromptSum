@@ -105,7 +105,7 @@ def get_data(few_shot_seeds, save_path, args):
                 allsum.append(onesum)
                 count += 1
                 if count % 10000 == 0:
-                    print("TRAIN - did {}".format(count))
+                    print(f"TRAIN - did {count}")
         if usevalid:
             count = 0
             while True:

@@ -62,9 +62,8 @@ def main(args):
                     break
         source_ents = np.array(source_ents)
         summary_ents = np.array(summary_ents)
-        print("Average # entities in the source: {:.4f}, std: {:.4f}".format(np.mean(source_ents), np.std(source_ents)))
-        print("Average # entities in the summary: {:.4f}, std: {:.4f}".format(np.mean(summary_ents), np.std(summary_ents)))
-
+        print(f"Average # entities in the source: {np.mean(source_ents):.4f}, std: {np.std(source_ents):.4f}")
+        print(f"Average # entities in the summary: {np.mean(summary_ents):.4f}, std: {np.std(summary_ents):.4f}")
 
 
 if __name__ == '__main__':

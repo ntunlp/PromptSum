@@ -62,7 +62,7 @@ def main(args):
             all_valid_summaries.append(summary)
         print(len(all_valid_texts))
         new_valid_path = args.data_dir + args.dataset + f"/{args.size}/seed_{seed}/valid.txt"
-        print("Writing to: {new_valid_path}")
+        print(f"Writing to: {new_valid_path}")
         with open(new_valid_path, "w") as f:
             for idx in range(len(all_valid_texts)):
                 to_write = all_valid_texts[idx] + "\t" + all_valid_summaries[idx]

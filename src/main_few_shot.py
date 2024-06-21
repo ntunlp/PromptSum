@@ -351,9 +351,7 @@ def main(args):
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)
-        logger.info('gen token = {} , gen token id = {}'.format(
-            gentasktoken, tokenizer.convert_tokens_to_ids(gentasktoken)
-        ))
+        logger.info(f'gen token = {gentasktoken} , gen token id = {tokenizer.convert_tokens_to_ids(gentasktoken)}')
     answertoken = "__ans__"
     special_tokens = {"ans_token": answertoken}
     tokenizer.add_tokens(list(special_tokens.values()))
@@ -497,7 +495,7 @@ def main(args):
                 model.promptnumber = ckptsum["promptnumberforsum"]
                 model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
                 n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-                logger.info("The model has {} trainable parameters".format(n_params))
+                logger.info(f"The model has {n_params} trainable parameters")
 
             model.eval()
             mean_rs_entity = None
@@ -540,7 +538,7 @@ def main(args):
                             oneckpt = torch.load(onepath)
                             entmodel.promptnumber = oneckpt["promptnumber"]
                             entmodel.promptembedding = oneckpt["promptembedding"]
-                            logger.info("Loaded the entity model from: {}".format(onepath))
+                            logger.info(f"Loaded the entity model from: {onepath}")
                         else:
                             ckpt = torch.load(args.pretrain_prompt_ckpt)
                             entmodel.promptnumber = ckpt["promptnumber"]

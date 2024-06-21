@@ -470,8 +470,8 @@ def main(args):
             result_dict_total[k] = []
 
         args.model_save_path = args.model_save_folder + f'seed_{args.seed}/'
-        logger.info('args.model_save_path {}'.format(args.model_save_path))
-        logger.info('args.save_model {}'.format(args.save_model))
+        logger.info(f'args.model_save_path {args.model_save_path}')
+        logger.info(f'args.save_model {args.save_model}')
 
         # base model
         if 'T5' in args.model:
@@ -568,7 +568,7 @@ def main(args):
                     oneckpt = torch.load(onepath)
                     entmodel.promptnumber = oneckpt["promptnumber"]
                     entmodel.promptembedding = oneckpt["promptembedding"]
-                    logger.info("Loaded the entity model from: {}".format(onepath))
+                    logger.info(f"Loaded the entity model from: {onepath}")
                 else:
                     ckpt = torch.load(args.pretrain_prompt_ckpt)
                     entmodel.promptnumber = ckpt["promptnumber"]

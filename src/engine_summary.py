@@ -512,7 +512,7 @@ def doinference(modeltoeval, valid_dataloader, scaler, logger, args):
     p, r, f1 = entity_eval(allytrue, allypred)
 
     logger.info('----Validation Results Summary----')
-    logger.info("Size of the dataset: {}".format(len(allypred)))
+    logger.info(f"Size of the dataset: {len(allypred)}")
     logger.info(f"R-1: {r1:.4f}")
     logger.info(f"R-2: {r2:.4f}")
     logger.info(f"R-L: {rl:.4f}")
