@@ -45,7 +45,6 @@ class DatasetSummary(Dataset):
         with open("permutations/init_{}.pkl".format(args.dataset), "wb") as f:
             pickle.dump(p, f)
         self.data = [self.data[x] for x in p]
-        print("permuted self.data")
         self.num_entries = len(self.data)
 
         self.split = split

@@ -283,7 +283,6 @@ def set_args():
     if args.model != 'T5MixPrompt':
         if args.model == 'T5SoftPrompt' and args.use_pretrain_ckpt:
             args.model_save_folder += f'{args.model}_v3/'
-            logger.info(args.model_save_folder)
         else:
             args.model_save_folder += f'{args.model}/'
     Path(args.model_save_folder).mkdir(parents=True, exist_ok=True)
@@ -447,13 +446,13 @@ def main(args):
             # base model
             if 'T5' in args.model:
                 basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-                args.allnumber_path = '../support_files/allnumber_t5.pkl'
+                args.allnumber_path = 'support_files/allnumber_t5.pkl'
             elif 'Bart' in args.model:
                 basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-                args.allnumber_path = '../support_files/allnumber_bart.pkl'
+                args.allnumber_path = 'support_files/allnumber_bart.pkl'
             elif 'Pegasus' in args.model:
                 basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, max_position_embeddings = args.max_position_embeddings, cache_dir=args.cache_path)
-                args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
+                args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
             logger.info("Finish prepare model and dataset")
             logger.info("Start training")
 
@@ -650,7 +649,9 @@ def main(args):
             for k in keys_to_keep:
                 d[k] = result_dict[k]
             is_oracle = bool(args.guidance_mode == "target")
-            export_path = f"scores/{args.dataset}/{args.few_shot}/prompt_sum_scores_{args.dataset}_seed_{seed}_pretrained_{args.use_pretrain_ckpt}_oracle_{is_oracle}.pkl"
+            export_dir = f"scores/{args.dataset}/{args.few_shot}/"
+            os.makedirs(export_dir, exist_ok=True)
+            export_path = f"{export_dir}/prompt_sum_scores_{args.dataset}_seed_{seed}_pretrained_{args.use_pretrain_ckpt}_oracle_{is_oracle}.pkl"
             if args.no_finetuned_sprompt:
                 export_path = export_path[:-4] + "_no_finetuned_sprompt.pkl"
             if args.no_sprompt:

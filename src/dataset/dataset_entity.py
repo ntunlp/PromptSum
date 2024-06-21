@@ -18,7 +18,7 @@ from rouge_score import rouge_scorer
 from utils import *
 #from transformers import BertTokenizer, T5Tokenizer, T5ForConditionalGeneration
 
-from dataset_pretrain import *
+from dataset.dataset_pretrain import *
 from models.model_entity import ModelEntity
 
 
