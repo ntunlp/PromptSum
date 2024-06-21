@@ -27,6 +27,9 @@ To run **pre-training**:
 bash src/scripts/run_pretraining.sh
 ```
 
+If you cannot do the pretraining, you can use our checkpoint [here](https://drive.google.com/file/d/1Cc1RYHIdRv_0S6JJNm4-Drwh2YA4DiiH/view?usp=sharing).  
+After unzipping the folder, place it in *pretrained_ckpt/*.
+
 To run **0-shot** summarization (3 seeds in validation, 1 seed in test):
 ```
 bash src/scripts/run_zeroshot.sh
