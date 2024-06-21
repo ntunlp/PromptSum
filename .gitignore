@@ -3,34 +3,16 @@
 
 pretrained_ckpt/*
 
-checkpoint/*
-checkpoints/*
-bart.large.tar.gz
-datasets/*
+entity_ckpt/*
+summary_ckpt/*
+saved_models/*
+log/*
+permutations/*
 
-Summarization/.DS_Store
-Summarization/__pycache__/
-Summarization/*log*
-Summarization/log/*
-Summarization/t5_sum_ckpt
-Summarization/tagger/__pycache__
-Summarization/tagger/sumdata
-Summarization/tagger/out_base
-Summarization/tagger/output
-Summarization/tagger_ckpt/*
-Summarization/summary_ckpt/*
-Summarization/unused/*
-Summarization/prompt_tuning_ckpt_conll/__pycache__
-Summarization/t5_tagger_pretraining_data/*
-Summarization/t5_tagger_pretrained_ckpt/*
-Summarization/saved_models
-Summarization/models_summarization/__pycache__/
-Summarization/*controlling_xsum*
-Summarization/*prompt_baseline*
-Summarization/frost_baseline/frost_pretrained_ckpt.pt
-Summarization/controlling
-Summarization/entity_ckpt/*
-Summarization/summary_ckpt/*
-Summarization/permutations/*
+figures/*
+human_evaluation/*
 
-
+src/.DS_Store
+src/__pycache__/*
+src/dataset/__pycache__/*
+src/models/__pycache__/*

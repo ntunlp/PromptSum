@@ -24,27 +24,25 @@ pip install -r requirements.txt
 
 To run **pre-training**:
 ```
-bash run_pretraining.sh
+bash src/scripts/run_pretraining.sh
 ```
 
 To run **0-shot** summarization (3 seeds in validation, 1 seed in test):
 ```
-bash runall_zeroshot_promptsum.sh
+bash src/scripts/run_zeroshot.sh
 ```
 
 To run **few-shot** summarization (3 seeds):
 ```
-bash runall_kshot_baselines.sh
-bash runall_kshot_oracle.sh
-bash runall_kshot_promptsum.sh
-bash runall_kshot_controllability.sh
-bash runall_kshot_counterfactual.sh
-bash runall_kshot_hallucination.sh
+bash src/scripts/run_kshot_promptsum.sh
+bash src/scripts/run_kshot_controllability.sh
+bash src/scripts/run_kshot_counterfactual.sh
+bash src/scripts/run_kshot_hallucination.sh
 ```
 
 To run **full-shot** summarization (1 seed):
 ```
-bash run_fullshot_promptsum.sh
+bash src/scripts/run_fullshot_promptsum.sh
 ```
 
 ## Citation
