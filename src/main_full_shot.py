@@ -51,7 +51,7 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+                        default=root+"hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default="full", help="full  = full-shot fine-tuning")
     parser.add_argument("--zero_shot", action = 'store_true')
@@ -196,6 +196,7 @@ def set_args():
                         default=100, help="how many steps to log")
     parser.add_argument("--stemmer", dest="stemmer", type=bool, 
                         default=True)
+    parser.add_argument("--big_testset", action='store_true', help="whether or not to evaluate using the 2k testset") 
     parser.add_argument("--full_testset", action='store_true', help="whether or not to evaluate using the full testset")
     parser.add_argument("--eval_abstractiveness", dest="eval_abstractiveness", type=bool,
                         default=True)

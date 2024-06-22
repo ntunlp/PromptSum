@@ -46,7 +46,7 @@ def set_args():
     parser.add_argument("--dataset_name", dest="dataset_name", type=str,
                         default="xsum")
     parser.add_argument("--dataset_cache_dir", dest="dataset_cache_dir", type=str,
-                        default="../../hf_datasets/", help="dataset cache folder")
+                        default=root+"hf_datasets/", help="dataset cache folder")
     parser.add_argument("--few_shot", dest="few_shot", type=str,
                         default="100", help="number of data points for training AND validation")
     parser.add_argument("--zero_shot", action = 'store_true')
