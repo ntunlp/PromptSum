@@ -388,8 +388,8 @@ def main(args):
 
     seed = 0
     args.model_save_path = args.model_save_folder + f'seed_{seed}/'
-    logger.info('args.model_save_path {}'.format(args.model_save_path))
-    logger.info('args.save_model {}'.format(args.save_model))
+    logger.info(f'args.model_save_path {args.model_save_path}')
+    logger.info(f'args.save_model {args.save_mode}')
 
     # base model
     if 'T5' in args.model:
@@ -445,7 +445,7 @@ def main(args):
         model.promptnumber = ckptsum["promptnumberforsum"]
         model.promptembedding = nn.parameter.Parameter(ckptsum["promptembeddingforsum"])
         n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        logger.info("The model has {} trainable parameters".format(n_params))
+        logger.info(f"The model has {n_params} trainable parameters")
 
     model.eval()
     ####add t5 tagger
@@ -499,7 +499,7 @@ def main(args):
                 oneckpt = torch.load(onepath)
                 entmodel.promptnumber = oneckpt["promptnumber"]
                 entmodel.promptembedding = oneckpt["promptembedding"]
-            logger.info("Loaded the entity model from: {}".format(onepath))
+            logger.info(f"Loaded the entity model from: {onepath}")
 
             n_params = sum(p.numel() for p in entmodel.parameters() if p.requires_grad)
             logger.info(f"The ent model has {n_params} trainable parameters")
