@@ -349,13 +349,13 @@ def main(args):
         thistaskfold = args.dataset
         args.taskfold = thistaskfold
 
-    # load tokenizer 
-    if 'Bart' in args.model:
+    # load tokenizer
+    if 'T5' in args.model:
+        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+    elif 'Bart' in args.model:
         tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     elif 'Pegasus' in args.model:
         tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-    else:
-        tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
     for gg in range(len(allgentasktokens)):
         gentasktoken = allgentasktokens[gg]
         tokenizer.add_tokens(gentasktoken)

@@ -356,20 +356,20 @@ def main(args):
         args.few_shot_save_dir = args.data_dir + args.dataset + f"/{args.few_shot}/"
 
     else:
-        if 'Bart' in args.model:
+        if 'T5' in args.model:
+            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
+            args.allnumber_path = 'support_files/allnumber_t5.pkl'
+        elif 'Bart' in args.model:
             basemodel = BartForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = BartTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = '../support_files/allnumber_t5.pkl'
+            args.allnumber_path = 'support_files/allnumber_bart.pkl'
         elif 'Pegasus' in args.model:
             basemodel = PegasusForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
             # tokenizer = PegasusTokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
             tokenizer = PegasusTokenizerFast.from_pretrained(args.model_name, cache_dir=args.cache_path)
             logger.info('loaded pegasus models')
-            args.allnumber_path = '../support_files/allnumber_pegasus.pkl'
-        else:
-            basemodel = T5ForConditionalGeneration.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            tokenizer = T5Tokenizer.from_pretrained(args.model_name, cache_dir=args.cache_path)
-            args.allnumber_path = '../support_files/allnumber_t5.pkl'
+            args.allnumber_path = 'support_files/allnumber_pegasus.pkl'
         model = ModelSummaryMix(args, basemodel, tokenizer, args.model)
         promptnumber = args.prompt_number
         promptembedding = getpromptembedding(model, tokenizer, promptnumber, thistaskname, args.allnumber_path)
